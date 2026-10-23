@@ -18,12 +18,18 @@ export default function Home() {
   const [tournaments, setTournaments] = useState([]);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setTournaments(JSON.parse(saved));
-    } catch {
-      setTournaments([]);
-    }
+    let active = true;
+    fetch('/api/tournaments', { cache: 'no-store' })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
+        if (active) setTournaments(result.tournaments || []);
+      })
+      .catch(error => {
+        console.error(error);
+        if (active) setTournaments([]);
+      });
+    return () => { active = false; };
   }, []);
 
   return <main className="page">
