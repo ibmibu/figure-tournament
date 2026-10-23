@@ -41,9 +41,11 @@ export default function Home() {
               </div>
               <div className="tournament-meta">
                 <span>{tournament.format}</span>
-                {tournament.date && <span>開催日時：{new Date(tournament.date).toLocaleString('ja-JP')}</span>}
+                {tournament.participants && <span>参加人数：{tournament.participants}人</span>}
+                {tournament.date && <span>開始時刻：{new Date(tournament.date).toLocaleString('ja-JP')}</span>}
+                <span>拒否ステージ：{tournament.stageRejects ? 'あり' : 'なし'}</span>
               </div>
-              {tournament.rules && <p className="tournament-rules">{tournament.rules}</p>}
+              {tournament.stages?.length > 0 && <p className="tournament-rules">使用ステージ：{tournament.stages.join('、')}</p>}
             </article>
           ))}
         </div>
