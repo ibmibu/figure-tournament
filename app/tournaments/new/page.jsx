@@ -117,8 +117,8 @@ export default function NewTournamentPage() {
           <legend>開始日時</legend>
           <label>日付
             <div className="date-with-weekday">
+              <span className={date ? '' : 'date-placeholder'}>{date ? `${date.replaceAll('-', '/') }(${weekday})` : '日付を選択'}</span>
               <input aria-label="開始日" type="date" value={date} onChange={event => setDate(event.target.value)} onClick={event => { try { event.currentTarget.showPicker(); } catch {} }} />
-              {date && <span>（{weekday}）</span>}
             </div>
           </label>
           <label>時間
