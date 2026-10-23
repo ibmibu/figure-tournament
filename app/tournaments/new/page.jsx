@@ -177,7 +177,13 @@ export default function NewTournamentPage() {
           </div>}
         </fieldset>
 
-        <fieldset className="setup-group">\n          <legend>大会説明文（自動生成）</legend>\n          <p className="setting-help">選択した設定に合わせて、説明文が自動で更新されます。</p>\n          <pre className="description-preview">{buildDescription()}</pre>\n        </fieldset>\n\n        {error && <p className="form-error" role="alert">{error}</p>}
+        <fieldset className="setup-group">
+          <legend>大会説明文（自動生成）</legend>
+          <p className="setting-help">選択した設定に合わせて、説明文が自動で更新されます。</p>
+          <pre className="description-preview">{buildDescription()}</pre>
+        </fieldset>
+
+        {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
           <a className="cancel-link" href="/">キャンセル</a>
           <button className="submit" type="submit">大会を作成する</button>
