@@ -12,6 +12,7 @@ export default function NewTournamentPage() {
   const [format, setFormat] = useState(3);
   const [participants, setParticipants] = useState(8);
   const [date, setDate] = useState('');
+  const [hour, setHour] = useState('21');
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
   const [stageRejects, setStageRejects] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
@@ -59,7 +60,7 @@ export default function NewTournamentPage() {
       format: `BO${format}`,
       bestOf: format,
       participants: Number(participants),
-      date,
+      date: date ? `${date}T${hour}:00` : '',
       stages: selectedStages,
       stageRejects,
       stageSettings: stageRejects ? {
@@ -110,9 +111,18 @@ export default function NewTournamentPage() {
           </select>
         </label>
 
-        <label>開始時刻
-          <input type="datetime-local" value={date} onChange={event => setDate(event.target.value)} />
-        </label>
+        <fieldset className="setup-group">
+          <legend>開始日時</legend>
+          <label>日付
+            <input type="date" value={date} onChange={event => setDate(event.target.value)} />
+          </label>
+          {date && <p className="setting-help">{['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'][new Date(date + 'T12:00:00').getDay()]}</p>}
+          <label>時間（24時間表記）
+            <select value={hour} onChange={event => setHour(event.target.value)}>
+              {Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0')).map(value => <option key={value} value={value}>{value}:00</option>)}
+            </select>
+          </label>
+        </fieldset>
 
         <fieldset className="setup-group">
           <legend>使用ステージ</legend>
