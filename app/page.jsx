@@ -38,7 +38,6 @@ export default function Home() {
                 <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
                 {tournament.date && <span>開始時刻：{new Date(tournament.date).toLocaleString('ja-JP')}</span>}
               </div>
-              <p className="tournament-rules">{(tournament.description || '大会詳細を確認して参加できます。').replace(/\\n|\/n/g, '\n')}</p>
               <span className="open-tournament">大会ページへ →</span>
             </a>
           ))}
