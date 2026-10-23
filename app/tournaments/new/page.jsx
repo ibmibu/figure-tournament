@@ -12,7 +12,7 @@ export default function NewTournamentPage() {
   const [participants, setParticipants] = useState(8);
   const [date, setDate] = useState('');
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
-  const [stageRejects, setStageRejects] = useState(true);
+  const [stageRejects, setStageRejects] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
   const [counterpickStages, setCounterpickStages] = useState([...DEFAULT_COUNTERPICKS]);
   const [firstPlayerRejects, setFirstPlayerRejects] = useState(1);
@@ -35,8 +35,10 @@ export default function NewTournamentPage() {
       setError('使用ステージを1つ以上選択してください。');
       return;
     }
-    if (stageRejects && (starterStages.length === 0 || counterpickStages.length === 0)) {
-      setError('拒否ステージありの場合、スターターとカウンターピックをそれぞれ1つ以上選択してください。');
+    const effectiveStarters = starterStages.filter(stage => selectedStages.includes(stage));
+    const effectiveCounterpicks = counterpickStages.filter(stage => selectedStages.includes(stage));
+    if (stageRejects && (effectiveStarters.length === 0 || effectiveCounterpicks.length === 0)) {
+      setError('拒否ステージありの場合、使用ステージの中からスターターとカウンターピックをそれぞれ1つ以上選択してください。');
       return;
     }
 
@@ -50,8 +52,8 @@ export default function NewTournamentPage() {
       stages: selectedStages,
       stageRejects,
       stageSettings: stageRejects ? {
-        starterStages,
-        counterpickStages,
+        starterStages: effectiveStarters,
+        counterpickStages: effectiveCounterpicks,
         firstPlayerRejects: Number(firstPlayerRejects),
         secondPlayerRejects: Number(secondPlayerRejects),
         laterRejects: Number(laterRejects),
@@ -102,7 +104,7 @@ export default function NewTournamentPage() {
         </label>
 
         <fieldset className="setup-group">
-          <legend>使用ステージ（チェックしたステージを使用）</legend>
+          <legend>使用ステージ</legend>
           <div className="stage-checkbox-grid">
             {STAGES.map(stage => <label className="stage-checkbox" key={stage}>
               <input type="checkbox" checked={selectedStages.includes(stage)} onChange={() => toggleStage(stage, setSelectedStages)} />
@@ -114,21 +116,21 @@ export default function NewTournamentPage() {
         <fieldset className="setup-group">
           <legend>拒否ステージ</legend>
           <div className="toggle-options">
-            <button type="button" className={stageRejects ? 'toggle-option selected' : 'toggle-option'} aria-pressed={stageRejects} onClick={() => setStageRejects(true)}>あり</button>
             <button type="button" className={!stageRejects ? 'toggle-option selected' : 'toggle-option'} aria-pressed={!stageRejects} onClick={() => setStageRejects(false)}>なし</button>
+            <button type="button" className={stageRejects ? 'toggle-option selected' : 'toggle-option'} aria-pressed={stageRejects} onClick={() => setStageRejects(true)}>あり</button>
           </div>
           {stageRejects && <div className="reject-settings">
-            <p className="setting-help">ステージストライクと同じ設定です。スターターとカウンターピックを選択してください。</p>
+            <p className="setting-help">使用ステージの中から、スターターとカウンターピックを選択してください。</p>
             <h3>スターターステージ</h3>
             <div className="stage-checkbox-grid">
-              {STAGES.map(stage => <label className="stage-checkbox" key={stage}>
+              {STAGES.filter(stage => selectedStages.includes(stage)).map(stage => <label className="stage-checkbox" key={stage}>
                 <input type="checkbox" checked={starterStages.includes(stage)} onChange={() => toggleStage(stage, setStarterStages)} />
                 <span>{stage}</span>
               </label>)}
             </div>
             <h3>カウンターピックステージ</h3>
             <div className="stage-checkbox-grid">
-              {STAGES.map(stage => <label className="stage-checkbox" key={stage}>
+              {STAGES.filter(stage => selectedStages.includes(stage)).map(stage => <label className="stage-checkbox" key={stage}>
                 <input type="checkbox" checked={counterpickStages.includes(stage)} onChange={() => toggleStage(stage, setCounterpickStages)} />
                 <span>{stage}</span>
               </label>)}
