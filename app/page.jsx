@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
+const OWNER_KEY = 'figure-tournament-owner-v1';
 
 export default function Home() {
   const [tournaments, setTournaments] = useState([]);
@@ -20,33 +21,26 @@ export default function Home() {
       <h1>Figure Tournament</h1>
       <p>amiibo大会の開催・参加・戦績管理</p>
     </section>
-
     <section className="tournaments">
       <div className="section-title">
         <h2>大会一覧</h2>
         <a className="button-link" href="/tournaments/new">＋ 大会を作成</a>
       </div>
       {tournaments.length === 0 ? (
-        <div className="empty">
-          <p>大会はまだありません。</p>
-          <span>大会を作成すると、ここに表示されます。</span>
-        </div>
+        <div className="empty"><p>大会はまだありません。</p><span>大会を作成すると、ここに表示されます。</span></div>
       ) : (
         <div className="tournament-list">
-          {tournaments.map((tournament) => (
-            <article className="tournament-card" key={tournament.id}>
-              <div className="tournament-card-top">
-                <h3>{tournament.name}</h3>
-                <span className="status">{tournament.status}</span>
-              </div>
+          {tournaments.map(tournament => (
+            <a className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
+              <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.status || '募集中'}</span></div>
               <div className="tournament-meta">
                 <span>{tournament.format}</span>
-                {tournament.participants && <span>参加人数：{tournament.participants}人</span>}
+                <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
                 {tournament.date && <span>開始時刻：{new Date(tournament.date).toLocaleString('ja-JP')}</span>}
-                <span>拒否ステージ：{tournament.stageRejects ? 'あり' : 'なし'}</span>
               </div>
-              {tournament.stages?.length > 0 && <p className="tournament-rules">使用ステージ：{tournament.stages.join('、')}</p>}
-            </article>
+              <p className="tournament-rules">{tournament.description || '大会詳細を確認して参加できます。'}</p>
+              <span className="open-tournament">大会ページへ →</span>
+            </a>
           ))}
         </div>
       )}
