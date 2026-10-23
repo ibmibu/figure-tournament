@@ -113,11 +113,13 @@ export default function NewTournamentPage() {
 
         <fieldset className="setup-group">
           <legend>開始日時</legend>
-          <label>日付
-            <input type="date" value={date} onChange={event => setDate(event.target.value)} />
+          <label>日付（曜日）
+            <div className="date-with-weekday">
+              <input type="date" value={date} onChange={event => setDate(event.target.value)} onClick={event => { try { event.currentTarget.showPicker(); } catch {} }} />
+              <span>{date ? `（${['日','月','火','水','木','金','土'][new Date(date + 'T12:00:00').getDay()]}）` : '（曜日）'}</span>
+            </div>
           </label>
-          {date && <p className="setting-help">{['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'][new Date(date + 'T12:00:00').getDay()]}</p>}
-          <label>時間（24時間表記）
+          <label>時間
             <select value={hour} onChange={event => setHour(event.target.value)}>
               {Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0')).map(value => <option key={value} value={value}>{value}:00</option>)}
             </select>
