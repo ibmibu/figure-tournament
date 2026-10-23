@@ -5,11 +5,11 @@
 .format-option,.toggle-option{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;border:1px solid #d8d5e0;border-radius:8px;background:#fff;color:#494552}
 .format-option strong{font-size:16px}.format-option small{font-size:11px;color:#777381}
 .format-option.selected,.toggle-option.selected{border-color:#5e45a8;background:#f0ebfb;color:#5e45a8;box-shadow:inset 0 0 0 1px #5e45a8}
-.stage-checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;row-gap:2px;margin-top:8px}
+.stage-checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;row-gap:2px;margin-top:8px}
 .stage-checkbox{display:flex!important;flex-direction:row!important;align-items:center;gap:6px!important;border:0;border-radius:0;padding:2px 0!important;margin:0!important;cursor:pointer;min-width:0;font-size:13px!important;line-height:1.45}
 .stage-checkbox:has(input:checked){background:transparent;border-color:transparent}
 .stage-checkbox input{width:15px!important;height:15px!important;margin:0;accent-color:#3674b9;flex-shrink:0}
-.stage-checkbox span{overflow-wrap:anywhere}
+.stage-checkbox span{overflow-wrap:normal;word-break:keep-all;white-space:nowrap}
 .reject-settings{margin-top:18px}
 .reject-settings h3{font-size:13px;margin:20px 0 0}
 .setting-help{color:#777381;font-size:12px;line-height:1.6;margin:0}
