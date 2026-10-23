@@ -38,3 +38,11 @@
 .owner-actions{border-top:1px solid #e6e4eb;margin-top:28px;padding-top:18px}
 .danger-button{border-color:#d92d20;color:#b42318;background:#fff}
 @media(max-width:600px){.detail-grid{grid-template-columns:1fr}.joined-player-list li button{float:none;display:block;margin-top:8px}}
+
+.tournament-card{padding:10px 14px}
+.tournament-card-top{gap:8px}
+.tournament-card h3{font-size:15px;line-height:1.35}
+.tournament-meta{display:flex;align-items:center;gap:4px 14px;margin-top:5px;font-size:12px;line-height:1.4}
+.tournament-meta span{white-space:nowrap}
+.open-tournament{display:none}
+@media(max-width:600px){.tournament-card{padding:9px 11px}.tournament-meta{gap:4px 10px;flex-wrap:wrap}}
