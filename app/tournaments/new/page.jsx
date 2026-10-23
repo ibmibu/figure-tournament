@@ -19,28 +19,11 @@ export default function NewTournamentPage() {
   const [firstPlayerRejects, setFirstPlayerRejects] = useState(1);
   const [secondPlayerRejects, setSecondPlayerRejects] = useState(2);
   const [laterRejects, setLaterRejects] = useState(3);
+  const [description, setDescription] = useState('');
   const [error, setError] = useState('');
 
   function toggleStage(stage, setter) {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
-  }
-
-  function buildDescription() {
-    const start = date ? new Date(date).toLocaleString('ja-JP') : '開始時刻未定';
-    const lines = [
-      '「' + (name.trim() || '大会名未設定') + '」を開催します。',
-      '対戦形式：BO' + format + '（' + (format === 3 ? '2本先取' : '3本先取') + '）',
-      '参加定員：' + participants + '人',
-      '開始時刻：' + start,
-      '使用ステージ：' + (selectedStages.join('、') || '未選択'),
-      '拒否ステージ：' + (stageRejects ? 'あり' : 'なし'),
-    ];
-    if (stageRejects) {
-      lines.push('スターター：' + (starterStages.filter(stage => selectedStages.includes(stage)).join('、') || '未選択'));
-      lines.push('カウンターピック：' + (counterpickStages.filter(stage => selectedStages.includes(stage)).join('、') || '未選択'));
-      lines.push('拒否数：最初 ' + firstPlayerRejects + 'ステージ／次 ' + secondPlayerRejects + 'ステージ／2ゲーム目以降 ' + laterRejects + 'ステージ');
-    }
-    return lines.join('\n');
   }
 
   function createTournament(event) {
@@ -71,7 +54,7 @@ export default function NewTournamentPage() {
         }
         return owner;
       })(),
-      description: buildDescription(),
+      description: description.trim(),
       name: trimmedName,
       format: `BO${format}`,
       bestOf: format,
