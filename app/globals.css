@@ -46,3 +46,9 @@
 .tournament-meta span{white-space:nowrap}
 .open-tournament{display:none}
 @media(max-width:600px){.tournament-card{padding:9px 11px}.tournament-meta{gap:4px 10px;flex-wrap:wrap}}
+
+/* Keep the selected date and its weekday together in one tidy field. */
+.create-panel .date-with-weekday{display:flex;flex-direction:row;align-items:center;gap:8px;margin:0;padding:0 12px;min-height:46px;border:1px solid #d8d5e0;border-radius:6px;background:#fff}
+.create-panel .date-with-weekday input{flex:1;min-width:0;width:100%;padding:12px 0;border:0;border-radius:0;background:transparent}
+.create-panel .date-with-weekday span{flex-shrink:0;color:#494552;font-size:13px;white-space:nowrap}
+.create-panel .date-with-weekday:focus-within{border-color:#5e45a8;box-shadow:0 0 0 2px #f0ebfb}
