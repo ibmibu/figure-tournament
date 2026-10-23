@@ -5,10 +5,10 @@
 .format-option,.toggle-option{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;border:1px solid #d8d5e0;border-radius:8px;background:#fff;color:#494552}
 .format-option strong{font-size:16px}.format-option small{font-size:11px;color:#777381}
 .format-option.selected,.toggle-option.selected{border-color:#5e45a8;background:#f0ebfb;color:#5e45a8;box-shadow:inset 0 0 0 1px #5e45a8}
-.stage-checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
-.stage-checkbox{display:flex;align-items:center;gap:9px;border:1px solid #e2dfe8;border-radius:7px;padding:11px 10px;cursor:pointer;min-width:0}
-.stage-checkbox:has(input:checked){background:#f5f2fc;border-color:#b7a8df}
-.stage-checkbox input{width:17px;height:17px;accent-color:#5e45a8;flex-shrink:0}
+.stage-checkbox-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;row-gap:2px;margin-top:8px}
+.stage-checkbox{display:flex!important;flex-direction:row!important;align-items:center;gap:6px!important;border:0;border-radius:0;padding:2px 0!important;margin:0!important;cursor:pointer;min-width:0;font-size:13px!important;line-height:1.45}
+.stage-checkbox:has(input:checked){background:transparent;border-color:transparent}
+.stage-checkbox input{width:15px!important;height:15px!important;margin:0;accent-color:#3674b9;flex-shrink:0}
 .stage-checkbox span{overflow-wrap:anywhere}
 .reject-settings{margin-top:18px}
 .reject-settings h3{font-size:13px;margin:20px 0 0}
@@ -16,4 +16,4 @@
 .reject-count-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
 .reject-count-grid label{display:flex;flex-direction:column;gap:8px;font-size:12px}
 .reject-count-grid select{min-width:0;width:100%;padding:10px;border:1px solid #d8d5e0;border-radius:6px;background:white;font:inherit}
-@media(max-width:600px){.stage-checkbox-grid{grid-template-columns:1fr}.reject-count-grid{grid-template-columns:1fr}.setup-group{margin-top:20px}.stage-checkbox{padding:12px}}
+@media(max-width:600px){.stage-checkbox-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reject-count-grid{grid-template-columns:1fr}.setup-group{margin-top:20px}}
