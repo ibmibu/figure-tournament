@@ -160,11 +160,9 @@ export default function NewTournamentPage() {
           </div>}
         </fieldset>
 
-        <fieldset className="setup-group">
-          <legend>大会説明文（自動生成）</legend>
-          <p className="setting-help">選択した設定に合わせて、説明文が自動で更新されます。</p>
-          <pre className="description-preview">{buildDescription()}</pre>
-        </fieldset>
+        <label>大会説明（任意）
+          <textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="大会について伝えたいことがあれば入力してください。" rows={4} maxLength={2000} />
+        </label>
 
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
