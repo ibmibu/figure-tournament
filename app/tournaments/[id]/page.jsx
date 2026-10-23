@@ -14,31 +14,34 @@ export default function TournamentPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  function loadTournament() {
+  async function loadTournament() {
     try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      setTournament(saved.find(item => String(item.id) === id) || null);
-      let owner = localStorage.getItem(OWNER_KEY);
-      if (!owner) {
-        owner = `owner-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        localStorage.setItem(OWNER_KEY, owner);
-      }
+      const owner = localStorage.getItem(OWNER_KEY) || '';
       setOwnerId(owner);
-    } catch {
+      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store' });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '大会を読み込めませんでした。');
+      setTournament(result.tournament || null);
+    } catch (loadError) {
+      console.error(loadError);
       setTournament(null);
     }
   }
 
   useEffect(() => { loadTournament(); }, [id]);
 
-  function updateTournament(next) {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    const updated = saved.map(item => String(item.id) === id ? next : item);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  async function updateTournament(next) {
+    const response = await fetch('/api/tournaments', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tournament: next, ownerToken: ownerId }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || '大会情報を保存できませんでした。');
     setTournament(next);
   }
 
-  function joinTournament(event) {
+  async function joinTournament(event) {
     event.preventDefault();
     setError('');
     setNotice('');
@@ -47,41 +50,48 @@ export default function TournamentPage() {
       setError('参加者名を入力してください。');
       return;
     }
-    const joinedPlayers = tournament.joinedPlayers || [];
-    if (joinedPlayers.length >= Number(tournament.participants || 8)) {
-      setError('この大会は定員に達しています。');
-      return;
-    }
-    if (joinedPlayers.some(player => player.name.toLowerCase() === name.toLowerCase())) {
-      setError('同じ名前の参加者がすでに登録されています。');
-      return;
-    }
     try {
-      updateTournament({ ...tournament, joinedPlayers: [...joinedPlayers, { id: `${Date.now()}`, name, joinedAt: new Date().toISOString() }] });
+      const response = await fetch('/api/tournaments/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, playerName: name }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '参加登録を保存できませんでした。');
+      setTournament(current => ({ ...current, joinedPlayers: result.joinedPlayers }));
       setPlayerName('');
       setNotice('参加登録しました。');
-    } catch {
-      setError('参加登録を保存できませんでした。');
+    } catch (joinError) {
+      setError(joinError.message || '参加登録を保存できませんでした。');
     }
   }
 
-  function leaveTournament(playerId) {
+  async function leaveTournament(playerId) {
     if (!window.confirm('この参加登録を取り消しますか？')) return;
     const next = { ...tournament, joinedPlayers: (tournament.joinedPlayers || []).filter(player => player.id !== playerId) };
-    updateTournament(next);
+    try { await updateTournament(next); } catch (updateError) { setError(updateError.message); }
   }
 
-  function deleteTournament() {
+  async function deleteTournament() {
     if (!window.confirm('この大会を削除しますか？この操作は取り消せません。')) return;
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved.filter(item => String(item.id) !== id)));
-    window.location.href = '/';
+    try {
+      const response = await fetch('/api/tournaments', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ownerToken: ownerId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '削除できませんでした。');
+      window.location.href = '/';
+    } catch (deleteError) {
+      setError(deleteError.message || '大会を削除できませんでした。');
+    }
   }
 
   if (!tournament) return <main className="page"><section className="intro"><a className="back-link" href="/">← 大会一覧に戻る</a><h1>大会が見つかりません</h1><p>このブラウザに大会データが保存されていないか、URLが正しくありません。</p></section></main>;
 
   const joinedPlayers = tournament.joinedPlayers || [];
-  const isOwner = Boolean(tournament.ownerId && tournament.ownerId === ownerId);
+  const isOwner = Boolean(tournament.isOwner);
 
   return <main className="page">
     <section className="intro">
@@ -94,7 +104,7 @@ export default function TournamentPage() {
       <div className="detail-grid">
         <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
         <div><span>参加人数</span><strong>{joinedPlayers.length}/{tournament.participants || 8}人</strong></div>
-        <div><span>開始時刻</span><strong>{tournament.date ? new Date(tournament.date).toLocaleString('ja-JP') : '未設定'}</strong></div>
+        <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
       </div>
       <h3>大会説明</h3>
