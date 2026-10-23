@@ -2,6 +2,7 @@
 import { useState } from 'react';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
+const OWNER_KEY = 'figure-tournament-owner-v1';
 const STAGES = ['終点', '戦場', '小戦場', 'ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ', '村と街', 'ホロウバスティオン'];
 const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロウバスティオン'];
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
@@ -24,6 +25,24 @@ export default function NewTournamentPage() {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
   }
 
+  function buildDescription() {
+    const start = date ? new Date(date).toLocaleString('ja-JP') : '開始時刻未定';
+    const lines = [
+      '「' + (name.trim() || '大会名未設定') + '」を開催します。',
+      '対戦形式：BO' + format + '（' + (format === 3 ? '2本先取' : '3本先取') + '）',
+      '参加定員：' + participants + '人',
+      '開始時刻：' + start,
+      '使用ステージ：' + (selectedStages.join('、') || '未選択'),
+      '拒否ステージ：' + (stageRejects ? 'あり' : 'なし'),
+    ];
+    if (stageRejects) {
+      lines.push('スターター：' + (starterStages.filter(stage => selectedStages.includes(stage)).join('、') || '未選択'));
+      lines.push('カウンターピック：' + (counterpickStages.filter(stage => selectedStages.includes(stage)).join('、') || '未選択'));
+      lines.push('拒否数：最初 ' + firstPlayerRejects + 'ステージ／次 ' + secondPlayerRejects + 'ステージ／2ゲーム目以降 ' + laterRejects + 'ステージ');
+    }
+    return lines.join('\\n');
+  }
+
   function createTournament(event) {
     event.preventDefault();
     const trimmedName = name.trim();
@@ -44,6 +63,15 @@ export default function NewTournamentPage() {
 
     const tournament = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ownerId: (() => {
+        let owner = localStorage.getItem(OWNER_KEY);
+        if (!owner) {
+          owner = 'owner-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+          localStorage.setItem(OWNER_KEY, owner);
+        }
+        return owner;
+      })(),
+      description: buildDescription(),
       name: trimmedName,
       format: `BO${format}`,
       bestOf: format,
@@ -149,7 +177,7 @@ export default function NewTournamentPage() {
           </div>}
         </fieldset>
 
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <fieldset className="setup-group">\n          <legend>大会説明文（自動生成）</legend>\n          <p className="setting-help">選択した設定に合わせて、説明文が自動で更新されます。</p>\n          <pre className="description-preview">{buildDescription()}</pre>\n        </fieldset>\n\n        {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
           <a className="cancel-link" href="/">キャンセル</a>
           <button className="submit" type="submit">大会を作成する</button>
