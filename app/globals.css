@@ -17,3 +17,24 @@
 .reject-count-grid label{display:flex;flex-direction:column;gap:8px;font-size:12px}
 .reject-count-grid select{min-width:0;width:100%;padding:10px;border:1px solid #d8d5e0;border-radius:6px;background:white;font:inherit}
 @media(max-width:600px){.stage-checkbox-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.reject-count-grid{grid-template-columns:1fr}.setup-group{margin-top:20px}}
+
+.tournament-card-link{display:block;color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
+.tournament-card-link:hover{border-color:#b7a8df;transform:translateY(-1px)}
+.open-tournament{display:inline-block;margin-top:12px;color:#5e45a8;font-size:12px;font-weight:600}
+.description-preview{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:13px;line-height:1.8;background:#f7f6fa;border:1px solid #e6e4eb;border-radius:7px;padding:14px;margin:12px 0 0}
+.tournament-detail h2{font-size:18px;margin:0}
+.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+.detail-grid>div{display:flex;flex-direction:column;gap:6px;background:#f7f6fa;border-radius:7px;padding:13px;min-width:0}
+.detail-grid span{font-size:12px;color:#777381}
+.detail-grid strong{font-size:14px;overflow-wrap:anywhere}
+.generated-description{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;color:#494552}
+.tournament-detail h3{font-size:14px;margin:24px 0 10px}
+.detail-stage-list{display:flex;flex-wrap:wrap;gap:7px}
+.detail-stage-list span{background:#f0ebfb;color:#5e45a8;border-radius:5px;padding:6px 9px;font-size:12px}
+.joined-player-list{padding-left:24px}
+.joined-player-list li{padding:8px 0;border-bottom:1px solid #eeeaf3}
+.joined-player-list li button{float:right;padding:5px 8px;font-size:11px}
+.form-success{color:#18794e;font-size:12px}
+.owner-actions{border-top:1px solid #e6e4eb;margin-top:28px;padding-top:18px}
+.danger-button{border-color:#d92d20;color:#b42318;background:#fff}
+@media(max-width:600px){.detail-grid{grid-template-columns:1fr}.joined-player-list li button{float:none;display:block;margin-top:8px}}
