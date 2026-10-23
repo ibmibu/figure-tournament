@@ -40,7 +40,7 @@ export default function NewTournamentPage() {
       lines.push('カウンターピック：' + (counterpickStages.filter(stage => selectedStages.includes(stage)).join('、') || '未選択'));
       lines.push('拒否数：最初 ' + firstPlayerRejects + 'ステージ／次 ' + secondPlayerRejects + 'ステージ／2ゲーム目以降 ' + laterRejects + 'ステージ');
     }
-    return lines.join('\\n');
+    return lines.join('\n');
   }
 
   function createTournament(event) {
