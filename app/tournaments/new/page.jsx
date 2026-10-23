@@ -27,7 +27,7 @@ export default function NewTournamentPage() {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
   }
 
-  function createTournament(event) {
+  async function createTournament(event) {
     event.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -75,12 +75,17 @@ export default function NewTournamentPage() {
     };
 
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      const tournaments = saved ? JSON.parse(saved) : [];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([tournament, ...tournaments]));
+      const response = await fetch('/api/tournaments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournament }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '保存できませんでした。');
+      localStorage.setItem(OWNER_KEY, tournament.ownerId);
       window.location.href = '/';
-    } catch {
-      setError('保存できませんでした。ブラウザの保存設定を確認してください。');
+    } catch (saveError) {
+      setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
     }
   }
 
