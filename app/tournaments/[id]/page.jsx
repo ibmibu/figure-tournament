@@ -98,7 +98,7 @@ export default function TournamentPage() {
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
       </div>
       <h3>大会説明</h3>
-      <p className="generated-description">{tournament.description || '大会の詳細設定をご確認ください。'}</p>
+      <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\\\n|\\/n/g, '\n')}</p>
       <h3>使用ステージ</h3>
       <div className="detail-stage-list">{(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
       {tournament.stageRejects && tournament.stageSettings && <>
