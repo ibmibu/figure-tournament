@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react';
 const STORAGE_KEY = 'figure-tournament-list-v1';
 const OWNER_KEY = 'figure-tournament-owner-v1';
 
+function formatStartDate(value) {
+  if (!value) return '';
+  const [datePart, timePart = ''] = value.split('T');
+  if (!datePart) return '';
+  const [year, month, day] = datePart.split('-');
+  const weekday = ['日', '月', '火', '水', '木', '金', '土'][new Date(`${datePart}T12:00:00`).getDay()];
+  const time = timePart.slice(0, 5);
+  return `${year}/${month}/${day}(${weekday})${time ? ` ${time}` : ''}`;
+}
+
 export default function Home() {
   const [tournaments, setTournaments] = useState([]);
 
@@ -36,7 +46,7 @@ export default function Home() {
               <div className="tournament-meta">
                 <span>{tournament.format}</span>
                 <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
-                {tournament.date && <span>開始時刻：{new Date(tournament.date).toLocaleString('ja-JP')}</span>}
+                {tournament.date && <span>開始時刻：{formatStartDate(tournament.date)}</span>}
               </div>
               <span className="open-tournament">大会ページへ →</span>
             </a>
