@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [message, setMessage] = useState('ログインを確認しています…');
@@ -34,4 +34,10 @@ export default function AuthCallbackPage() {
   }, [router, searchParams]);
 
   return <main className="page"><section className="intro"><h1>ログイン処理中</h1><p>{message}</p><a className="back-link" href="/login">ログイン画面へ戻る</a></section></main>;
+}
+
+export default function AuthCallbackPage() {
+  return <Suspense fallback={<main className="page"><section className="intro"><h1>ログイン処理中</h1><p>ログイン情報を確認しています…</p></section></main>}>
+    <AuthCallbackContent />
+  </Suspense>;
 }
