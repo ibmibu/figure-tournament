@@ -118,7 +118,7 @@ export default function TournamentPage() {
         <p className="generated-description">最初のプレイヤー：{tournament.stageSettings.firstPlayerRejects}ステージ拒否／次のプレイヤー：{tournament.stageSettings.secondPlayerRejects}ステージ拒否／2ゲーム目以降：{tournament.stageSettings.laterRejects}ステージ拒否</p>
       </>}
       <h3>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h3>
-      {joinedPlayers.length ? <ol className="joined-player-list">{joinedPlayers.map((player, index) => <li key={player.id}><span>{index + 1}. {player.name}</span>{isOwner && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ol> : <p className="setting-help">まだ参加者はいません。</p>}
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}</span>{isOwner && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
       <h3>参加する</h3>
       {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
         <label>参加者名<input value={playerName} onChange={event => setPlayerName(event.target.value)} placeholder="名前を入力" maxLength={40} required /></label>
