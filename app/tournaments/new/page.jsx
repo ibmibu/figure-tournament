@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import AuthStatus from '../../../components/AuthStatus';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
 const OWNER_KEY = 'figure-tournament-owner-v1';
@@ -93,6 +94,7 @@ export default function NewTournamentPage() {
 
   return <main className="page">
     <section className="intro">
+      <AuthStatus />
       <a className="back-link" href="/">← 大会一覧に戻る</a>
       <h1>大会を作成</h1>
       <p>大会ルールとステージを設定してください。</p>
