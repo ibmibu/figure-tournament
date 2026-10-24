@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +25,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const supabase = getSupabaseBrowserClient();
-      const next = searchParams.get('next');
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next');
       const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
       const { error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
