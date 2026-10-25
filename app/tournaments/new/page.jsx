@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
 import AuthStatus from '../../../components/AuthStatus';
+import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
-const OWNER_KEY = 'figure-tournament-owner-v1';
 const STAGES = ['終点', '戦場', '小戦場', 'ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ', '村と街', 'ホロウバスティオン'];
 const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロウバスティオン'];
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
@@ -46,16 +46,22 @@ export default function NewTournamentPage() {
       return;
     }
 
+    let session;
+    try {
+      const { data, error: sessionError } = await getSupabaseBrowserClient().auth.getSession();
+      if (sessionError) throw sessionError;
+      session = data.session;
+    } catch (authError) {
+      setError(authError.message || 'ログイン状態を確認できませんでした。');
+      return;
+    }
+    if (!session) {
+      window.location.href = `/login?next=${encodeURIComponent('/tournaments/new')}`;
+      return;
+    }
+
     const tournament = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      ownerId: (() => {
-        let owner = localStorage.getItem(OWNER_KEY);
-        if (!owner) {
-          owner = 'owner-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-          localStorage.setItem(OWNER_KEY, owner);
-        }
-        return owner;
-      })(),
       description: description.trim(),
       name: trimmedName,
       format: `BO${format}`,
@@ -78,12 +84,11 @@ export default function NewTournamentPage() {
     try {
       const response = await fetch('/api/tournaments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ tournament }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
-      localStorage.setItem(OWNER_KEY, tournament.ownerId);
       window.location.href = '/';
     } catch (saveError) {
       setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
