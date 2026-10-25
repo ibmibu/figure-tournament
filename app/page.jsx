@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import AuthStatus from '../components/AuthStatus';
+import SiteHeader from '../components/SiteHeader';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
 const OWNER_KEY = 'figure-tournament-owner-v1';
@@ -34,9 +34,10 @@ export default function Home() {
   }, []);
 
   return <main className="page">
+    <SiteHeader />
     <section className="intro">
-      <AuthStatus />
-      <h1>Figure Tournament</h1>
+      
+      <h1>大会一覧</h1>
       <p>amiibo大会の開催・参加・戦績管理</p>
     </section>
     <section className="tournaments">
