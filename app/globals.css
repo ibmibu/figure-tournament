@@ -228,3 +228,38 @@ body:has(.tournament-detail-page){background:#0b1220;color:#e7edf7}
  .tournament-detail-page .bracket-match:after{width:15px}
  .tournament-detail-page .bracket-round:not(:last-child):before{right:-15px}
 }
+
+
+/* Return the whole site to the original black-and-white theme */
+body:has(.tournament-detail-page){background:#fff;color:#171717}
+.tournament-detail-page{color:#171717}
+.tournament-detail-page .intro h1,.tournament-detail-page .tournament-card-top h2,.tournament-detail-page .tournament-detail h2,.tournament-detail-page .tournament-detail h3{color:#171717}
+.tournament-detail-page .intro p,.tournament-detail-page .setting-help,.tournament-detail-page .tournament-summary-line{color:#555}
+.tournament-detail-page .back-link,.tournament-detail-page .intro .tournament-back-button{color:#333}
+.tournament-detail-page .tournament-live-panel{background:#fff;border-color:#ddd;color:#171717}
+.tournament-detail-page .tournament-live-panel .bracket-header{border-color:#e5e5e5}
+.tournament-detail-page .tournament-live-panel .bracket-header h2{color:#171717}
+.tournament-detail-page .tournament-live-panel .status{background:#f0f0f0;color:#333}
+.tournament-detail-page .bracket-round>strong{color:#555}
+.tournament-detail-page .bracket-match{background:#fff;border-color:#bdbdbd}
+.tournament-detail-page .bracket-match.match-startable:hover{background:#f8f8f8;border-color:#555}
+.tournament-detail-page .bracket-match:after,.tournament-detail-page .bracket-round:not(:last-child):before{border-color:#888}
+.tournament-detail-page .match-player-line,.tournament-detail-page .match-player-line:nth-child(2){background:#fff;color:#171717;border-color:#ddd}
+.tournament-detail-page .match-player-line.winner-line{background:#f1f1f1}
+.tournament-detail-page .match-player-line .winner{color:#111}
+.tournament-detail-page .match-player-line .player-score{background:#f3f3f3;color:#111;border-color:#ddd}
+.tournament-detail-page .match-player-line.winner-line .player-score{background:#e5e5e5;color:#111;border-color:#ccc}
+.tournament-detail-page .match-start-hint{display:none}
+.tournament-detail-page .match-score{background:#f3f3f3;color:#171717;border-color:#ddd}
+.tournament-detail-page .stage-grid .stage{background:#fff;border-color:#ccc;color:#171717}
+.tournament-detail-page .stage-grid .stage.selected{background:#eee;border-color:#333;color:#111}
+.tournament-detail-page .submit,.tournament-detail-page .button-link{background:#171717;border-color:#171717;color:#fff}
+.tournament-detail-page .create-panel{background:#fff;border-color:#ddd;color:#171717}
+.tournament-detail-page .detail-grid>div{border-color:#e5e5e5}
+.tournament-detail-page .detail-grid span{color:#555}
+.tournament-detail-page .detail-grid strong,.tournament-detail-page .joined-player-list li{color:#171717}
+.tournament-detail-page .detail-stage-list span{background:#f1f1f1;color:#222}
+.tournament-detail-page .owner-actions{border-color:#ddd}
+.tournament-detail-page .danger-button{background:#fff;border-color:#999;color:#333}
+.tournament-detail-page input{background:#fff;color:#171717;border-color:#ccc}
+.tournament-detail-page footer{color:#777}
