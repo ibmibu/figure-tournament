@@ -352,44 +352,9 @@ export default function TournamentPage() {
   const isOwner = Boolean(tournament.isOwner);
 
   return <main className="page">
-    <section className="intro">
-      <a className="back-link" href="/">← 大会一覧に戻る</a>
-      <h1>{tournament.name}</h1>
-      <p>大会詳細・参加登録</p>
-    </section>
-    <section className="create-panel tournament-detail">
-      <div className="tournament-card-top"><h2>大会概要</h2><span className="status">{tournament.status || '募集中'}</span></div>
-      <div className="detail-grid">
-        <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
-        <div><span>参加人数</span><strong>{joinedPlayers.length}/{tournament.participants || 8}人</strong></div>
-        <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
-        <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
-      </div>
-      {isOwner && <div className="overview-actions">
-        {!tournament.bracket && <a className="button-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
-        {!tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>大会を開始する</button>}
-        {tournament.bracket && <button className="submit" type="button" onClick={() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>トーナメント表へ</button>}
-      </div>}
-      <h3>大会説明</h3>
-      <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
-      <h3>使用ステージ</h3>
-      <div className="detail-stage-list">{(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
-      {tournament.stageRejects && tournament.stageSettings && <>
-        <h3>拒否ステージ設定</h3>
-        <p className="generated-description">スターター：{(tournament.stageSettings.starterStages || []).join('、') || '未設定'}</p>
-        <p className="generated-description">カウンターピック：{(tournament.stageSettings.counterpickStages || []).join('、') || '未設定'}</p>
-        <p className="generated-description">最初のプレイヤー：{tournament.stageSettings.firstPlayerRejects}ステージ拒否／次のプレイヤー：{tournament.stageSettings.secondPlayerRejects}ステージ拒否／2ゲーム目以降：{tournament.stageSettings.laterRejects}ステージ拒否</p>
-      </>}
-      <h3>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h3>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}</span>{isOwner && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
-      {isOwner && !tournament.bracket && <section className="bracket-panel" id="tournament-bracket">
-        <h3>デモモード</h3>
-        <p className="setting-help">テスト用の架空プレイヤーを追加できます。デモ参加者は実際のログイン参加者とは区別されます。</p>
-        <div className="demo-player-form"><input value={demoName} onChange={e => setDemoName(e.target.value)} placeholder="例：テストプレイヤー1" aria-label="デモプレイヤー名" /><button type="button" onClick={addDemoPlayer}>デモ参加者を追加</button></div>
-        <p className="setting-help">大会概要の「大会を開始する」から開始してください。</p>
-      </section>}
-      {tournament.bracket && <section className="bracket-panel">
-        <div className="tournament-card-top"><h3>トーナメント表</h3><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
+      {tournament.bracket && <section className="tournament-live-panel" id="tournament-bracket">
+        <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
+        <nav className="tournament-live-tabs" aria-label="大会メニュー"><a href="#tournament-bracket" className="active">トーナメント表</a><a href="#tournament-standings">順位・結果</a><a href="#tournament-overview">大会概要</a></nav>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         <div className="bracket-rounds">{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
           const state = match.matchState;
@@ -432,8 +397,45 @@ export default function TournamentPage() {
               </>}</>}
           </div>;
         })}</div>)}</div>
-        {tournament.bracket.complete && <><h3>確定順位</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
+        {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
+      </section>}
+
+    <section className="intro">
+      <a className="back-link" href="/">← 大会一覧に戻る</a>
+      <h1>{tournament.name}</h1>
+      <p>大会詳細・参加登録</p>
+    </section>
+    <section className="create-panel tournament-detail" id="tournament-overview">
+      <div className="tournament-card-top"><h2>大会概要</h2><span className="status">{tournament.status || '募集中'}</span></div>
+      <div className="detail-grid">
+        <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
+        <div><span>参加人数</span><strong>{joinedPlayers.length}/{tournament.participants || 8}人</strong></div>
+        <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
+        <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
+      </div>
+      {isOwner && <div className="overview-actions">
+        {!tournament.bracket && <a className="button-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
+        {!tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>大会を開始する</button>}
+        {tournament.bracket && <button className="submit" type="button" onClick={() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>トーナメント表へ</button>}
+      </div>}
+      <h3>大会説明</h3>
+      <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
+      <h3>使用ステージ</h3>
+      <div className="detail-stage-list">{(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
+      {tournament.stageRejects && tournament.stageSettings && <>
+        <h3>拒否ステージ設定</h3>
+        <p className="generated-description">スターター：{(tournament.stageSettings.starterStages || []).join('、') || '未設定'}</p>
+        <p className="generated-description">カウンターピック：{(tournament.stageSettings.counterpickStages || []).join('、') || '未設定'}</p>
+        <p className="generated-description">最初のプレイヤー：{tournament.stageSettings.firstPlayerRejects}ステージ拒否／次のプレイヤー：{tournament.stageSettings.secondPlayerRejects}ステージ拒否／2ゲーム目以降：{tournament.stageSettings.laterRejects}ステージ拒否</p>
+      </>}
+      <h3>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h3>
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}</span>{isOwner && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+      {isOwner && !tournament.bracket && <section className="bracket-panel" id="tournament-bracket">
+        <h3>デモモード</h3>
+        <p className="setting-help">テスト用の架空プレイヤーを追加できます。デモ参加者は実際のログイン参加者とは区別されます。</p>
+        <div className="demo-player-form"><input value={demoName} onChange={e => setDemoName(e.target.value)} placeholder="例：テストプレイヤー1" aria-label="デモプレイヤー名" /><button type="button" onClick={addDemoPlayer}>デモ参加者を追加</button></div>
+        <p className="setting-help">大会概要の「大会を開始する」から開始してください。</p>
       </section>}
       <h3>参加する</h3>
       {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
