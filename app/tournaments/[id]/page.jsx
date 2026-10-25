@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
+import { updateCachedTournament, removeCachedTournament } from '../../../lib/tournament-cache';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
 
@@ -11,7 +12,6 @@ export default function TournamentPage() {
   const id = decodeURIComponent(String(params.id || ''));
   const [tournament, setTournament] = useState(null);
   const [ownerId, setOwnerId] = useState('');
-  const [playerName, setPlayerName] = useState('');
   const [accountName, setAccountName] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
@@ -57,6 +57,7 @@ export default function TournamentPage() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '大会情報を保存できませんでした。');
     setTournament(next);
+    updateCachedTournament(next);
   }
 
   async function joinTournament(event) {
@@ -79,7 +80,11 @@ export default function TournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '参加登録を保存できませんでした。');
-      setTournament(current => ({ ...current, joinedPlayers: result.joinedPlayers }));
+      setTournament(current => {
+        const next = { ...current, joinedPlayers: result.joinedPlayers };
+        updateCachedTournament(next);
+        return next;
+      });
       setNotice('参加登録しました。');
     } catch (joinError) {
       setError(joinError.message || '参加登録を保存できませんでした。');
@@ -105,6 +110,7 @@ export default function TournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '削除できませんでした。');
+      removeCachedTournament(id);
       window.location.href = '/';
     } catch (deleteError) {
       setError(deleteError.message || '大会を削除できませんでした。');
