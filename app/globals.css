@@ -698,3 +698,33 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .tournament-detail-page .tournament-live-panel .bracket-round:not(:first-child) .bracket-match:before{
  border-top:2px solid #d7dce1!important;
 }
+
+/* Final bracket alignment: consistent 2px blue orthogonal connectors and gray canvas */
+.tournament-detail-page .tournament-live-panel .bracket-rounds{
+ background:#e9edf2!important;
+ gap:38px!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-round:not(:last-child) .bracket-match:after{
+ top:calc(50% - 1px)!important;
+ left:100%!important;
+ width:19px!important;
+ border:0!important;
+ border-top:2px solid #3170b8!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-round:not(:first-child) .bracket-match:before{
+ top:calc(50% - 1px)!important;
+ right:100%!important;
+ width:19px!important;
+ border:0!important;
+ border-top:2px solid #3170b8!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-pair-connector{
+ box-sizing:border-box!important;
+ position:absolute!important;
+ top:calc(50% - 1px)!important;
+ right:-19px!important;
+ width:0!important;
+ border:0!important;
+ border-right:2px solid #3170b8!important;
+ border-radius:0!important;
+}
