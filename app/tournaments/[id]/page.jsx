@@ -504,13 +504,15 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail participant-side-panel">
       <h2>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
       {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}{player.isDemo ? '（デモ）' : ''}</span>{isOwner && !tournament.bracket && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
-      <h3>参加する</h3>
-      {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
-        {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
-        {error && <p className="form-error" role="alert">{error}</p>}
-        {notice && <p className="form-success" role="status">{notice}</p>}
-        <button className="submit" type="submit">参加登録する</button>
-      </form>}
+      {!joinedPlayers.some(player => String(player.id) === String(currentUserId)) && <>
+        <h3>参加する</h3>
+        {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
+          {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
+          {error && <p className="form-error" role="alert">{error}</p>}
+          {notice && <p className="form-success" role="status">{notice}</p>}
+          <button className="submit" type="submit">参加登録する</button>
+        </form>}
+      </>}
       {isOwner && <div className="owner-actions"><p className="setting-help">あなたが作成した大会です。</p><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
     </section>
     </div>}
