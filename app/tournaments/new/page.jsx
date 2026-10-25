@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
@@ -9,6 +10,9 @@ const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロ�
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
 
 export default function NewTournamentPage() {
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit') || '';
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editId));
   const [name, setName] = useState('');
   const [format, setFormat] = useState(3);
   const [participants, setParticipants] = useState(8);
@@ -23,6 +27,39 @@ export default function NewTournamentPage() {
   const [laterRejects, setLaterRejects] = useState(3);
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!editId) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await getSupabaseBrowserClient().auth.getSession();
+        const session = data.session;
+        if (!session) { window.location.href = `/login?next=${encodeURIComponent('/tournaments/new?edit=' + editId)}`; return; }
+        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(editId)}`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '大会情報を読み込めませんでした。');
+        const t = result.tournament;
+        if (!t.isOwner) throw new Error('この大会を編集する権限がありません。');
+        if (!active) return;
+        setName(t.name || '');
+        setFormat(Number(t.bestOf) === 5 ? 5 : 3);
+        setParticipants(Number(t.participants) || 8);
+        setDate(t.date ? t.date.slice(0, 10) : '');
+        setHour(t.date ? t.date.slice(11, 13) : '21');
+        setSelectedStages(Array.isArray(t.stages) ? t.stages : [...STAGES]);
+        setStageRejects(Boolean(t.stageRejects));
+        setStarterStages(t.stageSettings?.starterStages || [...DEFAULT_STARTERS]);
+        setCounterpickStages(t.stageSettings?.counterpickStages || [...DEFAULT_COUNTERPICKS]);
+        setFirstPlayerRejects(Number(t.stageSettings?.firstPlayerRejects) || 1);
+        setSecondPlayerRejects(Number(t.stageSettings?.secondPlayerRejects) || 2);
+        setLaterRejects(Number(t.stageSettings?.laterRejects) || 3);
+        setDescription(t.description || '');
+      } catch (e) { if (active) setError(e.message || '読み込みに失敗しました。'); }
+      finally { if (active) setLoadingEdit(false); }
+    })();
+    return () => { active = false; };
+  }, [editId]);
 
   function toggleStage(stage, setter) {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
@@ -61,7 +98,7 @@ export default function NewTournamentPage() {
     }
 
     const tournament = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: editId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       description: description.trim(),
       name: trimmedName,
       format: `BO${format}`,
@@ -77,19 +114,19 @@ export default function NewTournamentPage() {
         secondPlayerRejects: Number(secondPlayerRejects),
         laterRejects: Number(laterRejects),
       } : null,
-      status: '募集中',
+      status: editId ? '募集中' : '募集中',
       createdAt: new Date().toISOString(),
     };
 
     try {
       const response = await fetch('/api/tournaments', {
-        method: 'POST',
+        method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
         body: JSON.stringify({ tournament }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
-      window.location.href = '/';
+      window.location.href = editId ? `/tournaments/${encodeURIComponent(editId)}` : '/';
     } catch (saveError) {
       setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
     }
@@ -102,12 +139,12 @@ export default function NewTournamentPage() {
     <section className="intro">
       
       <a className="back-link" href="/">← 大会一覧に戻る</a>
-      <h1>大会を作成</h1>
+      <h1>{editId ? '大会を編集' : '大会を作成'}</h1>
       <p>大会ルールとステージを設定してください。</p>
     </section>
 
     <section className="create-panel">
-      <form onSubmit={createTournament}>
+      {loadingEdit ? <p className="setting-help">大会情報を読み込み中…</p> : <form onSubmit={createTournament}>
         <label>大会名 <span className="required">必須</span>
           <input value={name} onChange={event => setName(event.target.value)} placeholder="大会名を入力" maxLength={80} autoFocus required />
         </label>
@@ -194,9 +231,9 @@ export default function NewTournamentPage() {
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
           <a className="cancel-link" href="/">キャンセル</a>
-          <button className="submit" type="submit">大会を作成する</button>
+          <button className="submit" type="submit">{editId ? '変更を保存する' : '大会を作成する'}</button>
         </div>
-      </form>
+      </form>}
     </section>
     <footer>Figure Tournament</footer>
   </main>;
