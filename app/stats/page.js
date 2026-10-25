@@ -5,8 +5,8 @@ import './stats.css';
 import SiteHeader from '../../components/SiteHeader';
 import { CHARACTER_ALIASES } from './data/characterAliases';
 import { MANUAL_CHARACTER_REPORTS } from './data/manualCharacterReports';
-import { calculateElo, calculateTournamentTierScores } from '../lib/ratings';
-import { getPlayerAchievements } from '../lib/stats-data';
+import { calculateElo, calculateTournamentTierScores } from '../../lib/ratings';
+import { getPlayerAchievements } from '../../lib/stats-data';
 
 const STORAGE_KEY = 'ningyogeki-stats-v4';
 
