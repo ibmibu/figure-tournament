@@ -382,9 +382,7 @@ export default function TournamentPage() {
         <div><h1>{tournament.name}</h1></div>
       </div>
     </section>
-      {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
-        <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
-        <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
+      {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
         {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
@@ -439,6 +437,11 @@ export default function TournamentPage() {
             </>}
           </section>;
         })()}
+{!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
+      </div>}
+      {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
+        <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
+        <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         <div className="bracket-rounds" style={{ "--bracket-height": `${64 + tournament.bracket.rounds[0].length * 104}px` }}>{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
           const state = match.matchState;
           const game = state?.currentGame;
@@ -467,7 +470,7 @@ export default function TournamentPage() {
           </div>;
         })}</div>)}</div>
 
-{!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
+
         {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
