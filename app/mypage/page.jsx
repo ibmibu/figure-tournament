@@ -45,7 +45,7 @@ export default function MyPage() {
         setDraftAvatar(loadedProfile.avatar_data || '');
         const all = tournamentResult.tournaments || [];
         const myName = (loadedProfile.display_name || 'no name').trim().toLowerCase();
-        setTournaments(all.filter(item => item.ownerUserId === currentSession.user.id || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === myName)));
+        setTournaments(all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === myName)));
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
