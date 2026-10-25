@@ -792,3 +792,11 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .tournament-detail-page .tournament-live-panel .bracket-match .match-player-line:not(:has(span[title]:not([title=""]))) .player-score{
  background:#315b67!important;
 }
+
+/* Match controls live in their own section above the bracket */
+.tournament-detail-page .tournament-match-area{margin:22px 0 16px}
+.tournament-detail-page .tournament-match-area .match-controls-below{
+ margin:0;width:100%;background:#fff;border:1px solid #dfe6ec;border-radius:12px;
+ padding:20px;box-sizing:border-box;
+}
+.tournament-detail-page .tournament-match-area + .tournament-live-panel{margin-top:0}
