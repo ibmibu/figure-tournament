@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
-import { updateCachedTournament, removeCachedTournament } from '../../../lib/tournament-cache';
+import { readTournamentCache, updateCachedTournament, removeCachedTournament } from '../../../lib/tournament-cache';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
 
@@ -11,6 +11,7 @@ export default function TournamentPage() {
   const params = useParams();
   const id = decodeURIComponent(String(params.id || ''));
   const [tournament, setTournament] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [ownerId, setOwnerId] = useState('');
   const [accountName, setAccountName] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -18,7 +19,13 @@ export default function TournamentPage() {
   const [notice, setNotice] = useState('');
 
   async function loadTournament() {
+    setLoading(true);
+    setError('');
     try {
+      const cached = readTournamentCache() || [];
+      const cachedTournament = cached.find(item => String(item.id) === String(id));
+      if (cachedTournament) setTournament(cachedTournament);
+
       const owner = localStorage.getItem(OWNER_KEY) || '';
       setOwnerId(owner);
       let accessToken = '';
@@ -36,10 +43,20 @@ export default function TournamentPage() {
       const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '大会を読み込めませんでした。');
-      setTournament(result.tournament || null);
+      if (result.tournament) {
+        setTournament(result.tournament);
+        updateCachedTournament(result.tournament);
+      } else if (!cachedTournament) {
+        setTournament(null);
+      }
     } catch (loadError) {
       console.error(loadError);
-      setTournament(null);
+      const cached = readTournamentCache() || [];
+      const cachedTournament = cached.find(item => String(item.id) === String(id));
+      if (cachedTournament) setTournament(cachedTournament);
+      else setTournament(null);
+    } finally {
+      setLoading(false);
     }
   }
 
