@@ -352,9 +352,13 @@ export default function TournamentPage() {
   const isOwner = Boolean(tournament.isOwner);
 
   return <main className="page">
+    <section className="intro">
+      <a className="back-link" href="/">← 大会一覧に戻る</a>
+      <h1>{tournament.name}</h1>
+      <p>大会詳細・参加登録</p>
+    </section>
       {tournament.bracket && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
-        <nav className="tournament-live-tabs" aria-label="大会メニュー"><a href="#tournament-bracket" className="active">トーナメント表</a><a href="#tournament-standings">順位・結果</a><a href="#tournament-overview">大会概要</a></nav>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         <div className="bracket-rounds">{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
           const state = match.matchState;
@@ -437,6 +441,7 @@ export default function TournamentPage() {
         <div className="demo-player-form"><input value={demoName} onChange={e => setDemoName(e.target.value)} placeholder="例：テストプレイヤー1" aria-label="デモプレイヤー名" /><button type="button" onClick={addDemoPlayer}>デモ参加者を追加</button></div>
         <p className="setting-help">大会概要の「大会を開始する」から開始してください。</p>
       </section>}
+
       <h3>参加する</h3>
       {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
         {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
