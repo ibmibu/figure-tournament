@@ -430,8 +430,11 @@ export default function TournamentPage() {
                 </>}
               </> : <>
                 <p className="setting-help">決定ステージ：{game.stage}</p>
-                <p className="setting-help">ゲーム結果を記録してください。</p>
-                {[match.player1,match.player2].map(player=><button key={player.id} type="button" className="submit" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,player.id)}>{player.name} の勝利</button>)}
+                <h3 className="match-result-heading">試合結果を入力</h3>
+                <div className="match-result-buttons">
+                  <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,match.player1.id)}>WIN — {match.player1.name}</button>
+                  <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,match.player2.id)}>LOSE — {match.player2.name}</button>
+                </div>
               </>}
             </>}
           </section>;
