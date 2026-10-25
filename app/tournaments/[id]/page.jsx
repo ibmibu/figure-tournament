@@ -409,9 +409,16 @@ export default function TournamentPage() {
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
-            <h3>対戦操作：{match.player1.name} vs {match.player2.name}</h3>
+            <div className="game-top">
+              <div className="game-heading"><span className="eyebrow">GAME {state?.gameNumber || 1} / BO{tournament.bestOf || 3}</span><h2>対戦画面</h2></div>
+              <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
+              <span className="match-opponent-label">対戦中</span>
+            </div>
+            <div className="player-strip">
+              <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b><span>{state?.score?.[p1Id] || 0} 勝</span></div>
+              <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b><span>{state?.score?.[match.player2.id] || 0} 勝</span></div>
+            </div>
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
-              <div className="match-score">{state.score?.[p1Id] || 0} - {state.score?.[match.player2.id] || 0}　GAME {state.gameNumber}</div>
               {!game?.stage ? <>
                 {rejectsDone ? <>
                   <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
