@@ -200,3 +200,31 @@ body:has(.tournament-detail-page){background:#0b1220;color:#e7edf7}
   .tournament-detail-page .bracket-round{flex-basis:185px;min-width:185px}
   .tournament-bottom-grid{grid-template-columns:1fr;gap:14px}
 }
+
+
+/* Bracket match cards: boxed player names with scores on the right and bracket connectors */
+.tournament-detail-page .tournament-heading .tournament-back-button{display:inline-block;background:transparent;border:0;padding:0;color:#9cb4d7;font:inherit;cursor:pointer;margin:0 0 14px}
+.tournament-detail-page .tournament-heading .tournament-back-button:hover{color:#fff;text-decoration:underline}
+.tournament-detail-page .bracket-match{gap:0;cursor:default}
+.tournament-detail-page .bracket-match.match-startable{cursor:pointer;transition:border-color .15s,background .15s}
+.tournament-detail-page .bracket-match.match-startable:hover{border-color:#2684ff;background:#1a2b43}
+.tournament-detail-page .bracket-match.match-startable:focus-visible{outline:2px solid #2684ff;outline-offset:3px}
+.tournament-detail-page .match-players{display:flex;flex-direction:column;gap:0}
+.tournament-detail-page .match-player-line{display:flex;justify-content:space-between;align-items:stretch;gap:8px;min-height:32px;padding:0;background:#1b2b43;border-bottom:1px solid #2a3b55}
+.tournament-detail-page .match-player-line:last-child{border-bottom:0}
+.tournament-detail-page .match-player-line>span{display:flex;align-items:center;min-width:0;flex:1;padding:7px 9px;overflow-wrap:anywhere}
+.tournament-detail-page .match-player-line .player-score{display:flex;align-items:center;justify-content:center;min-width:32px;padding:0 8px;background:#233650;color:#e7f1ff;font-size:12px;border-left:1px solid #344963}
+.tournament-detail-page .match-player-line.winner-line{background:#203a60}
+.tournament-detail-page .match-player-line.winner-line .player-score{background:#1478f8;color:white;border-left-color:#1478f8}
+.tournament-detail-page .match-start-hint{display:block;padding:5px 8px;text-align:center;color:#7f9bbd;font-size:10px;border-top:1px solid #263a54}
+.tournament-detail-page .bracket-match:after{width:20px}
+.tournament-detail-page .bracket-round{position:relative}
+.tournament-detail-page .bracket-round:not(:last-child):before{content:"";position:absolute;right:-20px;top:50%;height:calc(100% - 50px);border-right:1px solid #536984;pointer-events:none}
+.tournament-detail-page .tournament-live-panel .setting-help{margin:8px 0}
+.tournament-detail-page .tournament-live-panel>p.setting-help:first-of-type{display:none}
+.tournament-detail-page .tournament-live-panel #tournament-standings{margin-top:20px}
+.tournament-detail-page .tournament-live-panel .bracket-rounds{padding-top:10px}
+@media(max-width:800px){
+ .tournament-detail-page .bracket-match:after{width:15px}
+ .tournament-detail-page .bracket-round:not(:last-child):before{right:-15px}
+}
