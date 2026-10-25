@@ -84,3 +84,19 @@ body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .site-header{padding:0 24px}
 .menu-toggle,.site-menu{display:none!important}
 @media(max-width:600px){.site-header{padding:0 15px}.bottom-tab-bar{padding-left:6px;padding-right:6px}.bottom-tab{min-height:52px}}
+
+
+/* Tournament bracket and demo mode */
+.bracket-panel{margin-top:24px;padding-top:20px;border-top:1px solid #e6e4eb}
+.bracket-panel h3{font-size:15px;margin:0 0 10px}
+.demo-player-form{display:flex;gap:8px;margin:14px 0}
+.demo-player-form input{flex:1;min-width:0;padding:10px;border:1px solid #d8d5e0;border-radius:6px;font:inherit}
+.bracket-panel>.submit{margin-top:12px}
+.bracket-rounds{display:flex;gap:14px;overflow-x:auto;padding:16px 0;align-items:stretch}
+.bracket-round{display:flex;flex-direction:column;gap:12px;min-width:180px;flex:1}
+.bracket-round>strong{font-size:12px;color:#777381}
+.bracket-match{display:flex;flex-direction:column;justify-content:center;flex:1;min-height:84px;padding:8px;border:1px solid #e6e4eb;border-radius:8px;background:#faf9fc}
+.bracket-player{display:block;width:100%;margin:3px 0;padding:9px;text-align:left;white-space:normal;overflow-wrap:anywhere;font-size:12px}
+.bracket-player.winner{background:#e9f7ef;border-color:#24945b;color:#17683e;font-weight:700}
+.bracket-player:disabled{cursor:default;opacity:1}
+@media(max-width:600px){.demo-player-form{flex-direction:column}.bracket-round{min-width:155px}}
