@@ -1,0 +1,23 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {useParams,useRouter} from 'next/navigation';
+import {getSupabaseBrowserClient} from '../../../../lib/supabase/client';
+const fighters=['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
+export default function CharacterReportPage(){
+ const {id}=useParams();const router=useRouter();
+ const [fighter,setFighter]=useState('マリオ');const [color,setColor]=useState('1P');
+ const [colors,setColors]=useState([]);const [tournament,setTournament]=useState(null);const [player,setPlayer]=useState(null);const [eligible,setEligible]=useState(false);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [saving,setSaving]=useState(false);
+ useEffect(()=>{let live=true;(async()=>{try{
+ const {data:{session}}=await getSupabaseBrowserClient().auth.getSession();if(!session)throw Error('キャラ報告にはログインが必要です。');
+ const mine=JSON.parse(localStorage.getItem('figure-my-colors-'+session.user.id)||'[]');
+ const response=await fetch('/api/tournaments?id='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error||'大会を読み込めませんでした。');
+ const t=result.tournament;const p=(t?.joinedPlayers||[]).find(p=>!p.isDemo&&String(p.userId||p.id)===String(session.user.id));
+ const rounds=t?.bracket?.rounds||[];const final=rounds.at(-1)?.[0];const podium=new Set([final?.winnerId,...[final?.player1,final?.player2].filter(Boolean).map(p=>p.id)]);
+ if(rounds.length>=2)for(const m of rounds.at(-2))for(const q of [m.player1,m.player2])if(q&&m.winnerId&&String(q.id)!==String(m.winnerId))podium.add(q.id);
+ const wins=rounds.flat().filter(m=>String(m.winnerId)===String(p?.id)&&m.player1&&m.player2).length;
+ if(live){setTournament(t);setPlayer(p);setColors(mine);setEligible(Boolean(t?.bracket?.complete&&p&&wins>=1&&[...podium].some(v=>String(v)===String(p.id))));const saved=t?.characterReports?.[String(p?.id)];if(saved){setFighter(saved.fighter);setColor(saved.color);}else setColor(mine.find(c=>c.fighter==='マリオ')?.color||'1P');}
+ }catch(e){if(live)setError(e.message);}finally{if(live)setLoading(false);}})();return()=>{live=false}},[id]);
+ function selectFighter(name){setFighter(name);setColor(colors.find(c=>c.fighter===name)?.color||'1P');}
+ async function submit(e){e.preventDefault();setSaving(true);setError('');try{const {data:{session}}=await getSupabaseBrowserClient().auth.getSession();if(!session)throw Error('ログインが必要です。');const response=await fetch('/api/tournaments/report',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({id,fighter,color})});const result=await response.json();if(!response.ok)throw Error(result.error||'保存できませんでした。');router.push('/tournaments/'+encodeURIComponent(id));router.refresh();}catch(e){setError(e.message);}finally{setSaving(false)}}
+ return <main className="page"><section className="intro"><a className="back-link" href={'/tournaments/'+encodeURIComponent(id)}>← 大会概要に戻る</a><h1>キャラクター報告</h1><p>{tournament?.name||''}</p></section>{loading?<p>読み込み中…</p>:error&&!eligible?<p role="alert">{error}</p>:!eligible?<p>報告対象は1勝以上した3位以内の選手です。</p>:<section className="my-results my-color-panel"><h2>{player?.name} のキャラ報告</h2><p className="setting-help">マイカラー登録済みのキャラクターは登録カラーが初期値になります。</p><form onSubmit={submit}><div className="my-color-form" style={{display:'flex',gap:10,alignItems:'center'}}><select aria-label="ファイター" value={fighter} onChange={e=>selectFighter(e.target.value)} style={{flex:1,minWidth:0,padding:10}}>{fighters.map(name=><option key={name} value={name}>{name}</option>)}</select><select aria-label="カラー" value={color} onChange={e=>setColor(e.target.value)} style={{width:100,padding:10}}>{['1P','2P','3P','4P','5P','6P','7P','8P'].map(v=><option key={v}>{v}</option>)}</select></div>{error&&<p role="alert">{error}</p>}<button className="submit" type="submit" disabled={saving}>{saving?'保存中…':'キャラクターを報告'}</button></form></section>}</main>
+}
