@@ -70,18 +70,19 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
-  // 大会ページを開いたら、ログイン中の参加者が進行中の自分の対戦を自動選択する。
+  // 大会ページを開いたら自分の未完了対戦を自動表示し、管理者なら対戦状態も開始する。
   useEffect(() => {
-    if (!tournament?.bracket || !currentUserId) return;
-    for (const round of tournament.bracket.rounds || []) {
-      const ownMatch = round.find(match =>
+    if (!tournament?.bracket || !currentUserId || tournament.bracket.complete) return;
+    for (let ri = 0; ri < (tournament.bracket.rounds || []).length; ri++) {
+      const round = tournament.bracket.rounds[ri];
+      const mi = round.findIndex(match =>
         !match.winnerId && match.player1 && match.player2 &&
         (String(match.player1.id) === String(currentUserId) || String(match.player2.id) === String(currentUserId))
       );
-      if (ownMatch) {
+      if (mi >= 0) {
+        const ownMatch = round[mi];
         setActiveMatchId(ownMatch.id);
-        setRejectSelection([]);
-        setStageSelection('');
+        if (!ownMatch.matchState && tournament.isOwner) startMatch(ri, mi);
         return;
       }
     }
@@ -376,15 +377,7 @@ export default function TournamentPage() {
     <section className="intro tournament-heading">
       {tournament.bracket ? <button className="back-link tournament-back-button" type="button" onClick={() => setShowTournamentOverview(v => !v)}>{showTournamentOverview ? "← トーナメント表に戻る" : "← 大会概要に戻る"}</button> : <a className="back-link" href="/">← 大会一覧に戻る</a>}
       <div className="tournament-title-row">
-        <div><h1>{tournament.name}</h1><p>大会詳細・参加登録</p></div>
-        {isOwner && tournament.bracket && <button className="tournament-finish-button" type="button" onClick={() => window.confirm('大会を終了しますか？') && saveBracket({ ...tournament, status: '終了' })}>大会を終了する</button>}
-      </div>
-      <div className="tournament-summary-line">
-        <span>参加者 {joinedPlayers.length} / {tournament.participants || 8}人</span>
-        <span>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)} 開始` : '開始時刻未設定'}</span>
-        <span>{tournament.format || `BO${tournament.bestOf || 3}`}</span>
-        <span>使用ステージ：{(tournament.stages || []).length ? (tournament.stages || []).join('・') : '未設定'}</span>
-        <span>拒否ステージ：{tournament.stageRejects ? 'あり' : 'なし'}</span>
+        <div><h1>{tournament.name}</h1></div>
       </div>
     </section>
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
