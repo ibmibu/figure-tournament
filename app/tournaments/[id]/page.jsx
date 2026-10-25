@@ -14,6 +14,7 @@ export default function TournamentPage() {
   const [loading, setLoading] = useState(true);
   const [ownerId, setOwnerId] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -39,6 +40,7 @@ export default function TournamentPage() {
         const { data } = await getSupabaseBrowserClient().auth.getSession();
         accessToken = data.session?.access_token || '';
         setAccessToken(accessToken);
+        setCurrentUserId(data.session?.user?.id || '');
         if (accessToken) {
           const profileResponse = await fetch('/api/profile', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
           const profileResult = await profileResponse.json();
@@ -67,6 +69,24 @@ export default function TournamentPage() {
   }
 
   useEffect(() => { loadTournament(); }, [id]);
+
+  // 大会ページを開いたら、ログイン中の参加者が進行中の自分の対戦を自動選択する。
+  useEffect(() => {
+    if (!tournament?.bracket || !currentUserId) return;
+    for (const round of tournament.bracket.rounds || []) {
+      const ownMatch = round.find(match =>
+        !match.winnerId && match.player1 && match.player2 &&
+        (String(match.player1.id) === String(currentUserId) || String(match.player2.id) === String(currentUserId))
+      );
+      if (ownMatch) {
+        setActiveMatchId(ownMatch.id);
+        setRejectSelection([]);
+        setStageSelection('');
+        return;
+      }
+    }
+    setActiveMatchId('');
+  }, [tournament, currentUserId]);
 
   async function updateTournament(next) {
     const { data } = await getSupabaseBrowserClient().auth.getSession();
@@ -393,7 +413,7 @@ export default function TournamentPage() {
 
           </div>;
         })}</div>)}</div>
-        {isOwner && activeMatchId && !tournament.bracket.complete && (() => {
+        {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
             if (match.id === activeMatchId) selected = { roundIndex: ri, matchIndex: mi, match };
@@ -418,7 +438,7 @@ export default function TournamentPage() {
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
             <h3>対戦操作：{match.player1.name} vs {match.player2.name}</h3>
-            {!state ? <p className="setting-help">対戦を開始しています…</p> : <>
+            {!state && isOwner ? <p className="setting-help">対戦を開始しています…</p> : !state ? <p className="setting-help">大会管理者が対戦を開始するまでお待ちください。</p> : !isOwner ? <p className="setting-help">自分の対戦を表示しています。ステージ選択・勝敗報告は大会管理者が操作します。</p> : <>
               <div className="match-score">{state.score?.[p1Id] || 0} - {state.score?.[match.player2.id] || 0}　GAME {state.gameNumber}</div>
               {!game?.stage ? <>
                 {rejectsDone ? <>
@@ -438,6 +458,7 @@ export default function TournamentPage() {
             </>}
           </section>;
         })()}
+{isOwner && !activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦操作</h3><p className="setting-help">{currentUserId ? '自分の進行中の対戦はありません。' : 'ログインすると、自分の対戦がここに自動表示されます。'}</p></section>}
         {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
