@@ -33,7 +33,7 @@ export default function ResultsPage() {
         if (cachedTournaments) {
           const cachedProfile = (() => { try { return JSON.parse(localStorage.getItem('figure-profile-' + session.user.id) || '{}'); } catch { return {}; } })();
           const cachedName = String(cachedProfile.display_name || 'no name').trim().toLowerCase();
-          setTournaments(cachedTournaments.filter(item => item.bracket?.complete && (item.resultPlacements || []).some(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === cachedName; })));
+          setTournaments(cachedTournaments.filter(item => item.bracket?.complete && (item.resultPlacements || []).some(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === cachedName; })).map(item => ({ ...item, myPlacement: (item.resultPlacements || []).find(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === cachedName; })?.place })));
           setLoading(false);
         }
         const headers = { Authorization: `Bearer ${session.access_token}` };
@@ -53,7 +53,7 @@ export default function ResultsPage() {
             const player = (item.joinedPlayers || []).find(p => p.id === result.playerId);
             return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === myName;
           })
-        );
+        ).map(item => ({ ...item, myPlacement: (item.resultPlacements || []).find(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === myName; })?.place }));
         if (active) setTournaments(mine);
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
@@ -72,8 +72,8 @@ export default function ResultsPage() {
       <section className="my-results">
         {error && <p className="form-error" role="alert">{error}</p>}
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="tournament-list">
-          {tournaments.map(tournament => { const myPlacement = (tournament.resultPlacements || []).find(result => { const player = (tournament.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === String((tournament.joinedPlayers || []).find(p => !p.isDemo && String(p.name || '').trim().toLowerCase() === String(p.name || '').trim().toLowerCase())?.name || '').trim().toLowerCase(); }); return <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
-            <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{myPlacement?.place || '結果確定'}</span></div>
+          {tournaments.map(tournament => {  return <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
+            <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.myPlacement || '結果確定'}</span></div>
             <div className="tournament-meta">
               <span>{tournament.format || '大会'}</span>
               <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
