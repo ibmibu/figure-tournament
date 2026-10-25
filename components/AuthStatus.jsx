@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 
 export default function AuthStatus() {
-  const [user, setUser] = useState(null);
+  const [signedIn, setSignedIn] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -12,11 +12,11 @@ export default function AuthStatus() {
     try {
       supabase = getSupabaseBrowserClient();
       supabase.auth.getSession().then(({ data }) => {
-        setUser(data.session?.user || null);
+        setSignedIn(Boolean(data.session?.user));
         setReady(true);
       }).catch(() => setReady(true));
       const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user || null);
+        setSignedIn(Boolean(session?.user));
         setReady(true);
       });
       return () => listener.subscription.unsubscribe();
@@ -32,10 +32,10 @@ export default function AuthStatus() {
   }
 
   if (!ready) return null;
-  if (!user) return <div className="auth-status"><a className="button-link" href="/login">ログイン</a></div>;
+  if (!signedIn) return <div className="auth-status"><a className="button-link" href="/login">ログイン</a></div>;
 
   return <div className="auth-status">
-    <span>{user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'ログイン中'}</span>
+    <span>ログイン中</span>
     <button type="button" className="cancel-link" onClick={signOut}>ログアウト</button>
   </div>;
 }
