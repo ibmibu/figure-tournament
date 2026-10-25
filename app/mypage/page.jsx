@@ -29,6 +29,16 @@ export default function MyPage() {
         }
         if (!active) return;
         setSession(currentSession);
+        const cacheKey = 'figure-profile-' + currentSession.user.id;
+        try {
+          const cached = window.localStorage.getItem(cacheKey);
+          if (cached) {
+            const cachedProfile = JSON.parse(cached);
+            setProfile(cachedProfile);
+            setDraftName(cachedProfile.display_name || 'no name');
+            setDraftAvatar(cachedProfile.avatar_data || '');
+          }
+        } catch {}
         const headers = { Authorization: `Bearer ${currentSession.access_token}` };
         const [profileResponse, tournamentResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -41,6 +51,7 @@ export default function MyPage() {
         if (!active) return;
         const loadedProfile = profileResult.profile || EMPTY_PROFILE;
         setProfile(loadedProfile);
+        try { window.localStorage.setItem(cacheKey, JSON.stringify(loadedProfile)); } catch {}
         setDraftName(loadedProfile.display_name || 'no name');
         setDraftAvatar(loadedProfile.avatar_data || '');
         const all = tournamentResult.tournaments || [];
@@ -89,6 +100,7 @@ export default function MyPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'プロフィールを保存できませんでした。');
       setProfile(result.profile);
+      try { window.localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(result.profile)); } catch {}
       setEditing(false);
     } catch (e) {
       setError(e.message || '保存に失敗しました。');
@@ -106,7 +118,7 @@ export default function MyPage() {
       <h1>マイページ</h1>
       {error && <p className="form-error" role="alert">{error}</p>}
       <section className="profile-panel">
-        {loading ? <p className="setting-help">プロフィール読み込み中…</p> : <>
+        {<>
         <div className="profile-summary">
           {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
           <div className="profile-name">{displayName || 'no name'}</div>
