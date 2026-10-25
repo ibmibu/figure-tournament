@@ -388,3 +388,53 @@ body{background:var(--paper);color:var(--ink)}
   .tournament-detail-page .bracket-round:not(:last-child):before{right:-18px}
   .tournament-detail-page .bracket-match:after{right:-18px;width:18px}
 }
+
+
+/* Stage Strike visual language */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;600;700;800;900&display=swap');
+:root{--ink:#101b2d;--muted:#6c7889;--blue:#3170b8;--mint:#67c1b0;--lime:#e7e859;--line:#dfe6ec;--paper:#f5f8fa}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{background:var(--paper);color:var(--ink);font-family:'Noto Sans JP',sans-serif}
+.page{max-width:1000px;padding:0 28px 30px;min-height:100vh}
+button,input,textarea,select{font-family:'Noto Sans JP',sans-serif}
+button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:12px 16px;font-size:12px;font-weight:600}
+button:hover:not(:disabled){border-color:#b7c8d8}
+button:disabled{opacity:.45;cursor:not-allowed}
+.submit,.button-link{background:var(--ink);border:1px solid var(--ink);color:#fff}
+.button-link{border-radius:7px;padding:12px 16px}
+.intro{padding:38px 0 28px}
+.intro h1{font-size:clamp(27px,4vw,38px);font-weight:900;letter-spacing:-.04em;color:var(--ink)}
+.intro p,.setting-help{color:var(--muted);line-height:1.75}
+.tournaments,.create-panel,.tournament-live-panel,.bracket-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:24px;box-shadow:0 12px 40px #193a5610}
+.section-title h2,.tournament-card-top h2,.bracket-header h2{font-weight:800;color:var(--ink)}
+.tournament-card{border:1px solid var(--line);border-radius:8px}
+.status{border:1px solid #d8e8e3;background:#f0f8f5;color:#26856f;border-radius:4px;padding:5px 9px;font-size:11px}
+input,textarea,select{border:1px solid var(--line);border-radius:7px;color:var(--ink);background:#fff;padding:11px 12px}
+input:focus,textarea:focus,select:focus{outline:2px solid #3170b833;border-color:var(--blue)}
+.detail-stage-list span{border:1px solid var(--line);border-radius:5px;background:#fafcfd}
+.stage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.stage-grid .stage{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;padding:15px 12px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:12px;font-weight:600}
+.stage-grid .stage.selected{border-color:var(--blue);background:#edf5ff;color:var(--blue)}
+.match-score{font:800 24px 'DM Mono',monospace;text-align:center;margin:18px 0;color:var(--ink)}
+.match-controls-below{margin:20px 0;padding:24px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.match-controls-below h3{font-size:18px;margin:0 0 12px}
+.match-controls-below .submit{margin:6px 8px 6px 0}
+.bracket-rounds{display:flex;align-items:stretch;gap:28px;overflow-x:auto;padding:18px 4px 24px}
+.bracket-round{position:relative;display:flex;flex:1 0 220px;flex-direction:column;justify-content:space-around;gap:18px;min-width:220px}
+.bracket-round>strong{display:block;font:500 10px 'DM Mono',monospace;letter-spacing:.12em;color:var(--blue);text-transform:uppercase;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.bracket-match{position:relative;z-index:1;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:66px;cursor:default}
+.bracket-match.match-startable{cursor:pointer;border-color:#b9d2e9;background:#f7fbff}
+.bracket-match.match-startable:hover{border-color:var(--blue);box-shadow:0 4px 14px #3170b81a}
+.match-players{display:grid;gap:0}
+.match-player-line{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;min-height:24px;font-size:12px}
+.match-player-line+ .match-player-line{border-top:1px solid #edf0f3}
+.match-player-line span{overflow-wrap:anywhere}
+.match-player-line .winner{font-weight:800;color:#26856f}
+.player-score{font:500 11px 'DM Mono',monospace;color:var(--muted)}
+.bracket-round:not(:last-child) .bracket-match:after{content:"";position:absolute;left:100%;top:50%;width:28px;border-top:1px solid #b8c8d8}
+.bracket-round:not(:last-child):before{content:"";position:absolute;right:-29px;top:calc(10px + 20px);bottom:calc(10px + 20px);border-right:1px solid #b8c8d8;pointer-events:none}
+.tournament-live-panel{scroll-margin-top:20px}
+footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px 'DM Mono',monospace;letter-spacing:.12em}
+@media(max-width:640px){.page{padding:0 14px 24px}.tournaments,.create-panel,.tournament-live-panel,.bracket-panel{padding:16px}.stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bracket-rounds{gap:24px}.bracket-round{flex-basis:190px;min-width:190px}.bracket-round:not(:last-child) .bracket-match:after{width:24px}.bracket-round:not(:last-child):before{right:-25px}.match-controls-below .submit{width:100%;margin:6px 0}}
