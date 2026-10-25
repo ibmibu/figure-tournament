@@ -82,7 +82,7 @@ export default function TournamentPage() {
       if (mi >= 0) {
         const ownMatch = round[mi];
         setActiveMatchId(ownMatch.id);
-        if (!ownMatch.matchState && tournament.isOwner) startMatch(ri, mi);
+        if (!ownMatch.matchState) startMatch(ri, mi);
         return;
       }
     }
@@ -197,10 +197,12 @@ export default function TournamentPage() {
   }
 
   function startMatch(roundIndex, matchIndex) {
-    if (!isOwner || !tournament?.bracket) return;
+    if (!tournament?.bracket) return;
     const bracket = JSON.parse(JSON.stringify(tournament.bracket));
     const match = bracket.rounds[roundIndex][matchIndex];
     if (!match.player1 || !match.player2 || match.winnerId) return;
+    const isOwnMatch = [match.player1, match.player2].some(player => String(player?.id) === String(currentUserId));
+    if (!isOwner && !isOwnMatch) return;
     if (!match.matchState) {
       const firstPlayerId = Math.random() < 0.5 ? match.player1.id : match.player2.id;
       match.matchState = {
@@ -383,29 +385,6 @@ export default function TournamentPage() {
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
-        <div className="bracket-rounds">{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
-          const state = match.matchState;
-          const game = state?.currentGame;
-          const { selected, starter } = getMatchStageLists();
-          const gameStages = state?.gameNumber === 1 ? starter : selected;
-          const available = gameStages.filter(stage => !game?.rejects?.includes(stage));
-          const settings = tournament.stageSettings || {};
-          const firstId = game?.firstPlayerId;
-          const p1Id = match.player1?.id;
-          const rejectTurnId = state?.gameNumber === 1
-            ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1?.id === firstId ? match.player2?.id : match.player1?.id))
-            : game?.previousWinnerId;
-          const firstRejectDone = !firstId || Number(settings.firstPlayerRejects ?? 1) === 0 || Boolean(game?.rejectVotes?.[firstId]);
-          const secondId = match.player1?.id === firstId ? match.player2?.id : match.player1?.id;
-          const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
-          const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
-          const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1?.id ? match.player2?.id : match.player1?.id);
-          return <div className={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "bracket-match match-startable" : "bracket-match"} key={match.id} onClick={!state && isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete ? () => startMatch(ri,mi) : undefined} role={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "button" : undefined} tabIndex={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? 0 : undefined} onKeyDown={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startMatch(ri,mi); } } : undefined}>
-            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "")}><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{player?.isDemo ? '（デモ）' : ''}</span><strong className="player-score">{state?.score?.[player?.id] || 0}</strong></div>)}</div>
-
-
-          </div>;
-        })}</div>)}</div>
         {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
@@ -431,7 +410,7 @@ export default function TournamentPage() {
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
             <h3>対戦操作：{match.player1.name} vs {match.player2.name}</h3>
-            {!state && isOwner ? <p className="setting-help">対戦を開始しています…</p> : !state ? <p className="setting-help">大会管理者が対戦を開始するまでお待ちください。</p> : !isOwner ? <p className="setting-help">自分の対戦を表示しています。ステージ選択・勝敗報告は大会管理者が操作します。</p> : <>
+            {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               <div className="match-score">{state.score?.[p1Id] || 0} - {state.score?.[match.player2.id] || 0}　GAME {state.gameNumber}</div>
               {!game?.stage ? <>
                 {rejectsDone ? <>
@@ -451,7 +430,31 @@ export default function TournamentPage() {
             </>}
           </section>;
         })()}
-{isOwner && !activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦操作</h3><p className="setting-help">{currentUserId ? '自分の進行中の対戦はありません。' : 'ログインすると、自分の対戦がここに自動表示されます。'}</p></section>}
+        <div className="bracket-rounds">{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
+          const state = match.matchState;
+          const game = state?.currentGame;
+          const { selected, starter } = getMatchStageLists();
+          const gameStages = state?.gameNumber === 1 ? starter : selected;
+          const available = gameStages.filter(stage => !game?.rejects?.includes(stage));
+          const settings = tournament.stageSettings || {};
+          const firstId = game?.firstPlayerId;
+          const p1Id = match.player1?.id;
+          const rejectTurnId = state?.gameNumber === 1
+            ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1?.id === firstId ? match.player2?.id : match.player1?.id))
+            : game?.previousWinnerId;
+          const firstRejectDone = !firstId || Number(settings.firstPlayerRejects ?? 1) === 0 || Boolean(game?.rejectVotes?.[firstId]);
+          const secondId = match.player1?.id === firstId ? match.player2?.id : match.player1?.id;
+          const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
+          const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
+          const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1?.id ? match.player2?.id : match.player1?.id);
+          return <div className={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "bracket-match match-startable" : "bracket-match"} key={match.id} onClick={!state && isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete ? () => startMatch(ri,mi) : undefined} role={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "button" : undefined} tabIndex={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? 0 : undefined} onKeyDown={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startMatch(ri,mi); } } : undefined}>
+            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "")}><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{player?.isDemo ? '（デモ）' : ''}</span><strong className="player-score">{state?.score?.[player?.id] || 0}</strong></div>)}</div>
+
+
+          </div>;
+        })}</div>)}</div>
+
+{!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
         {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
