@@ -100,3 +100,24 @@ body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .bracket-player.winner{background:#e9f7ef;border-color:#24945b;color:#17683e;font-weight:700}
 .bracket-player:disabled{cursor:default;opacity:1}
 @media(max-width:600px){.demo-player-form{flex-direction:column}.bracket-round{min-width:155px}}
+
+
+/* Tournament-in-progress layout inspired by start.gg */
+.tournament-live-panel{margin:22px 0 26px;padding:20px;background:#fff;border:1px solid #e2e0e8;border-radius:10px;scroll-margin-top:16px}
+.tournament-live-panel .bracket-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.tournament-live-panel .bracket-header h2{font-size:21px;margin:0}
+.tournament-live-tabs{display:flex;gap:22px;overflow-x:auto;border-bottom:1px solid #e6e4eb;margin:18px -2px 14px;padding:0 2px}
+.tournament-live-tabs a{display:block;padding:12px 2px;color:#6f6b79;text-decoration:none;white-space:nowrap;font-weight:600;font-size:13px;border-bottom:2px solid transparent}
+.tournament-live-tabs a.active{color:#5e45a8;border-bottom-color:#5e45a8}
+.tournament-live-panel .bracket-panel{margin-top:0;padding-top:0;border-top:0}
+.tournament-live-panel .bracket-rounds{align-items:flex-start}
+.tournament-live-panel .bracket-round{flex:0 0 210px}
+.tournament-live-panel .bracket-match{flex:0 0 auto;min-height:100px;gap:8px;background:#fff}
+.match-player-line{padding:8px 7px;border-bottom:1px solid #eceaf0;font-size:12px;overflow-wrap:anywhere}
+.match-player-line:last-child{border-bottom:0}
+.match-player-line .winner{font-weight:700;color:#18794e}
+.match-score{font-size:13px;font-weight:700;text-align:center;background:#f4f1fa;border-radius:6px;padding:7px}
+.stage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:10px 0}
+.stage-grid .stage{padding:8px 5px;font-size:11px;white-space:normal}
+.stage-grid .stage.selected{border-color:#5e45a8;background:#f0ebfb;color:#5e45a8}
+@media(max-width:600px){.tournament-live-panel{margin:14px 0 20px;padding:14px}.tournament-live-panel .bracket-header h2{font-size:18px}.tournament-live-panel .bracket-round{flex-basis:190px}}
