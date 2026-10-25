@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SiteHeader from '../../components/SiteHeader';
+import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
 
@@ -140,12 +141,12 @@ export default function MyPage() {
       </section>
       <section className="my-results">
         <h2>大会結果一覧</h2>
-        {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会結果はまだありません。</p> : <div className="tournament-list">
-          {tournaments.map(tournament => <a className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
-            <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.status || '募集中'}</span></div>
-            <div className="tournament-meta"><span>{tournament.format || '大会'}</span>{tournament.date && <span>{tournament.date.slice(0, 16).replace('T', ' ').replaceAll('-', '/')}</span>}</div>
-          </a>)}
-        </div>}
+        <p className="setting-help">参加した大会・作成した大会の記録を確認できます。</p>
+        <Link className="button-link" href="/results">大会結果一覧を見る →</Link>
+      </section>
+      <section className="my-results">
+        <h2>マイカラー登録</h2>
+        <p className="setting-help">登録内容を設定できます。</p>
       </section>
     </section>
     <footer>Figure Tournament</footer>
