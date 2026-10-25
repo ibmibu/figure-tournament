@@ -116,10 +116,30 @@ export async function PUT(request) {
     const isCurrentOwner = existingOwnerId
       ? existingOwnerId === user.id
       : Boolean(legacyOwnerToken && row.owner_token === legacyOwnerToken);
-    if (!isCurrentOwner) return NextResponse.json({ error: '更新する権限がありません。' }, { status: 403 });
+    const existingMatches = (existing.bracket?.rounds || []).flat();
+    const inputMatches = (input.bracket?.rounds || []).flat();
+    const isParticipant = (existing.joinedPlayers || []).some(player =>
+      !player.isDemo && String(player.userId || player.id) === String(user.id)
+    );
+    const isInActiveMatch = existingMatches.some(match =>
+      !match.winnerId && [match.player1, match.player2].some(player => String(player?.id) === String(user.id))
+    ) && inputMatches.some(match =>
+      [match.player1, match.player2].some(player => String(player?.id) === String(user.id))
+    );
+    if (!isCurrentOwner && !(isParticipant && isInActiveMatch && existing.bracket && input.bracket)) {
+      return NextResponse.json({ error: '更新する権限がありません。' }, { status: 403 });
+    }
 
     const { ownerId, ownerUserId, ...safeInput } = input;
-    const updated = { ...safeInput, ownerUserId: existingOwnerId || user.id };
+    const updated = isCurrentOwner
+      ? { ...safeInput, ownerUserId: existingOwnerId || user.id }
+      : {
+          ...existing,
+          bracket: safeInput.bracket,
+          status: safeInput.status || existing.status,
+          resultPlacements: safeInput.resultPlacements ?? existing.resultPlacements,
+          completedAt: safeInput.completedAt ?? existing.completedAt,
+        };
     const { error } = await supabase.from('tournaments').update({ data: updated }).eq('id', id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
