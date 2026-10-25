@@ -460,3 +460,11 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .match-controls-below .game-heading{width:100%}
 .match-controls-below .current-score{width:100%;text-align:center;font-size:32px;line-height:1.25;padding:2px 0 8px}
 @media(max-width:640px){.match-controls-below .current-score{font-size:30px}}
+
+/* Center the match score between the round/game labels */
+.match-controls-below .game-top{display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center;gap:8px}
+.match-controls-below .game-heading{grid-column:1;grid-row:1}
+.match-controls-below .current-score{grid-column:2;grid-row:1;text-align:center;justify-self:center;font-size:28px;white-space:nowrap}
+.match-controls-below .game-top::after{content:"";grid-column:3;grid-row:1}
+.match-controls-below .eyebrow{font-weight:800;white-space:nowrap}
+@media(max-width:640px){.match-controls-below .game-top{grid-template-columns:1fr 1fr 1fr}.match-controls-below .current-score{font-size:22px}}
