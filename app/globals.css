@@ -468,3 +468,15 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .match-controls-below .game-top::after{content:"";grid-column:3;grid-row:1}
 .match-controls-below .eyebrow{font-weight:800;white-space:nowrap}
 @media(max-width:640px){.match-controls-below .game-top{grid-template-columns:1fr 1fr 1fr}.match-controls-below .current-score{font-size:22px}}
+
+/* Keep round/game label on its own line and the score centered below it */
+.match-controls-below .game-top{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.match-controls-below .game-heading{width:100%;min-width:0}
+.match-controls-below .eyebrow{display:block;white-space:normal;line-height:1.4}
+.match-controls-below .current-score{position:static;display:block;width:100%;box-sizing:border-box;text-align:center;justify-self:auto;grid-column:auto;grid-row:auto;font-size:28px;line-height:1.3;padding:0 0 8px;white-space:nowrap}
+.match-result-heading{margin:18px 0 10px;font-size:18px;font-weight:800}
+.match-result-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.match-result-buttons .submit{width:100%;min-width:0}
+.match-result-win{background:#3170b8!important}
+.match-result-lose{background:#6c7889!important}
+@media(max-width:640px){.match-controls-below .current-score{font-size:26px}.match-result-buttons{grid-template-columns:1fr}}
