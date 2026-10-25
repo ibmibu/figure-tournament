@@ -800,3 +800,20 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  padding:20px;box-sizing:border-box;
 }
 .tournament-detail-page .tournament-match-area + .tournament-live-panel{margin-top:0}
+
+/* Overview controls */
+.tournament-detail-page .tournament-card-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.tournament-detail-page .tournament-card-top .overview-edit-link{
+ display:inline-flex;align-items:center;justify-content:center;
+ margin:0;padding:7px 14px;border:1px solid #c9dcef;border-radius:6px;
+ background:#eef5fd;color:#3170b8;font-size:12px;font-weight:700;text-decoration:none;
+}
+.tournament-detail-page .tournament-delete-section{
+ display:flex;justify-content:flex-start;margin:20px 0 24px;
+}
+.tournament-detail-page .tournament-delete-section .danger-button{
+ display:inline-flex;align-items:center;justify-content:center;
+ padding:12px 20px;background:#d83a46!important;border:1px solid #c72b37!important;
+ color:#fff!important;border-radius:8px;font-weight:800;
+}
+.tournament-detail-page .tournament-delete-section .danger-button:hover{background:#bc2734!important}
