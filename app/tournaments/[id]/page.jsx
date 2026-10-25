@@ -477,7 +477,7 @@ export default function TournamentPage() {
 
     {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
-      <div className="tournament-card-top"><h2>大会概要</h2><span className="status">{tournament.status || '募集中'}</span></div>
+      <div className="tournament-card-top"><h2>大会概要</h2>{isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}</div>
       <div className="detail-grid">
         <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
         <div><span>参加人数</span><strong>{joinedPlayers.length}/{tournament.participants || 8}人</strong></div>
@@ -485,7 +485,6 @@ export default function TournamentPage() {
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
       </div>
       {isOwner && <div className="overview-actions">
-        {!tournament.bracket && <a className="button-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
         {!tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>大会を開始する</button>}
         {tournament.bracket && <button className="submit" type="button" onClick={() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>トーナメント表へ</button>}
       </div>}
@@ -520,9 +519,9 @@ export default function TournamentPage() {
           <button className="submit" type="submit">参加登録する</button>
         </form>}
       </>}
-      {isOwner && <div className="owner-actions"><p className="setting-help">あなたが作成した大会です。</p><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
     </section>
     </div>}
+    {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
     <footer>Figure Tournament</footer>
   </main>;
 }
