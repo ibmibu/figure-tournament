@@ -530,3 +530,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .tournament-detail-page .tournament-live-panel .bracket-round>strong{min-height:30px}
  .tournament-detail-page .tournament-live-panel .bracket-match:after{width:26px}
 }
+
+/* Vertically center later rounds against the matches feeding into them */
+.tournament-detail-page .tournament-live-panel .bracket-rounds{align-items:stretch}
+.tournament-detail-page .tournament-live-panel .bracket-round{justify-content:space-around}
+.tournament-detail-page .tournament-live-panel .bracket-round:not(:first-child){padding-top:32px}
+.tournament-detail-page .tournament-live-panel .bracket-round:not(:first-child) .bracket-match{flex:0 0 auto}
