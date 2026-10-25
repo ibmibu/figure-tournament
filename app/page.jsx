@@ -2,9 +2,6 @@
 import { useEffect, useState } from 'react';
 import SiteHeader from '../components/SiteHeader';
 
-const STORAGE_KEY = 'figure-tournament-list-v1';
-const OWNER_KEY = 'figure-tournament-owner-v1';
-
 function formatStartDate(value) {
   if (!value) return '';
   const [datePart, timePart = ''] = value.split('T');
@@ -35,11 +32,6 @@ export default function Home() {
 
   return <main className="page">
     <SiteHeader />
-    <section className="intro">
-      
-      <h1>大会一覧</h1>
-      <p>amiibo大会の開催・参加・戦績管理</p>
-    </section>
     <section className="tournaments">
       <div className="section-title">
         <h2>大会一覧</h2>
