@@ -390,27 +390,54 @@ export default function TournamentPage() {
           return <div className={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "bracket-match match-startable" : "bracket-match"} key={match.id} onClick={!state && isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete ? () => startMatch(ri,mi) : undefined} role={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "button" : undefined} tabIndex={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? 0 : undefined} onKeyDown={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startMatch(ri,mi); } } : undefined}>
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "")}><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{player?.isDemo ? '（デモ）' : ''}</span><strong className="player-score">{state?.score?.[player?.id] || 0}</strong></div>)}</div>
 
-            {isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete && <>
-              {!state ? null : <>
-                <div className="match-score">{state.score?.[p1Id] || 0} - {state.score?.[match.player2.id] || 0}　GAME {state.gameNumber}</div>
-                {!game?.stage ? <>
-                  {rejectsDone ? <>
-                    <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
-                    <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={stageSelection===stage?'stage selected':'stage'} onClick={()=>setStageSelection(stage)}>{stage}</button>)}</div>
-                    <button className="submit" type="button" disabled={!stageSelection || savingBracket} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
-                  </> : <>
-                    <p className="setting-help">ステージ拒否：{[match.player1,match.player2].find(p=>p?.id===rejectTurnId)?.name || 'プレイヤー'}（{state.gameNumber===1 ? (rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))}個選択）</p>
-                    <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={rejectSelection.includes(stage)?'stage selected':'stage'} disabled={rejectSelection.length >= (state.gameNumber===1 ? Number(rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))) && !rejectSelection.includes(stage)} onClick={()=>setRejectSelection(old=>old.includes(stage)?old.filter(s=>s!==stage):[...old,stage])}>{stage}</button>)}</div>
-                    <button className="submit" type="button" disabled={savingBracket} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
-                  </>}
-                </> : <>
-                  <p className="setting-help">決定ステージ：{game.stage}</p>
-                  <p className="setting-help">ゲーム結果を記録してください。</p>
-                  {[match.player1,match.player2].map(player=><button key={player.id} type="button" className="submit" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,player.id)}>{player.name} の勝利</button>)}
-                </>}
-              </>}</>}
+
           </div>;
         })}</div>)}</div>
+        {isOwner && activeMatchId && !tournament.bracket.complete && (() => {
+          let selected = null;
+          tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
+            if (match.id === activeMatchId) selected = { roundIndex: ri, matchIndex: mi, match };
+          }));
+          if (!selected || !selected.match.player1 || !selected.match.player2 || selected.match.winnerId) return null;
+          const { roundIndex: ri, matchIndex: mi, match } = selected;
+          const state = match.matchState;
+          const game = state?.currentGame;
+          const { selected: allStages, starter } = getMatchStageLists();
+          const gameStages = state?.gameNumber === 1 ? starter : allStages;
+          const available = gameStages.filter(stage => !game?.rejects?.includes(stage));
+          const settings = tournament.stageSettings || {};
+          const firstId = game?.firstPlayerId;
+          const p1Id = match.player1.id;
+          const rejectTurnId = state?.gameNumber === 1
+            ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
+            : game?.previousWinnerId;
+          const firstRejectDone = !firstId || Number(settings.firstPlayerRejects ?? 1) === 0 || Boolean(game?.rejectVotes?.[firstId]);
+          const secondId = match.player1.id === firstId ? match.player2.id : match.player1.id;
+          const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
+          const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
+          const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
+          return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
+            <h3>対戦操作：{match.player1.name} vs {match.player2.name}</h3>
+            {!state ? <p className="setting-help">対戦を開始しています…</p> : <>
+              <div className="match-score">{state.score?.[p1Id] || 0} - {state.score?.[match.player2.id] || 0}　GAME {state.gameNumber}</div>
+              {!game?.stage ? <>
+                {rejectsDone ? <>
+                  <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
+                  <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={stageSelection===stage?'stage selected':'stage'} onClick={()=>setStageSelection(stage)}>{stage}</button>)}</div>
+                  <button className="submit" type="button" disabled={!stageSelection || savingBracket} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
+                </> : <>
+                  <p className="setting-help">ステージ拒否：{[match.player1,match.player2].find(p=>p?.id===rejectTurnId)?.name || 'プレイヤー'}（{state.gameNumber===1 ? (rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))}個選択）</p>
+                  <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={rejectSelection.includes(stage)?'stage selected':'stage'} disabled={rejectSelection.length >= (state.gameNumber===1 ? Number(rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))) && !rejectSelection.includes(stage)} onClick={()=>setRejectSelection(old=>old.includes(stage)?old.filter(s=>s!==stage):[...old,stage])}>{stage}</button>)}</div>
+                  <button className="submit" type="button" disabled={savingBracket} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
+                </>}
+              </> : <>
+                <p className="setting-help">決定ステージ：{game.stage}</p>
+                <p className="setting-help">ゲーム結果を記録してください。</p>
+                {[match.player1,match.player2].map(player=><button key={player.id} type="button" className="submit" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,player.id)}>{player.name} の勝利</button>)}
+              </>}
+            </>}
+          </section>;
+        })()}
         {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
