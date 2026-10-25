@@ -438,3 +438,19 @@ input:focus,textarea:focus,select:focus{outline:2px solid #3170b833;border-color
 .tournament-live-panel{scroll-margin-top:20px}
 footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px 'DM Mono',monospace;letter-spacing:.12em}
 @media(max-width:640px){.page{padding:0 14px 24px}.tournaments,.create-panel,.tournament-live-panel,.bracket-panel{padding:16px}.stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bracket-rounds{gap:24px}.bracket-round{flex-basis:190px;min-width:190px}.bracket-round:not(:last-child) .bracket-match:after{width:24px}.bracket-round:not(:last-child):before{right:-25px}.match-controls-below .submit{width:100%;margin:6px 0}}
+
+/* Stage Strike match header and player ordering */
+.game-top{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:18px}
+.game-heading{min-width:0}
+.game-heading h2{font-size:24px;margin:6px 0 0;font-weight:800;letter-spacing:-.03em}
+.eyebrow{font:10px 'DM Mono',monospace;letter-spacing:.12em;color:var(--blue)}
+.current-score{font:800 24px 'DM Mono',monospace;white-space:nowrap;color:var(--ink)}
+.current-score span{color:var(--muted);padding:0 5px}
+.match-opponent-label{font-size:11px;color:var(--muted);white-space:nowrap}
+.player-strip{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+.player-strip>div{border:1px solid var(--line);border-radius:8px;padding:13px;display:flex;flex-direction:column;gap:5px;background:#fafcfd;min-width:0}
+.player-strip>div.current{border-color:var(--blue);background:#f0f6fd}
+.player-strip small{font:10px 'DM Mono',monospace;color:var(--muted)}
+.player-strip b{font-size:13px;overflow-wrap:anywhere}
+.player-strip span{font-size:10px;color:var(--muted)}
+@media(max-width:640px){.game-top{grid-template-columns:minmax(0,1fr) auto;gap:8px}.match-opponent-label{display:none}.game-heading h2{font-size:20px}.current-score{font-size:20px}}
