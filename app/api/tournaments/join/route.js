@@ -10,7 +10,7 @@ export async function POST(request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !anonKey || !serviceKey) throw new Error('Supabase server environment variables are missing.');
 
-    const token = (request.headers.get('authorization') || '').match(/^Bearer\\s+(.+)$/i)?.[1];
+    const token = (request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)?.[1];
     if (!token) return NextResponse.json({ error: '参加登録にはログインが必要です。' }, { status: 401 });
 
     const auth = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
