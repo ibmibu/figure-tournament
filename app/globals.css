@@ -267,3 +267,24 @@ body:has(.tournament-detail-page){background:#fff;color:#171717}
 /* 大会詳細：参加者パネルを大会概要の直下に縦並びで配置 */
 .tournament-bottom-grid{grid-template-columns:minmax(0,1fr)!important;}
 .tournament-bottom-grid>.participant-side-panel{width:100%;}
+
+
+/* Stage Strike-style match panel above the tournament bracket */
+.tournament-detail-page .match-controls-below{margin:18px 0 24px;padding:20px;border:1px solid #d9d9d9;border-radius:12px;background:#fff}
+.tournament-detail-page .match-controls-below h3{margin:0 0 14px;font-size:18px}
+.tournament-detail-page .match-controls-below .match-score{display:inline-block;padding:8px 14px;margin-bottom:14px;border:1px solid #ddd;border-radius:8px;font-size:18px;font-weight:800}
+.tournament-detail-page .match-controls-below .stage-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.tournament-detail-page .match-controls-below .stage-grid .stage{min-height:58px;border:1px solid #cfd6df;border-radius:10px;background:#f5f8fa;font-weight:700}
+.tournament-detail-page .match-controls-below .stage-grid .stage.selected{border-color:#3170b8;background:#e8f3ff;box-shadow:inset 0 0 0 1px #3170b8}
+.tournament-detail-page .match-controls-below .submit{width:100%;min-height:46px}
+.tournament-detail-page .bracket-rounds{display:flex;align-items:stretch;gap:40px;overflow-x:auto;padding:18px 28px 24px 8px}
+.tournament-detail-page .bracket-round{flex:0 0 210px;display:flex;flex-direction:column;justify-content:space-around;gap:24px;min-width:210px}
+.tournament-detail-page .bracket-match{position:relative;z-index:1;border:1px solid #bdbdbd;border-radius:8px;overflow:visible}
+.tournament-detail-page .bracket-match:after{content:"";position:absolute;right:-21px;top:50%;width:20px;border-top:1px solid #888}
+.tournament-detail-page .bracket-round:not(:last-child):before{content:"";position:absolute;right:-21px;top:0;bottom:0;width:1px;background:linear-gradient(to bottom,transparent 2%,#888 2%,#888 98%,transparent 98%);pointer-events:none}
+@media(max-width:700px){
+ .tournament-detail-page .match-controls-below{padding:14px}
+ .tournament-detail-page .match-controls-below .stage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .tournament-detail-page .bracket-rounds{gap:32px}
+ .tournament-detail-page .bracket-round{flex-basis:175px;min-width:175px}
+}
