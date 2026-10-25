@@ -2,8 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import AuthStatus from '../../../components/AuthStatus';
+import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
-const STORAGE_KEY = 'figure-tournament-list-v1';
 const OWNER_KEY = 'figure-tournament-owner-v1';
 
 export default function TournamentPage() {
@@ -19,7 +19,13 @@ export default function TournamentPage() {
     try {
       const owner = localStorage.getItem(OWNER_KEY) || '';
       setOwnerId(owner);
-      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store' });
+      let accessToken = '';
+      try {
+        const { data } = await getSupabaseBrowserClient().auth.getSession();
+        accessToken = data.session?.access_token || '';
+      } catch {}
+      const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '大会を読み込めませんでした。');
       setTournament(result.tournament || null);
@@ -32,9 +38,12 @@ export default function TournamentPage() {
   useEffect(() => { loadTournament(); }, [id]);
 
   async function updateTournament(next) {
+    const { data } = await getSupabaseBrowserClient().auth.getSession();
+    const accessToken = data.session?.access_token;
+    if (!accessToken) throw new Error('大会の管理にはGoogleログインが必要です。');
     const response = await fetch('/api/tournaments', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
       body: JSON.stringify({ tournament: next, ownerToken: ownerId }),
     });
     const result = await response.json();
@@ -76,9 +85,12 @@ export default function TournamentPage() {
   async function deleteTournament() {
     if (!window.confirm('この大会を削除しますか？この操作は取り消せません。')) return;
     try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) throw new Error('大会の削除にはGoogleログインが必要です。');
       const response = await fetch('/api/tournaments', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ id, ownerToken: ownerId }),
       });
       const result = await response.json();
