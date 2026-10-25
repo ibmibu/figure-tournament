@@ -70,6 +70,23 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
+  useEffect(() => {
+    if (!tournament?.bracket?.complete || !currentUserId || loading) return;
+    const player = (tournament.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === String(currentUserId));
+    if (!player || tournament.characterReports?.[String(player.id)]) return;
+    const rounds = tournament.bracket.rounds || [];
+    const final = rounds.at(-1)?.[0];
+    const podium = new Set([final?.winnerId, ...[final?.player1, final?.player2].filter(Boolean).map(p => p.id)]);
+    if (rounds.length >= 2) for (const m of rounds.at(-2)) for (const p of [m.player1, m.player2]) if (p && m.winnerId && String(p.id) !== String(m.winnerId)) podium.add(p.id);
+    const wins = rounds.flat().filter(m => String(m.winnerId) === String(player.id) && m.player1 && m.player2).length;
+    if (wins < 1 || ![...podium].some(v => String(v) === String(player.id))) return;
+    const key = 'figure-report-visited-' + id + '-' + currentUserId;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    window.location.href = '/tournaments/' + encodeURIComponent(id) + '/report';
+  }, [tournament, currentUserId, loading, id]);
+
   // 大会ページを開いたら自分の未完了対戦を自動表示し、管理者なら対戦状態も開始する。
   useEffect(() => {
     if (!tournament?.bracket || !currentUserId || tournament.bracket.complete) return;
