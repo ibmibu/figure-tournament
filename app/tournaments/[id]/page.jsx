@@ -410,9 +410,8 @@ export default function TournamentPage() {
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
             <div className="game-top">
-              <div className="game-heading"><span className="eyebrow">GAME {state?.gameNumber || 1} / BO{tournament.bestOf || 3}</span><h2>対戦画面</h2></div>
+              <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
-              <span className="match-opponent-label">対戦中</span>
             </div>
             <div className="player-strip">
               <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b><span>{state?.score?.[p1Id] || 0} 勝</span></div>
