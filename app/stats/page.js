@@ -1078,7 +1078,7 @@ export default function StatsPage() {
 
   if (!data) {
     return (
-      <main className="site">
+      <main className="site stats-shell">
         <div className="content">
           <section className="empty card">
             <div className="spinner" />
@@ -1102,7 +1102,7 @@ export default function StatsPage() {
   }
 
   return (
-    <main className="site">
+    <main className="site stats-shell">
       <header className="hero">
         <div className="heroGlow" />
 
