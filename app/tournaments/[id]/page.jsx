@@ -209,7 +209,7 @@ export default function TournamentPage() {
         gameNumber: 1,
         score: { [match.player1.id]: 0, [match.player2.id]: 0 },
         games: [],
-        currentGame: { firstPlayerId, rejects: [], rejectVotes: {}, stage: null, chooserId: tournament.stageRejects ? null : firstPlayerId, results: {} },
+        currentGame: { firstPlayerId, rejects: [], rejectVotes: {}, stage: tournament.stageRejects ? null : 'なし', chooserId: tournament.stageRejects ? null : firstPlayerId, results: {} },
         complete: false,
       };
     }
@@ -293,7 +293,7 @@ export default function TournamentPage() {
         previousWinnerId,
         rejects: [],
         rejectVotes: {},
-        stage: null,
+        stage: tournament.stageRejects ? null : 'なし',
         chooserId: tournament.stageRejects ? (match.player1.id === previousWinnerId ? match.player2.id : match.player1.id) : (match.player1.id === previousWinnerId ? match.player2.id : match.player1.id),
         results: {},
       };
