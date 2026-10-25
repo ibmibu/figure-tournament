@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 
 export default function SiteHeader() {
@@ -45,7 +46,7 @@ export default function SiteHeader() {
   return <>
     <header className="site-header">
       <div className="site-header-left">
-        <a className="site-logo" href="/">Figure Tournament</a>
+        <Link className="site-logo" href="/">Figure Tournament</Link>
       </div>
       <div className="site-header-right">
         {ready && (signedIn
@@ -56,10 +57,10 @@ export default function SiteHeader() {
     <nav className="bottom-tab-bar" aria-label="メインナビゲーション">
       {tabs.map(tab => {
         const active = tab.href === '/' ? pathname === '/' : pathname === tab.href || pathname.startsWith(tab.href + '/');
-        return <a key={tab.href} href={tab.href} className={active ? 'bottom-tab active' : 'bottom-tab'} aria-current={active ? 'page' : undefined}>
+        return <Link key={tab.href} href={tab.href} className={active ? "bottom-tab active" : "bottom-tab"} aria-current={active ? "page" : undefined}>
           <span className="bottom-tab-icon" aria-hidden="true">{tab.icon}</span>
           <span>{tab.label}</span>
-        </a>;
+        </Link>;
       })}
     </nav>
   </>;
