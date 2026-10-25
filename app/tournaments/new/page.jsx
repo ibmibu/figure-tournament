@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
@@ -10,9 +9,16 @@ const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロ�
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
 
 export default function NewTournamentPage() {
-  const searchParams = useSearchParams();
-  const editId = searchParams.get('edit') || '';
-  const [loadingEdit, setLoadingEdit] = useState(Boolean(editId));
+  const [editId, setEditId] = useState('');
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('edit') || '';
+    if (id) {
+      setEditId(id);
+      setLoadingEdit(true);
+    }
+  }, []);
   const [name, setName] = useState('');
   const [format, setFormat] = useState(3);
   const [participants, setParticipants] = useState(8);
