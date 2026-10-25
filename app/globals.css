@@ -71,3 +71,16 @@
 
 /* My page and editable profile */
 .my-page{padding-top:28px}.my-page>h1{font-size:26px;margin:0 0 20px}.profile-panel,.my-results{background:#fff;border:1px solid #e6e4eb;border-radius:10px;padding:22px;margin-bottom:18px}.profile-summary{display:flex;align-items:center;gap:16px;margin-bottom:20px}.profile-avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid #e6e4eb;flex-shrink:0}.profile-avatar-empty{background:#fff}.profile-name{font-size:20px;font-weight:700;overflow-wrap:anywhere}.profile-edit-form{margin-top:20px}.profile-edit-form label{display:flex;flex-direction:column;gap:8px;margin:0 0 16px}.profile-edit-form input:not([type=file]){width:100%;padding:12px;border:1px solid #d8d5e0;border-radius:6px;font:inherit}.profile-edit-form input[type=file]{max-width:100%;font:inherit}.my-results h2{font-size:19px;margin:0 0 16px}@media(max-width:600px){.my-page{padding-top:20px}.profile-panel,.my-results{padding:16px}.profile-avatar{width:72px;height:72px}.profile-name{font-size:18px}}
+
+
+
+/* Fixed bottom tab navigation */
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.bottom-tab-bar{position:fixed;z-index:50;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:7px 10px calc(7px + env(safe-area-inset-bottom));background:rgba(255,255,255,.97);border-top:1px solid #e6e4eb;box-shadow:0 -4px 18px rgba(35,25,55,.05)}
+.bottom-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:54px;text-decoration:none;color:#898493;font-size:11px;font-weight:600}
+.bottom-tab-icon{display:flex;align-items:center;justify-content:center;height:22px;font-size:20px;line-height:1}
+.bottom-tab.active{color:#5e45a8}
+.bottom-tab.active .bottom-tab-icon{transform:translateY(-1px)}
+.site-header{padding:0 24px}
+.menu-toggle,.site-menu{display:none!important}
+@media(max-width:600px){.site-header{padding:0 15px}.bottom-tab-bar{padding-left:6px;padding-right:6px}.bottom-tab{min-height:52px}}
