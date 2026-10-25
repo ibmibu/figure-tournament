@@ -33,7 +33,7 @@ export default function ResultsPage() {
         if (cachedTournaments) {
           const cachedProfile = (() => { try { return JSON.parse(localStorage.getItem('figure-profile-' + session.user.id) || '{}'); } catch { return {}; } })();
           const cachedName = String(cachedProfile.display_name || 'no name').trim().toLowerCase();
-          setTournaments(cachedTournaments.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === cachedName)));
+          setTournaments(cachedTournaments.filter(item => item.bracket?.complete && (item.resultPlacements || []).some(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === cachedName; })));
           setLoading(false);
         }
         const headers = { Authorization: `Bearer ${session.access_token}` };
@@ -49,7 +49,10 @@ export default function ResultsPage() {
         try { localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(profileResult.profile || {})); } catch {}
         const myName = String(profileResult.profile?.display_name || 'no name').trim().toLowerCase();
         const mine = (tournamentResult.tournaments || []).filter(item =>
-          item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === myName)
+          item.bracket?.complete && (item.resultPlacements || []).some(result => {
+            const player = (item.joinedPlayers || []).find(p => p.id === result.playerId);
+            return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === myName;
+          })
         );
         if (active) setTournaments(mine);
       } catch (e) {
@@ -65,18 +68,18 @@ export default function ResultsPage() {
   return <main className="page">
     <SiteHeader />
     <section className="my-page">
-      <h1>戦績</h1>
+      <h1>参加大会一覧</h1>
       <section className="my-results">
         {error && <p className="form-error" role="alert">{error}</p>}
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="tournament-list">
-          {tournaments.map(tournament => <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
-            <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.status || '募集中'}</span></div>
+          {tournaments.map(tournament => { const myPlacement = (tournament.resultPlacements || []).find(result => { const player = (tournament.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === String((tournament.joinedPlayers || []).find(p => !p.isDemo && String(p.name || '').trim().toLowerCase() === String(p.name || '').trim().toLowerCase())?.name || '').trim().toLowerCase(); }); return <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
+            <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{myPlacement?.place || '結果確定'}</span></div>
             <div className="tournament-meta">
               <span>{tournament.format || '大会'}</span>
               <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
               {tournament.date && <span>{formatDate(tournament.date)}</span>}
             </div>
-          </Link>)}
+          </Link>; })}
         </div>}
       </section>
     </section>
