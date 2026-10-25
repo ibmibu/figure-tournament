@@ -53,3 +53,17 @@
 .create-panel .date-with-weekday>span.date-placeholder{color:#777381}
 .create-panel .date-with-weekday input{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:6px;background:transparent;opacity:0;cursor:pointer}
 .create-panel .date-with-weekday:focus-within{border-color:#5e45a8;box-shadow:0 0 0 2px #f0ebfb}
+
+
+/* Shared top navigation */
+.site-header{position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:68px;border-bottom:1px solid #e6e4eb;background:#f7f7f9;z-index:10}
+.site-header-left,.site-header-right{display:flex;align-items:center;gap:12px;min-width:0}
+.menu-toggle{display:flex;flex-direction:column;justify-content:center;gap:5px;width:42px;height:42px;padding:10px;border:1px solid #e0dde7;border-radius:8px;background:#fff;flex-shrink:0}
+.menu-toggle span{display:block;width:20px;height:2px;background:#393543;border-radius:2px}
+.site-logo{color:#292533;text-decoration:none;font-size:18px;font-weight:750;letter-spacing:-.45px;white-space:nowrap}
+.header-auth-button{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 13px;border:1px solid #5e45a8;border-radius:7px;background:#5e45a8;color:#fff;text-decoration:none;font-size:13px;white-space:nowrap}
+.site-menu{position:absolute;left:0;top:60px;display:flex;flex-direction:column;gap:0;min-width:210px;padding:7px;background:#fff;border:1px solid #e6e4eb;border-radius:10px;box-shadow:0 10px 28px rgba(35,25,55,.12)}
+.site-menu a,.site-menu button{display:block;width:100%;padding:12px;text-align:left;text-decoration:none;color:#292533;background:transparent;border:0;border-radius:6px;font-size:13px}
+.site-menu a:hover,.site-menu button:hover{background:#f4f1fa}
+.site-header+.intro{padding-top:30px}
+@media(max-width:600px){.site-header{min-height:62px;gap:8px}.site-logo{font-size:16px;letter-spacing:-.5px}.site-header-left{gap:9px}.menu-toggle{width:39px;height:39px}.header-auth-button{min-height:36px;padding:7px 11px;font-size:12px}.site-menu{top:56px}.site-header+.intro{padding-top:26px}}
