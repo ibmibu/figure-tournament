@@ -829,3 +829,12 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .tournament-result-item{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:12px 14px;background:#f5f8fa;border:1px solid #dfe6ec;border-radius:8px}
 .tournament-result-item strong{min-width:60px;color:#3170b8}
 .tournament-result-item a{margin-left:auto;color:#3170b8}
+
+/* Compact participant results, matching the legacy tournament history table */
+.results-table{width:100%;border-top:1px solid #cfd3d8;border-left:1px solid #cfd3d8;background:#fff}
+.results-table-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(95px,16%);min-height:32px;border-right:1px solid #cfd3d8;border-bottom:1px solid #cfd3d8;align-items:center;font-size:14px}
+.results-table-name{padding:6px;color:#1646d8;text-decoration:none;overflow-wrap:anywhere}
+.results-table-name:hover{text-decoration:underline}
+.results-table-placement{padding:6px;color:#171717}
+.results-table-row:has(.results-table-placement) .results-table-placement{font-weight:400}
+@media(max-width:600px){.results-table-row{grid-template-columns:minmax(0,1fr) 86px;font-size:12px}}
