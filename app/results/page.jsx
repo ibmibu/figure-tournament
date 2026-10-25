@@ -71,15 +71,11 @@ export default function ResultsPage() {
       <h1>参加大会一覧</h1>
       <section className="my-results">
         {error && <p className="form-error" role="alert">{error}</p>}
-        {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="tournament-list">
-          {tournaments.map(tournament => {  return <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
-            <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.myPlacement || '結果確定'}</span></div>
-            <div className="tournament-meta">
-              <span>{tournament.format || '大会'}</span>
-              <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
-              {tournament.date && <span>{formatDate(tournament.date)}</span>}
-            </div>
-          </Link>; })}
+        {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="results-table">
+          {tournaments.map(tournament => <div className="results-table-row" key={tournament.id}>
+            <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>
+            <span className="results-table-placement">{tournament.myPlacement === 'ベスト4' ? '3位' : tournament.myPlacement || '結果確定'}</span>
+          </div>)}
         </div>}
       </section>
     </section>
