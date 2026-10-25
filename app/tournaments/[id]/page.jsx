@@ -377,7 +377,7 @@ export default function TournamentPage() {
 
   return <main className="page tournament-detail-page">
     <section className="intro tournament-heading">
-      <a className="back-link" href="/">← ホームに戻る</a>
+      {tournament.bracket && !showTournamentOverview ? <button type="button" className="back-link" onClick={() => { setShowTournamentOverview(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>← 大会概要に戻る</button> : <a className="back-link" href="/">← ホームに戻る</a>}
       <div className="tournament-title-row">
         <div><h1>{tournament.name}</h1></div>
       </div>
