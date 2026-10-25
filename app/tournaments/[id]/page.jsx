@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import AuthStatus from '../../../components/AuthStatus';
+import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
@@ -101,8 +101,9 @@ export default function TournamentPage() {
     }
   }
 
-  if (!tournament) return <main className="page"><section className="intro">
-      <AuthStatus /><a className="back-link" href="/">← 大会一覧に戻る</a><h1>大会が見つかりません</h1><p>このブラウザに大会データが保存されていないか、URLが正しくありません。</p></section></main>;
+  if (!tournament) return <main className="page">
+    <SiteHeader /><section className="intro">
+      <a className="back-link" href="/">← 大会一覧に戻る</a><h1>大会が見つかりません</h1><p>このブラウザに大会データが保存されていないか、URLが正しくありません。</p></section></main>;
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
