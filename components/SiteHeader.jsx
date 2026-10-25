@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 
 export default function SiteHeader() {
   const [signedIn, setSignedIn] = useState(false);
   const [ready, setReady] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     let supabase;
@@ -35,20 +36,31 @@ export default function SiteHeader() {
     }
   }
 
-  return <header className="site-header">
-    <div className="site-header-left">
-      <button type="button" className="menu-toggle" aria-label={menuOpen ? 'メニューを閉じる' : 'メニューを開く'} aria-expanded={menuOpen} onClick={() => setMenuOpen(open => !open)}>
-        <span></span><span></span><span></span>
-      </button>
-      <a className="site-logo" href="/">Figure Tournament</a>
-    </div>
-    <div className="site-header-right">
-      {ready && (signedIn
-        ? <button type="button" className="header-auth-button" onClick={signOut}>ログアウト</button>
-        : <a className="header-auth-button" href="/login">ログイン</a>)}
-    </div>
-    {menuOpen && <nav className="site-menu">
-      <a href="/mypage">マイページ</a>
-    </nav>}
-  </header>;
+  const tabs = [
+    { label: '戦績', href: '/results', icon: '🏆' },
+    { label: 'ホーム', href: '/', icon: '⌂' },
+    { label: 'マイページ', href: '/mypage', icon: '●' },
+  ];
+
+  return <>
+    <header className="site-header">
+      <div className="site-header-left">
+        <a className="site-logo" href="/">Figure Tournament</a>
+      </div>
+      <div className="site-header-right">
+        {ready && (signedIn
+          ? <button type="button" className="header-auth-button" onClick={signOut}>ログアウト</button>
+          : <a className="header-auth-button" href="/login">ログイン</a>)}
+      </div>
+    </header>
+    <nav className="bottom-tab-bar" aria-label="メインナビゲーション">
+      {tabs.map(tab => {
+        const active = tab.href === '/' ? pathname === '/' : pathname === tab.href || pathname.startsWith(tab.href + '/');
+        return <a key={tab.href} href={tab.href} className={active ? 'bottom-tab active' : 'bottom-tab'} aria-current={active ? 'page' : undefined}>
+          <span className="bottom-tab-icon" aria-hidden="true">{tab.icon}</span>
+          <span>{tab.label}</span>
+        </a>;
+      })}
+    </nav>
+  </>;
 }
