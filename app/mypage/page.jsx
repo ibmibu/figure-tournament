@@ -165,17 +165,21 @@ export default function MyPage() {
         <Link className="button-link results-link" href="/results">大会結果一覧を見る →</Link>
       </section>
       <section className="my-results my-color-panel">
-        <h2>マイカラー登録</h2>
+        <div className="my-color-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <h2>マイカラー登録</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={addMyColor} disabled={myColors.some(item => item.fighter === selectedFighter)}>追加</button>
+            <button type="button" onClick={() => setEditingColors(value => !value)}>{editingColors ? '編集終了' : '編集'}</button>
+          </div>
+        </div>
         <p className="setting-help">キャラ報告で使うカラーを登録します。登録したカラーは初期値になります。</p>
-        <div className="my-color-form">
-          <label>ファイター<select value={selectedFighter} onChange={e => setSelectedFighter(e.target.value)}>{fighters.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
-          <label>カラー<select value={selectedColor} onChange={e => setSelectedColor(e.target.value)}>{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select></label>
-          <button type="button" onClick={addMyColor} disabled={myColors.some(item => item.fighter === selectedFighter)}>追加</button>
+        <div className="my-color-form" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <select aria-label="ファイター" value={selectedFighter} onChange={e => setSelectedFighter(e.target.value)} style={{ flex: 1, minWidth: 0, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{fighters.map(name => <option key={name} value={name}>{name}</option>)}</select>
+          <select aria-label="カラー" value={selectedColor} onChange={e => setSelectedColor(e.target.value)} style={{ width: 100, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select>
         </div>
         <div className="my-color-list">
           {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
         </div>
-        {myColors.length > 0 && <button type="button" onClick={() => setEditingColors(value => !value)}>{editingColors ? '編集を終了' : '編集'}</button>}
       </section>
     </section>
     <footer>Figure Tournament</footer>
