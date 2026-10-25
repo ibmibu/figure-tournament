@@ -377,7 +377,7 @@ export default function TournamentPage() {
 
   return <main className="page tournament-detail-page">
     <section className="intro tournament-heading">
-      {tournament.bracket ? <button className="back-link tournament-back-button" type="button" onClick={() => setShowTournamentOverview(v => !v)}>{showTournamentOverview ? "← トーナメント表に戻る" : "← 大会概要に戻る"}</button> : <a className="back-link" href="/">← 大会一覧に戻る</a>}
+      <a className="back-link" href="/">← ホームに戻る</a>
       <div className="tournament-title-row">
         <div><h1>{tournament.name}</h1></div>
       </div>
@@ -486,7 +486,7 @@ export default function TournamentPage() {
       </div>
       {isOwner && <div className="overview-actions">
         {!tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>大会を開始する</button>}
-        {tournament.bracket && <button className="submit" type="button" onClick={() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>トーナメント表へ</button>}
+        {tournament.bracket && <button className="submit" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
       </div>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
