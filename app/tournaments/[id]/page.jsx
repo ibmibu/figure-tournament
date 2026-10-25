@@ -147,7 +147,7 @@ export default function TournamentPage() {
     }
     for (let r = rounds.length - 2; r >= 0; r--) {
       const losingPlayers = rounds[r].filter(m => m.winnerId).map(m => [m.player1, m.player2].find(p => p && p.id !== m.winnerId)).filter(Boolean);
-      const label = r === rounds.length - 2 ? 'ベスト4' : r === rounds.length - 3 ? 'ベスト8' : `ベスト${2 ** (rounds.length - r)}`;
+      const label = r === rounds.length - 2 ? '3位' : r === rounds.length - 3 ? 'ベスト8' : `ベスト${2 ** (rounds.length - r)}`;
       losingPlayers.forEach(p => rows.push({ playerId: p.id, place: label }));
     }
     return rows;
@@ -475,6 +475,7 @@ export default function TournamentPage() {
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
 
+    {(!tournament.bracket || showTournamentOverview) && tournament.bracket?.complete && <section className="create-panel tournament-results-card"><h2>大会結果</h2><div className="tournament-results-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).filter(row => ['優勝','準優勝','3位','ベスト4'].includes(row.place)).map(row => { const player = joinedPlayers.find(p => String(p.id) === String(row.playerId)); const report = tournament.characterReports?.[String(row.playerId)]; return player ? <div className="tournament-result-item" key={String(row.playerId)}><strong>{row.place === 'ベスト4' ? '3位' : row.place}</strong><span>{player.name}</span>{report && <span>{report.fighter}（{report.color}）</span>}{String(player.userId || player.id) === String(currentUserId) && <a href={`/tournaments/${encodeURIComponent(id)}/report`}>{report ? 'キャラ報告を確認' : 'キャラ報告へ'}</a>}</div> : null; })}</div></section>}
     {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2>{isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}</div>
