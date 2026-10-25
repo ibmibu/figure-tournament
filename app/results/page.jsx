@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import SiteHeader from '../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import Link from 'next/link';
+import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
 
 function formatDate(value) {
   if (!value) return '';
@@ -27,6 +29,13 @@ export default function ResultsPage() {
           window.location.href = '/login?next=/results';
           return;
         }
+        const cachedTournaments = readTournamentCache();
+        if (cachedTournaments) {
+          const cachedProfile = (() => { try { return JSON.parse(localStorage.getItem('figure-profile-' + session.user.id) || '{}'); } catch { return {}; } })();
+          const cachedName = String(cachedProfile.display_name || 'no name').trim().toLowerCase();
+          setTournaments(cachedTournaments.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === cachedName)));
+          setLoading(false);
+        }
         const headers = { Authorization: `Bearer ${session.access_token}` };
         const [profileResponse, tournamentResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -36,6 +45,8 @@ export default function ResultsPage() {
         const tournamentResult = await tournamentResponse.json();
         if (!profileResponse.ok) throw new Error(profileResult.error || 'プロフィールを読み込めませんでした。');
         if (!tournamentResponse.ok) throw new Error(tournamentResult.error || '大会情報を読み込めませんでした。');
+        writeTournamentCache(tournamentResult.tournaments || []);
+        try { localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(profileResult.profile || {})); } catch {}
         const myName = String(profileResult.profile?.display_name || 'no name').trim().toLowerCase();
         const mine = (tournamentResult.tournaments || []).filter(item =>
           item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === myName)
@@ -58,14 +69,14 @@ export default function ResultsPage() {
       <section className="my-results">
         {error && <p className="form-error" role="alert">{error}</p>}
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="tournament-list">
-          {tournaments.map(tournament => <a className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
+          {tournaments.map(tournament => <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
             <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.status || '募集中'}</span></div>
             <div className="tournament-meta">
               <span>{tournament.format || '大会'}</span>
               <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
               {tournament.date && <span>{formatDate(tournament.date)}</span>}
             </div>
-          </a>)}
+          </Link>)}
         </div>}
       </section>
     </section>
