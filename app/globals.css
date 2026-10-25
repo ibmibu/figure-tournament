@@ -263,3 +263,7 @@ body:has(.tournament-detail-page){background:#fff;color:#171717}
 .tournament-detail-page .danger-button{background:#fff;border-color:#999;color:#333}
 .tournament-detail-page input{background:#fff;color:#171717;border-color:#ccc}
 .tournament-detail-page footer{color:#777}
+
+/* 大会詳細：参加者パネルを大会概要の直下に縦並びで配置 */
+.tournament-bottom-grid{grid-template-columns:minmax(0,1fr)!important;}
+.tournament-bottom-grid>.participant-side-panel{width:100%;}
