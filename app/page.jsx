@@ -1,6 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import SiteHeader from '../components/SiteHeader';
+import Link from 'next/link';
+import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
 
 function formatStartDate(value) {
   if (!value) return '';
@@ -17,11 +19,15 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const cached = readTournamentCache();
+    if (cached) setTournaments(cached);
     fetch('/api/tournaments', { cache: 'no-store' })
       .then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
-        if (active) setTournaments(result.tournaments || []);
+        const latest = result.tournaments || [];
+        writeTournamentCache(latest);
+        if (active) setTournaments(latest);
       })
       .catch(error => {
         console.error(error);
@@ -42,7 +48,7 @@ export default function Home() {
       ) : (
         <div className="tournament-list">
           {tournaments.map(tournament => (
-            <a className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
+            <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
               <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.status || '募集中'}</span></div>
               <div className="tournament-meta">
                 <span>{tournament.format}</span>
@@ -50,7 +56,7 @@ export default function Home() {
                 {tournament.date && <span>開始時刻：{formatStartDate(tournament.date)}</span>}
               </div>
               <span className="open-tournament">大会ページへ →</span>
-            </a>
+            </Link>
           ))}
         </div>
       )}
