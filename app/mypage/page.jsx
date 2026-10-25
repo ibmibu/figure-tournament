@@ -140,9 +140,7 @@ export default function MyPage() {
         </>}
       </section>
       <section className="my-results">
-        <h2>大会結果一覧</h2>
-        <p className="setting-help">参加した大会・作成した大会の記録を確認できます。</p>
-        <Link className="button-link" href="/results">大会結果一覧を見る →</Link>
+        <Link className="button-link results-link" href="/results">大会結果一覧を見る →</Link>
       </section>
       <section className="my-results">
         <h2>マイカラー登録</h2>
