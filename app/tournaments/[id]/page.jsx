@@ -22,6 +22,7 @@ export default function TournamentPage() {
   const [activeMatchId, setActiveMatchId] = useState('');
   const [rejectSelection, setRejectSelection] = useState([]);
   const [stageSelection, setStageSelection] = useState('');
+  const [showTournamentOverview, setShowTournamentOverview] = useState(false);
 
   async function loadTournament() {
     setLoading(true);
@@ -351,9 +352,9 @@ export default function TournamentPage() {
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
 
-  return <main className="page">
+  return <main className="page tournament-detail-page">
     <section className="intro tournament-heading">
-      <a className="back-link" href="/">← 大会一覧に戻る</a>
+      {tournament.bracket ? <button className="back-link tournament-back-button" type="button" onClick={() => setShowTournamentOverview(v => !v)}>{showTournamentOverview ? "← トーナメント表に戻る" : "← 大会概要に戻る"}</button> : <a className="back-link" href="/">← 大会一覧に戻る</a>}
       <div className="tournament-title-row">
         <div><h1>{tournament.name}</h1><p>大会詳細・参加登録</p></div>
         {isOwner && tournament.bracket && <button className="tournament-finish-button" type="button" onClick={() => window.confirm('大会を終了しますか？') && saveBracket({ ...tournament, status: '終了' })}>大会を終了する</button>}
@@ -366,7 +367,7 @@ export default function TournamentPage() {
         <span>拒否ステージ：{tournament.stageRejects ? 'あり' : 'なし'}</span>
       </div>
     </section>
-      {tournament.bracket && <section className="tournament-live-panel" id="tournament-bracket">
+      {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         <div className="bracket-rounds">{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
@@ -386,11 +387,11 @@ export default function TournamentPage() {
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1?.id ? match.player2?.id : match.player1?.id);
-          return <div className="bracket-match" key={match.id}>
-            <div>{[match.player1, match.player2].map((player, pi) => <div key={pi} className="match-player-line"><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{match.winnerId === player?.id ? ' ✓' : ''}{player?.isDemo ? '（デモ）' : ''}</span></div>)}</div>
-            {match.winnerId && <p className="setting-help">勝者：{[match.player1,match.player2].find(p=>p?.id===match.winnerId)?.name}</p>}
+          return <div className={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "bracket-match match-startable" : "bracket-match"} key={match.id} onClick={!state && isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete ? () => startMatch(ri,mi) : undefined} role={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? "button" : undefined} tabIndex={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? 0 : undefined} onKeyDown={!state && isOwner && match.player1 && match.player2 && !match.winnerId ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startMatch(ri,mi); } } : undefined}>
+            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "")}><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{player?.isDemo ? '（デモ）' : ''}</span><strong className="player-score">{state?.score?.[player?.id] || 0}</strong></div>)}</div>
+            {!state && isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete && <span className="match-start-hint">対戦カードを選択</span>}{match.winnerId && <p className="setting-help">勝者：{[match.player1,match.player2].find(p=>p?.id===match.winnerId)?.name}</p>}
             {isOwner && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete && <>
-              {!state ? <button className="submit" type="button" disabled={savingBracket} onClick={() => startMatch(ri,mi)}>対戦を開始</button> : <>
+              {!state ? null : <>
                 <div className="match-score">{state.score?.[p1Id] || 0} - {state.score?.[match.player2.id] || 0}　GAME {state.gameNumber}</div>
                 {!game?.stage ? <>
                   {rejectsDone ? <>
@@ -414,7 +415,7 @@ export default function TournamentPage() {
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
 
-    <div className="tournament-bottom-grid">
+    {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2><span className="status">{tournament.status || '募集中'}</span></div>
       <div className="detail-grid">
@@ -459,7 +460,7 @@ export default function TournamentPage() {
       </form>}
       {isOwner && <div className="owner-actions"><p className="setting-help">あなたが作成した大会です。</p><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
     </section>
-    </div>
+    </div>}
     <footer>Figure Tournament</footer>
   </main>;
 }
