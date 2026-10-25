@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import SiteHeader from '../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
 
 const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '' };
 
@@ -39,6 +40,11 @@ export default function MyPage() {
             setDraftAvatar(cachedProfile.avatar_data || '');
           }
         } catch {}
+        const cachedTournaments = readTournamentCache();
+        if (cachedTournaments) {
+          const cachedName = String(profile.display_name || 'no name').trim().toLowerCase();
+          setTournaments(cachedTournaments.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === cachedName)));
+        }
         const headers = { Authorization: `Bearer ${currentSession.access_token}` };
         const [profileResponse, tournamentResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -55,6 +61,7 @@ export default function MyPage() {
         setDraftName(loadedProfile.display_name || 'no name');
         setDraftAvatar(loadedProfile.avatar_data || '');
         const all = tournamentResult.tournaments || [];
+        writeTournamentCache(all);
         const myName = (loadedProfile.display_name || 'no name').trim().toLowerCase();
         setTournaments(all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === myName)));
       } catch (e) {
