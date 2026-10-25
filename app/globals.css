@@ -454,3 +454,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .player-strip b{font-size:13px;overflow-wrap:anywhere}
 .player-strip span{font-size:10px;color:var(--muted)}
 @media(max-width:640px){.game-top{grid-template-columns:minmax(0,1fr) auto;gap:8px}.match-opponent-label{display:none}.game-heading h2{font-size:20px}.current-score{font-size:20px}}
+
+/* Match header: round/game label above a centered score */
+.match-controls-below .game-top{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:left}
+.match-controls-below .game-heading{width:100%}
+.match-controls-below .current-score{width:100%;text-align:center;font-size:32px;line-height:1.25;padding:2px 0 8px}
+@media(max-width:640px){.match-controls-below .current-score{font-size:30px}}
