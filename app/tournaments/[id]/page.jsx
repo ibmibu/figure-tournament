@@ -439,7 +439,7 @@ export default function TournamentPage() {
             </>}
           </section>;
         })()}
-        <div className="bracket-rounds">{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
+        <div className="bracket-rounds" style={{ "--bracket-height": `${64 + tournament.bracket.rounds[0].length * 104}px` }}>{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
           const state = match.matchState;
           const game = state?.currentGame;
           const { selected, starter } = getMatchStageLists();
@@ -458,10 +458,11 @@ export default function TournamentPage() {
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1?.id ? match.player2?.id : match.player1?.id);
           const isOwnMatch = [match.player1, match.player2].some(player => String(player?.id) === String(currentUserId));
           const canStartMatch = !state && (isOwner || isOwnMatch) && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete;
-          return <div className={canStartMatch ? "bracket-match match-startable" : "bracket-match"} key={match.id} onClick={canStartMatch ? () => startMatch(ri,mi) : undefined} role={canStartMatch ? "button" : undefined} tabIndex={canStartMatch ? 0 : undefined} onKeyDown={canStartMatch ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startMatch(ri,mi); } } : undefined}>
+          return <div className={canStartMatch ? "bracket-match match-startable" : "bracket-match"} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canStartMatch ? () => startMatch(ri,mi) : undefined} role={canStartMatch ? "button" : undefined} tabIndex={canStartMatch ? 0 : undefined} onKeyDown={canStartMatch ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); startMatch(ri,mi); } } : undefined}>
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "")}><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{player?.isDemo ? '（デモ）' : ''}</span><strong className="player-score">{state?.score?.[player?.id] || 0}</strong></div>)}</div>
 
 
+            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && <i className="bracket-pair-connector" style={{ height: `${104 * (2 ** ri)}px` }} aria-hidden="true" />}
           </div>;
         })}</div>)}</div>
 
