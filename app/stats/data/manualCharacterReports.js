@@ -1,0 +1,61 @@
+// いぶ選手の過去大会のキャラ報告（手動登録）
+// ここに追記すると、サイトの「メインファイター」と「単騎達成」に反映されます。
+// 必要な項目は大会名とキャラだけです。
+// 大会名は「人形劇 #12」のように大会番号が分かる形で記入してください。
+// キャラ名は app/page.js の正式なファイター名を使ってください。
+// 1大会で複数キャラを使った場合は characters に複数入力できます。
+// これからの大会は従来どおりコメントから自動集計します。
+// 手動登録した大会は、その大会のコメント集計より手動登録を優先します。
+
+export const MANUAL_CHARACTER_REPORTS = [
+  { tournamentName: '人形劇 #4', characters: ['ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #6', characters: ['プリン', 'デデデ'] },
+  { tournamentName: '人形劇 #8', characters: ['ゼルダ', 'カズヤ'] },
+  { tournamentName: '人形劇 #12', characters: ['セフィロス', 'カズヤ'] },
+  { tournamentName: '人形劇 #13', characters: ['セフィロス'] },
+  { tournamentName: '人形劇 #15', characters: ['セフィロス', 'カズヤ', 'ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #19', characters: ['ガオガエン'] },
+  { tournamentName: '人形劇 #21', characters: ['プリン', 'Mii 射撃タイプ', 'デデデ', 'ネス'] },
+  { tournamentName: '人形劇 #26', characters: ['ネス', 'スネーク', 'カズヤ'] },
+  { tournamentName: '人形劇 #28', characters: ['カズヤ'] },
+  { tournamentName: '人形劇 #35', characters: ['ファルコ'] },
+  { tournamentName: '人形劇 #36', characters: ['ガノンドロフ'] },
+  { tournamentName: '人形劇 #38', characters: ['ファルコ', 'カズヤ'] },
+  { tournamentName: '人形劇 #39', characters: ['ファルコ'] },
+  { tournamentName: '人形劇 #43', characters: ['ディディーコング'] },
+  { tournamentName: '人形劇 #52', characters: ['カズヤ', 'Mii 射撃タイプ', 'ファルコ'] },
+  { tournamentName: '人形劇 #53', characters: ['ファルコ', 'デデデ', 'Mii 射撃タイプ', 'カズヤ'] },
+  { tournamentName: '人形劇 #55', characters: ['カズヤ', 'ファルコ'] },
+  { tournamentName: '人形劇 #56', characters: ['スネーク', 'Mii 射撃タイプ'] },
+  { tournamentName: '人形劇 #60', characters: ['ファルコ'] },
+  { tournamentName: '人形劇 #62', characters: ['カズヤ', 'ファルコ'] },
+  { tournamentName: '人形劇 #66', characters: ['ネス'] },
+  { tournamentName: '人形劇 #67', characters: ['スネーク', 'ファルコ'] },
+  { tournamentName: '人形劇 #72', characters: ['ファルコ', 'セフィロス', 'ゼルダ', 'スネーク', 'プリン', 'カズヤ'] },
+  { tournamentName: '人形劇 #73', characters: ['プリン'] },
+  { tournamentName: '人形劇 #74', characters: ['プリン', 'カズヤ', 'ファルコ'] },
+  { tournamentName: '人形劇 #75', characters: ['ファルコ', 'ネス'] },
+  { tournamentName: '人形劇 #76', characters: ['ディディーコング', 'ファルコ', 'セフィロス'] },
+  { tournamentName: '人形劇 #78', characters: ['カズヤ', 'ファルコ', 'セフィロス'] },
+  { tournamentName: '人形劇 #79', characters: ['カズヤ', 'ファルコ', 'セフィロス', 'ガノンドロフ', 'スネーク'] },
+  { tournamentName: '人形劇 #80', characters: ['セフィロス'] },
+  { tournamentName: '人形劇 #81', characters: ['ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #86', characters: ['ソニック', 'カズヤ', 'ファルコ'] },
+  { tournamentName: '人形劇 #89', characters: ['ロボット', 'カズヤ', 'ファルコ', 'セフィロス'] },
+  { tournamentName: '人形劇 #90', characters: ['ロボット', 'ファルコ'] },
+  { tournamentName: '人形劇 #92', characters: ['カズヤ', 'Mii 射撃タイプ'] },
+  { tournamentName: '人形劇 #93', characters: ['カズヤ', 'ソニック', 'ファルコ', 'セフィロス'] },
+  { tournamentName: '人形劇 #96', characters: ['カズヤ', 'ロボット', 'ソニック', 'ファルコ', 'セフィロス', 'ホムラ／ヒカリ', 'ゼルダ', 'ネス'] },
+  { tournamentName: '人形劇 #100', characters: ['カズヤ', 'ロボット', 'デデデ', 'ファルコ', 'セフィロス', 'ガノンドロフ', 'ゼルダ', 'ネス', 'Mii 射撃タイプ'] },
+  { tournamentName: '人形劇 #102', characters: ['カズヤ', 'ファルコ', 'プリン', 'ネス', 'Mii 射撃タイプ'] },
+  { tournamentName: '人形劇 #104', characters: ['ゼルダ', 'ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #105', characters: ['ネス', 'ソニック', 'セフィロス', 'ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #113', characters: ['ロゼッタ＆チコ'] },
+  { tournamentName: '人形劇 #116', characters: ['ロゼッタ＆チコ', 'プリン', 'ゼルダ', 'ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #118', characters: ['ロゼッタ＆チコ', 'ファルコ', 'ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #121', characters: ['ロゼッタ＆チコ', 'プリン', 'セフィロス', 'ホムラ／ヒカリ'] },
+  { tournamentName: '人形劇 #123', characters: ['ディディーコング'] },
+  { tournamentName: '人形劇 #128', characters: ['ロゼッタ＆チコ'] },
+  { tournamentName: '人形劇 #129', characters: ['ソニック'] },
+  { tournamentName: '人形劇 #130', characters: ['ソニック', 'ゼロスーツサムス', 'ロゼッタ＆チコ', 'ファルコ'] },
+];
