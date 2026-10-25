@@ -38,7 +38,7 @@ export default function SiteHeader() {
   }
 
   const tabs = [
-    { label: '戦績', href: '/results', icon: '🏆' },
+    { label: '戦績', href: '/stats', icon: '🏆' },
     { label: 'ホーム', href: '/', icon: '⌂' },
     { label: 'マイページ', href: '/mypage', icon: '●' },
   ];
