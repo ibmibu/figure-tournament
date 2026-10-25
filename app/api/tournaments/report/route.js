@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 export async function POST(request) {
  try {
-  const token = (request.headers.get('authorization') || '').match(/^Bearer\\s+(.+)$/i)?.[1];
+  const token = (request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return NextResponse.json({error:'ログインが必要です。'},{status:401});
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
