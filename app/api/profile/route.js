@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 async function getAuthenticatedUser(request) {
-  const token = (request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)?.[1];
+  const token = (request.headers.get('authorization') || '').match(/^Bearer\\s+(.+)$/i)?.[1];
   if (!token) return { error: NextResponse.json({ error: 'ログインしてください。' }, { status: 401 }) };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -16,6 +16,12 @@ async function getAuthenticatedUser(request) {
   return { user: data.user, admin: createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } }) };
 }
 
+function reportError(error, operation) {
+  console.error(operation, error);
+  const detail = [error?.message, error?.code ? `code: ${error.code}` : ''].filter(Boolean).join(' / ');
+  return NextResponse.json({ error: detail || '不明なエラーが発生しました。' }, { status: 500 });
+}
+
 export async function GET(request) {
   try {
     const result = await getAuthenticatedUser(request);
@@ -25,8 +31,7 @@ export async function GET(request) {
     if (error) throw error;
     return NextResponse.json({ profile: data || { display_name: 'no name', avatar_data: '' } });
   } catch (error) {
-    console.error('GET /api/profile failed:', error);
-    return NextResponse.json({ error: 'プロフィールを読み込めませんでした。Supabaseのテーブル設定を確認してください。' }, { status: 500 });
+    return reportError(error, 'GET /api/profile failed:');
   }
 }
 
@@ -51,7 +56,6 @@ export async function PUT(request) {
     if (error) throw error;
     return NextResponse.json({ profile: data });
   } catch (error) {
-    console.error('PUT /api/profile failed:', error);
-    return NextResponse.json({ error: 'プロフィールを保存できませんでした。Supabaseのテーブル設定を確認してください。' }, { status: 500 });
+    return reportError(error, 'PUT /api/profile failed:');
   }
 }
