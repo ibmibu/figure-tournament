@@ -342,7 +342,7 @@ export default function TournamentPage() {
     }
   }
 
-  if (loading && !tournament) return <main className="page"><SiteHeader /><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
+  if (loading && !tournament) return <main className="page tournament-detail-page"><SiteHeader /><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
 
   if (!tournament) return <main className="page">
     <SiteHeader /><section className="intro">
@@ -352,10 +352,19 @@ export default function TournamentPage() {
   const isOwner = Boolean(tournament.isOwner);
 
   return <main className="page">
-    <section className="intro">
+    <section className="intro tournament-heading">
       <a className="back-link" href="/">← 大会一覧に戻る</a>
-      <h1>{tournament.name}</h1>
-      <p>大会詳細・参加登録</p>
+      <div className="tournament-title-row">
+        <div><h1>{tournament.name}</h1><p>大会詳細・参加登録</p></div>
+        {isOwner && tournament.bracket && <button className="tournament-finish-button" type="button" onClick={() => window.confirm('大会を終了しますか？') && saveBracket({ ...tournament, status: '終了' })}>大会を終了する</button>}
+      </div>
+      <div className="tournament-summary-line">
+        <span>参加者 {joinedPlayers.length} / {tournament.participants || 8}人</span>
+        <span>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)} 開始` : '開始時刻未設定'}</span>
+        <span>{tournament.format || `BO${tournament.bestOf || 3}`}</span>
+        <span>使用ステージ：{(tournament.stages || []).length ? (tournament.stages || []).join('・') : '未設定'}</span>
+        <span>拒否ステージ：{tournament.stageRejects ? 'あり' : 'なし'}</span>
+      </div>
     </section>
       {tournament.bracket && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
@@ -405,11 +414,7 @@ export default function TournamentPage() {
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
 
-    <section className="intro">
-      <a className="back-link" href="/">← 大会一覧に戻る</a>
-      <h1>{tournament.name}</h1>
-      <p>大会詳細・参加登録</p>
-    </section>
+    <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2><span className="status">{tournament.status || '募集中'}</span></div>
       <div className="detail-grid">
@@ -433,8 +438,7 @@ export default function TournamentPage() {
         <p className="generated-description">カウンターピック：{(tournament.stageSettings.counterpickStages || []).join('、') || '未設定'}</p>
         <p className="generated-description">最初のプレイヤー：{tournament.stageSettings.firstPlayerRejects}ステージ拒否／次のプレイヤー：{tournament.stageSettings.secondPlayerRejects}ステージ拒否／2ゲーム目以降：{tournament.stageSettings.laterRejects}ステージ拒否</p>
       </>}
-      <h3>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h3>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}</span>{isOwner && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+
       {isOwner && !tournament.bracket && <section className="bracket-panel" id="tournament-bracket">
         <h3>デモモード</h3>
         <p className="setting-help">テスト用の架空プレイヤーを追加できます。デモ参加者は実際のログイン参加者とは区別されます。</p>
@@ -451,6 +455,19 @@ export default function TournamentPage() {
       </form>}
       {isOwner && <div className="owner-actions"><p className="setting-help">あなたが作成した大会です。</p><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
     </section>
+    <section className="create-panel tournament-detail participant-side-panel">
+      <h2>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}{player.isDemo ? '（デモ）' : ''}</span>{isOwner && !tournament.bracket && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+      <h3>参加する</h3>
+      {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
+        {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {notice && <p className="form-success" role="status">{notice}</p>}
+        <button className="submit" type="submit">参加登録する</button>
+      </form>}
+      {isOwner && <div className="owner-actions"><p className="setting-help">あなたが作成した大会です。</p><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
+    </section>
+    </div>
     <footer>Figure Tournament</footer>
   </main>;
 }
