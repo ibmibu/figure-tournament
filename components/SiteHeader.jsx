@@ -48,11 +48,7 @@ export default function SiteHeader() {
         : <a className="header-auth-button" href="/login">ログイン</a>)}
     </div>
     {menuOpen && <nav className="site-menu">
-      <a href="/">大会一覧</a>
-      <a href="/tournaments/new">大会を作成</a>
-      {ready && (signedIn
-        ? <button type="button" onClick={signOut}>ログアウト</button>
-        : <a href="/login">ログイン</a>)}
+      <a href="/mypage">マイページ</a>
     </nav>}
   </header>;
 }
