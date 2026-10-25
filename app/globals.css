@@ -67,3 +67,7 @@
 .site-menu a:hover,.site-menu button:hover{background:#f4f1fa}
 .site-header+.intro{padding-top:30px}
 @media(max-width:600px){.site-header{min-height:62px;gap:8px}.site-logo{font-size:16px;letter-spacing:-.5px}.site-header-left{gap:9px}.menu-toggle{width:39px;height:39px}.header-auth-button{min-height:36px;padding:7px 11px;font-size:12px}.site-menu{top:56px}.site-header+.intro{padding-top:26px}}
+
+
+/* My page and editable profile */
+.my-page{padding-top:28px}.my-page>h1{font-size:26px;margin:0 0 20px}.profile-panel,.my-results{background:#fff;border:1px solid #e6e4eb;border-radius:10px;padding:22px;margin-bottom:18px}.profile-summary{display:flex;align-items:center;gap:16px;margin-bottom:20px}.profile-avatar{width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid #e6e4eb;flex-shrink:0}.profile-avatar-empty{background:#fff}.profile-name{font-size:20px;font-weight:700;overflow-wrap:anywhere}.profile-edit-form{margin-top:20px}.profile-edit-form label{display:flex;flex-direction:column;gap:8px;margin:0 0 16px}.profile-edit-form input:not([type=file]){width:100%;padding:12px;border:1px solid #d8d5e0;border-radius:6px;font:inherit}.profile-edit-form input[type=file]{max-width:100%;font:inherit}.my-results h2{font-size:19px;margin:0 0 16px}@media(max-width:600px){.my-page{padding-top:20px}.profile-panel,.my-results{padding:16px}.profile-avatar{width:72px;height:72px}.profile-name{font-size:18px}}
