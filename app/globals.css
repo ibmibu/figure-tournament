@@ -748,3 +748,18 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .tournament-detail-page .tournament-live-panel .bracket-match .match-player-line .player-score.score-winner{
  background:#1bb95e!important;
 }
+
+/* One SVG per pair: exact horizontal/vertical joins without competing pseudo-elements */
+.tournament-detail-page .tournament-live-panel .bracket-rounds{gap:38px!important}
+.tournament-detail-page .tournament-live-panel .bracket-match::before,
+.tournament-detail-page .tournament-live-panel .bracket-match::after,
+.tournament-detail-page .tournament-live-panel .bracket-round::before,
+.tournament-detail-page .tournament-live-panel .bracket-pair-connector{
+ display:none!important;content:none!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-connector{
+ display:block!important;position:absolute!important;
+ left:100%!important;top:50%!important;
+ overflow:visible!important;pointer-events:none!important;
+ z-index:2!important;max-width:none!important;
+}
