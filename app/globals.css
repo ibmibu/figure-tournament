@@ -763,3 +763,32 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  overflow:visible!important;pointer-events:none!important;
  z-index:2!important;max-width:none!important;
 }
+
+/* Flush score cells: distinct from connector blue, no inset gap */
+.tournament-detail-page .tournament-live-panel .bracket-match{
+ border:2px solid #3170b8!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .match-players{
+ display:grid!important;grid-template-rows:35px 35px!important;
+ width:100%!important;height:70px!important;overflow:hidden!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line,
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line:nth-child(2){
+ display:grid!important;grid-template-columns:minmax(0,1fr) 26px!important;
+ width:100%!important;height:35px!important;min-height:35px!important;
+ overflow:hidden!important;gap:0!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line>span{
+ min-width:0!important;width:100%!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line .player-score{
+ width:26px!important;height:35px!important;min-height:35px!important;
+ align-self:stretch!important;justify-self:stretch!important;
+ background:#315b67!important;color:#fff!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line .player-score.score-winner{
+ background:#1bb95e!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line:not(:has(span[title]:not([title=""]))) .player-score{
+ background:#315b67!important;
+}
