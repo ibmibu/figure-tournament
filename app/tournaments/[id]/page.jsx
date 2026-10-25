@@ -12,6 +12,8 @@ export default function TournamentPage() {
   const [tournament, setTournament] = useState(null);
   const [ownerId, setOwnerId] = useState('');
   const [playerName, setPlayerName] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -23,6 +25,12 @@ export default function TournamentPage() {
       try {
         const { data } = await getSupabaseBrowserClient().auth.getSession();
         accessToken = data.session?.access_token || '';
+        setAccessToken(accessToken);
+        if (accessToken) {
+          const profileResponse = await fetch('/api/profile', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
+          const profileResult = await profileResponse.json();
+          if (profileResponse.ok) setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
+        }
       } catch {}
       const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
       const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
@@ -55,21 +63,23 @@ export default function TournamentPage() {
     event.preventDefault();
     setError('');
     setNotice('');
-    const name = playerName.trim();
-    if (!name) {
-      setError('参加者名を入力してください。');
+    if (!accessToken) {
+      window.location.href = `/login?next=${encodeURIComponent(`/tournaments/${id}`)}`;
+      return;
+    }
+    if (!accountName || accountName === 'no name') {
+      setError('参加する前にマイページで名前を設定してください。');
       return;
     }
     try {
       const response = await fetch('/api/tournaments/join', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, playerName: name }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ id }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '参加登録を保存できませんでした。');
       setTournament(current => ({ ...current, joinedPlayers: result.joinedPlayers }));
-      setPlayerName('');
       setNotice('参加登録しました。');
     } catch (joinError) {
       setError(joinError.message || '参加登録を保存できませんでした。');
@@ -136,7 +146,7 @@ export default function TournamentPage() {
       {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}</span>{isOwner && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
       <h3>参加する</h3>
       {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
-        <label>参加者名<input value={playerName} onChange={event => setPlayerName(event.target.value)} placeholder="名前を入力" maxLength={40} required /></label>
+        {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         {notice && <p className="form-success" role="status">{notice}</p>}
         <button className="submit" type="submit">参加登録する</button>
