@@ -106,6 +106,7 @@ export default function MyPage() {
       <h1>マイページ</h1>
       {error && <p className="form-error" role="alert">{error}</p>}
       <section className="profile-panel">
+        {loading ? <p className="setting-help">プロフィール読み込み中…</p> : <>
         <div className="profile-summary">
           {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
           <div className="profile-name">{displayName || 'no name'}</div>
@@ -116,6 +117,7 @@ export default function MyPage() {
           <p className="setting-help">画像は1MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
           <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
         </form>}
+        </>}
       </section>
       <section className="my-results">
         <h2>大会結果一覧</h2>
