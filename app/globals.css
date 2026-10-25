@@ -817,3 +817,7 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  color:#fff!important;border-radius:8px;font-weight:800;
 }
 .tournament-detail-page .tournament-delete-section .danger-button:hover{background:#bc2734!important}
+
+/* Match the tournament back button to the unboxed overview link. */
+.tournament-detail-page .tournament-heading .tournament-back-button{font-size:13px;font-weight:inherit;line-height:normal;color:var(--blue);background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;appearance:none;text-align:left}
+.tournament-detail-page .tournament-heading .tournament-back-button:hover{color:var(--blue);text-decoration:underline}
