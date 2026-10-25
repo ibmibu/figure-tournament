@@ -463,7 +463,7 @@ export default function TournamentPage() {
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || "BYE"}>{player?.name || "BYE"}{player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.winnerId === player?.id ? " score-winner" : "")}>{state?.score?.[player?.id] || 0}</strong></div>)}</div>
 
 
-            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && <i className="bracket-pair-connector" style={{ height: `${104 * (2 ** ri)}px` }} aria-hidden="true" />}
+            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && <svg className="bracket-connector" width="38" height={104 * (2 ** ri)} viewBox={`0 0 38 ${104 * (2 ** ri)}`} aria-hidden="true"><path d={`M 0 0 H 19 V ${104 * (2 ** ri)} M 0 ${104 * (2 ** ri)} H 19 M 19 ${52 * (2 ** ri)} H 38`} fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
           </div>;
         })}</div>)}</div>
 
