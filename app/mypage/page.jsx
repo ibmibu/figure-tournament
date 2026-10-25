@@ -18,6 +18,11 @@ export default function MyPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [myColors, setMyColors] = useState([]);
+  const [selectedFighter, setSelectedFighter] = useState('マリオ');
+  const [selectedColor, setSelectedColor] = useState('1P');
+  const [editingColors, setEditingColors] = useState(false);
+  const fighters = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
 
   useEffect(() => {
     let active = true;
@@ -31,6 +36,7 @@ export default function MyPage() {
         }
         if (!active) return;
         setSession(currentSession);
+        try { setMyColors(JSON.parse(window.localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]')); } catch {}
         const cacheKey = 'figure-profile-' + currentSession.user.id;
         try {
           const cached = window.localStorage.getItem(cacheKey);
@@ -74,6 +80,22 @@ export default function MyPage() {
     load();
     return () => { active = false; };
   }, []);
+
+  function saveMyColors(next) {
+    setMyColors(next);
+    if (session) {
+      try { window.localStorage.setItem('figure-my-colors-' + session.user.id, JSON.stringify(next)); } catch {}
+    }
+  }
+
+  function addMyColor() {
+    if (myColors.some(item => item.fighter === selectedFighter)) {
+      setError('このファイターのカラーは登録済みです。編集から削除して変更してください。');
+      return;
+    }
+    saveMyColors([...myColors, { fighter: selectedFighter, color: selectedColor }]);
+    setError('');
+  }
 
   async function chooseImage(event) {
     const file = event.target.files?.[0];
@@ -142,9 +164,18 @@ export default function MyPage() {
       <section className="my-results">
         <Link className="button-link results-link" href="/results">大会結果一覧を見る →</Link>
       </section>
-      <section className="my-results">
+      <section className="my-results my-color-panel">
         <h2>マイカラー登録</h2>
-        <p className="setting-help">登録内容を設定できます。</p>
+        <p className="setting-help">キャラ報告で使うカラーを登録します。登録したカラーは初期値になります。</p>
+        <div className="my-color-form">
+          <label>ファイター<select value={selectedFighter} onChange={e => setSelectedFighter(e.target.value)}>{fighters.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+          <label>カラー<select value={selectedColor} onChange={e => setSelectedColor(e.target.value)}>{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select></label>
+          <button type="button" onClick={addMyColor} disabled={myColors.some(item => item.fighter === selectedFighter)}>追加</button>
+        </div>
+        <div className="my-color-list">
+          {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
+        </div>
+        {myColors.length > 0 && <button type="button" onClick={() => setEditingColors(value => !value)}>{editingColors ? '編集を終了' : '編集'}</button>}
       </section>
     </section>
     <footer>Figure Tournament</footer>
