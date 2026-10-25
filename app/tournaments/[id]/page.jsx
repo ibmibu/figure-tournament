@@ -180,11 +180,12 @@ export default function TournamentPage() {
     const match = bracket.rounds[roundIndex][matchIndex];
     if (!match.player1 || !match.player2 || match.winnerId) return;
     if (!match.matchState) {
+      const firstPlayerId = Math.random() < 0.5 ? match.player1.id : match.player2.id;
       match.matchState = {
         gameNumber: 1,
         score: { [match.player1.id]: 0, [match.player2.id]: 0 },
         games: [],
-        currentGame: { firstPlayerId: Math.random() < 0.5 ? match.player1.id : match.player2.id, rejects: [], rejectVotes: {}, stage: null, chooserId: null, results: {} },
+        currentGame: { firstPlayerId, rejects: [], rejectVotes: {}, stage: null, chooserId: tournament.stageRejects ? null : firstPlayerId, results: {} },
         complete: false,
       };
     }
@@ -201,6 +202,7 @@ export default function TournamentPage() {
     if (!state || state.complete || state.currentGame.stage) return;
     const game = state.currentGame;
     const settings = tournament.stageSettings || {};
+    if (!tournament.stageRejects) return;
     const { starter, selected } = getMatchStageLists();
     const available = (state.gameNumber === 1 ? starter : selected).filter(stage => !game.rejects.includes(stage));
     const isFirst = state.gameNumber === 1;
@@ -268,7 +270,7 @@ export default function TournamentPage() {
         rejects: [],
         rejectVotes: {},
         stage: null,
-        chooserId: match.player1.id === previousWinnerId ? match.player2.id : match.player1.id,
+        chooserId: tournament.stageRejects ? (match.player1.id === previousWinnerId ? match.player2.id : match.player1.id) : (match.player1.id === previousWinnerId ? match.player2.id : match.player1.id),
         results: {},
       };
     }
@@ -404,7 +406,7 @@ export default function TournamentPage() {
           const firstRejectDone = !firstId || Number(settings.firstPlayerRejects ?? 1) === 0 || Boolean(game?.rejectVotes?.[firstId]);
           const secondId = match.player1?.id === firstId ? match.player2?.id : match.player1?.id;
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
-          const rejectsDone = state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3);
+          const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1?.id ? match.player2?.id : match.player1?.id);
           return <div className="bracket-match" key={match.id}>
             <div>{[match.player1, match.player2].map((player, pi) => <div key={pi} className="match-player-line"><span className={match.winnerId === player?.id ? 'winner' : ''}>{player?.name || 'BYE'}{match.winnerId === player?.id ? ' ✓' : ''}{player?.isDemo ? '（デモ）' : ''}</span></div>)}</div>
