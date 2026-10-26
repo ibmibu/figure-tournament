@@ -1928,4 +1928,91 @@ footer span {
 .playerTable td { background: #fff; color: #3f3749; }
 .playerTable td strong, .playerTable .opponentName { color: #211b2a; }
 
+
+/* Light theme for the entire statistics page, including sections below the matrix. */
+.stats-shell {
+  background: #f5f7fb;
+  color: #20283a;
+}
+.stats-shell .content { color: #20283a; }
+.stats-shell .card,
+.stats-shell .ratingTrend,
+.stats-shell .achievementPanel {
+  background: #fff;
+  border-color: #dfe3ed;
+  color: #20283a;
+  box-shadow: 0 8px 26px rgba(30, 43, 70, .06);
+}
+.stats-shell .stat strong,
+.stats-shell .sectionHead h2,
+.stats-shell .control h2,
+.stats-shell .empty h2,
+.stats-shell .ratingTrendHead h3 { color: #193f7d; }
+.stats-shell .stat span,
+.stats-shell .stat small,
+.stats-shell .sectionHead p,
+.stats-shell .control p,
+.stats-shell .empty p,
+.stats-shell .ratingTrendHead p,
+.stats-shell .hint { color: #657087; }
+.stats-shell .sectionLabel,
+.stats-shell .eyebrow { color: #8650bc; }
+.stats-shell .playerSelectWrap,
+.stats-shell .featureGrid div,
+.stats-shell .ratingTrendChart,
+.stats-shell .rankRow,
+.stats-shell .tournamentList .tournamentRow,
+.stats-shell .match,
+.stats-shell .achievementItem,
+.stats-shell .achievementTournaments > span,
+.stats-shell .achievementTournamentsToggle {
+  background: #f7f8fc;
+  border-color: #dfe3ed;
+  color: #253149;
+}
+.stats-shell .playerSelectWrap label,
+.stats-shell .playerSortHint,
+.stats-shell .playerSearchCount,
+.stats-shell .rankingList,
+.stats-shell .rankName,
+.stats-shell .record,
+.stats-shell .tournamentList .tournamentTitle,
+.stats-shell .tournamentList .tournamentMeta,
+.stats-shell .match b,
+.stats-shell .winner,
+.stats-shell .loser,
+.stats-shell .achievementItem > strong,
+.stats-shell .achievementItem > span { color: #253149; }
+.stats-shell .playerSelectWrap select,
+.stats-shell .playerSearchInput,
+.stats-shell .urlForm input {
+  background-color: #fff;
+  color: #20283a;
+  border-color: #d9dfeb;
+}
+.stats-shell .playerSearchToggle,
+.stats-shell .playerTabs button:not(.active),
+.stats-shell .seasonTabs button:not(.active),
+.stats-shell .buttonGroup .secondary,
+.stats-shell .trendClose {
+  background: #f0f2f8;
+  color: #4b5368;
+  border-color: #d9dfeb;
+}
+.stats-shell .playerTabs button:hover,
+.stats-shell .seasonTabs button:hover { color: #6133a1; border-color: #bba5d9; }
+.stats-shell .matrixWrap,
+.stats-shell .playerTableWrap { background: #fff; border-color: #dfe3ed; }
+.stats-shell .matrix td.hasData { color: #211b2a; }
+.stats-shell .rankRate,
+.stats-shell .recordSummary,
+.stats-shell .achievementItem > small,
+.stats-shell .matchMeta,
+.stats-shell .round { color: #58647a; }
+.stats-shell .bar { background: #e6e9f1; }
+.stats-shell .trendGridLine { stroke: #e0e5ef; }
+.stats-shell .trendAxisLine { stroke: #aab5c8; }
+.stats-shell .trendAxisLabel { fill: #59677d; }
+.stats-shell footer { color: #657087; }
+
 }
