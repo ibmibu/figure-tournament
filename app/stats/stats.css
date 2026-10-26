@@ -2046,4 +2046,33 @@ footer span {
 .achievementPanel .titleItem { border-color:#dfe3ed; }
 .achievementItem { --panel:#f7f8fc; --line:#dfe3ed; }
 
+
+/* Ranking: tighter vertical rhythm and fully visible mobile results. */
+.rankingList{gap:6px}
+.rankRow{border:1px solid #e4e7ee;border-radius:10px;padding:12px 14px;min-width:0}
+.rankNo{font-size:12px;color:#778093}
+.rankRate{color:#29364d;font-variant-numeric:tabular-nums}
+.record{color:#58647a;font-variant-numeric:tabular-nums}
+.seasonTabs{gap:8px;padding:3px 0 10px;margin:18px 0 12px;scrollbar-width:none}
+.seasonTabs::-webkit-scrollbar{display:none}
+.seasonTabs button{padding:10px 16px;border-color:#dfe3ed}
+@media(max-width:700px){
+ .content{padding:8px 12px 48px}
+ .card:not(.control):not(.stat):not(.empty){padding:18px 16px}
+ .sectionHead p{line-height:1.65}
+ .seasonTabs{margin:18px 0 10px;gap:8px}
+ .seasonTabs button{padding:10px 15px;white-space:nowrap}
+ .rankingList{gap:6px}
+ .rankRow{grid-template-columns:24px minmax(0,1fr) 50px minmax(92px,auto);gap:8px;padding:12px 10px}
+ .rankName{font-size:13px;min-width:0}
+ .rankRate{font-size:14px}
+ .record{font-size:10px;text-align:right;white-space:nowrap}
+}
+@media(max-width:380px){
+ .rankRow{grid-template-columns:21px minmax(0,1fr) 44px minmax(82px,auto);gap:5px;padding:11px 8px}
+ .rankName{font-size:12px}
+ .rankRate{font-size:13px}
+ .record{font-size:9px}
+}
+
 }
