@@ -14,7 +14,13 @@ export async function GET() {
     const { data: tournaments, error: tournamentError } = await db.from('tournaments').select('id,data').order('created_at', { ascending: true });
     if (tournamentError) throw tournamentError;
     const linkMap = new Map((rows || []).map(row => [String(row.user_id), String(row.legacy_player_id)]));
-    const results = (tournaments || []).map(row => {
+    // Only finalized brackets belong in the shared public record. Drafts and active events are excluded.
+    const results = (tournaments || []).filter(row => {
+      const bracket = row.data?.bracket;
+      const final = bracket?.rounds?.at(-1)?.[0];
+      return bracket?.complete === true && final?.player1 && final?.player2 && final?.winnerId &&
+        [final.player1, final.player2].some(player => String(player.id) === String(final.winnerId));
+    }).map(row => {
       const t = row.data || {};
       const participants = new Map();
       for (const p of t.joinedPlayers || []) {
