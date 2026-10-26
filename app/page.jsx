@@ -61,6 +61,15 @@ export default function Home() {
         </div>
       )}
     </section>
-    <footer>Figure Tournament</footer>
+    <footer className="home-legal-footer">
+      <strong>アミコネ</strong>
+      <p>本サイトは非公式の大会管理サービスです。任天堂株式会社および『大乱闘スマッシュブラザーズ』公式とは関係ありません。</p>
+      <nav className="home-legal-links" aria-label="サイト情報">
+        <span>利用規約</span>
+        <span>プライバシーポリシー</span>
+        <span>免責事項</span>
+        <span>お問い合わせ</span>
+      </nav>
+    </footer>
   </main>;
 }

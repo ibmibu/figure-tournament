@@ -843,3 +843,22 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .site-logo{display:inline-flex;align-items:center;max-width:100%}
 .site-logo-image{display:block;width:180px;max-width:100%;height:auto}
 @media(max-width:600px){.site-logo-image{width:142px}}
+
+/* Text-only bottom navigation with separators */
+.bottom-tab-bar{padding-left:0;padding-right:0}
+.bottom-tab{flex-direction:row;gap:0;font-size:14px;min-height:54px}
+.bottom-tab+.bottom-tab{border-left:1px solid #d9d5e0}
+@media(max-width:600px){.bottom-tab-bar{padding-left:0;padding-right:0}.bottom-tab{min-height:52px;font-size:13px}}
+
+/* Home legal footer */
+.home-legal-footer{margin-top:56px;padding:28px 0 24px;border-top:1px solid #ddd9e4;color:#686374;font-size:12px;line-height:1.8}
+.home-legal-footer strong{display:block;color:#292533;font-size:17px;margin-bottom:8px}
+.home-legal-footer p{margin:0 0 14px;max-width:850px}
+.home-legal-links{display:flex;flex-wrap:wrap;gap:8px 22px}
+.home-legal-links span{color:#625b70}
+
+/* My Colors editing */
+.my-color-item{display:flex;align-items:center;gap:12px}
+.my-color-item .my-color-delete{margin-left:auto;background:#d93645;color:#fff;border:1px solid #d93645;border-radius:7px;padding:7px 14px;cursor:pointer}
+.my-color-item .my-color-delete:hover{background:#b92735}
+.my-color-item .my-color-delete:disabled{opacity:.55;cursor:wait}

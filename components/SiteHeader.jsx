@@ -51,9 +51,9 @@ export default function SiteHeader() {
   }
 
   const tabs = [
-    { label: '戦績', href: '/stats', icon: '🏆' },
-    { label: 'ホーム', href: '/', icon: '⌂' },
-    { label: 'マイページ', href: '/mypage', icon: '●' },
+    { label: '戦績', href: '/stats' },
+    { label: 'ホーム', href: '/' },
+    { label: 'マイページ', href: '/mypage' },
   ];
 
   return <>
@@ -71,7 +71,6 @@ export default function SiteHeader() {
       {tabs.map(tab => {
         const active = tab.href === '/' ? pathname === '/' : pathname === tab.href || pathname.startsWith(tab.href + '/');
         return <Link key={tab.href} href={tab.href} className={active ? "bottom-tab active" : "bottom-tab"} aria-current={active ? "page" : undefined}>
-          <span className="bottom-tab-icon" aria-hidden="true">{tab.icon}</span>
           <span>{tab.label}</span>
         </Link>;
       })}
