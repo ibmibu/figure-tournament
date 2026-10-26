@@ -1773,6 +1773,7 @@ export default function StatsPage() {
             )}
           </div>
         </section>
+        )}
 
         <section className="card matchesCard">
           <button
@@ -1840,7 +1841,6 @@ export default function StatsPage() {
             </div>
           )}
         </section>
-        )}
 
         <section className="card">
           <div className="sectionHead">
