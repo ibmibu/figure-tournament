@@ -52,7 +52,11 @@ export default function NewTournamentPage() {
         if (!response.ok) return;
         const result = await response.json();
         const previous = (result.tournaments || []).find(t => t.isOwner && typeof t.name === 'string' && t.name.trim());
-        if (active && previous) setName(current => current || nextTournamentName(previous.name));
+        if (active && previous) {
+          setName(current => current || nextTournamentName(previous.name));
+          setSeriesTag(current => current || (previous.seriesTags?.[0] || ''));
+        }
+        if (active) setKnownSeriesTags([...new Set((result.tournaments || []).flatMap(t => Array.isArray(t.seriesTags) ? t.seriesTags : []))].sort((a,b) => a.localeCompare(b, 'ja')));
       } catch { /* Keep the name empty if previous tournaments cannot be loaded. */ }
     })();
     return () => { active = false; };
@@ -66,6 +70,8 @@ export default function NewTournamentPage() {
     }
   }, []);
   const [name, setName] = useState('');
+  const [seriesTag, setSeriesTag] = useState('');
+  const [knownSeriesTags, setKnownSeriesTags] = useState([]);
   const [format, setFormat] = useState(3);
   const [participants, setParticipants] = useState(16);
   const [date, setDate] = useState('');
@@ -102,6 +108,7 @@ export default function NewTournamentPage() {
         if (!t.isOwner) throw new Error('この大会を編集する権限がありません。');
         if (!active) return;
         setName(t.name || '');
+        setSeriesTag(Array.isArray(t.seriesTags) ? (t.seriesTags[0] || '') : '');
         setFormat(Number(t.bestOf) === 5 ? 5 : 3);
         setParticipants(Number(t.participants) || 8);
         setDate(t.date ? t.date.slice(0, 10) : '');
@@ -195,7 +202,7 @@ export default function NewTournamentPage() {
 
   if (checkingAuth && !error) return <main className="page"><SiteHeader /><p className="setting-help">ログイン状態を確認しています…</p></main>;
 
-  return <main className="page">
+  return <main className="page tournament-create-page">
     <SiteHeader />
     <section className="intro">
       
@@ -208,6 +215,12 @@ export default function NewTournamentPage() {
       {loadingEdit ? <p className="setting-help">大会情報を読み込み中…</p> : <form onSubmit={createTournament}>
         <label>大会名 <span className="required">必須</span>
           <input value={name} onChange={event => setName(event.target.value)} placeholder="大会名を入力" maxLength={80} autoFocus required />
+        </label>
+
+        <label>大会タグ
+          <input value={seriesTag} onChange={event => setSeriesTag(event.target.value)} placeholder="例：人形劇" maxLength={40} list="tournament-series-tags" />
+          <datalist id="tournament-series-tags">{knownSeriesTags.map(tag => <option key={tag} value={tag} />)}</datalist>
+          <small className="setting-help">同じタグの大会を戦績ページでまとめて表示できます。</small>
         </label>
 
         <fieldset className="setup-group">

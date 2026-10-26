@@ -104,7 +104,59 @@ const removeExactName = (text, name) => {
 
 
 export default function StatsPage() {
-  const [data, setData] = useState(null);
+  const [archiveData, setData] = useState(null);
+  const [seriesTag, setSeriesTag] = useState('人形劇');
+  const [createdTournaments, setCreatedTournaments] = useState([]);
+  const [newDataError, setNewDataError] = useState('');
+  useEffect(() => {
+    fetch('/api/stats/identity-links', { cache: 'no-store' })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '大会情報を取得できませんでした。');
+        setCreatedTournaments(result.tournaments || []);
+      }).catch(error => setNewDataError(error.message));
+  }, []);
+  const availableTags = [...new Set(['人形劇', ...createdTournaments.flatMap(t => t.seriesTags || [])])].sort((a,b) => a.localeCompare(b, 'ja'));
+  const data = useMemo(() => {
+    if (!archiveData) return null;
+    const includeArchive = seriesTag === 'all' || seriesTag === '人形劇';
+    const archiveTournaments = includeArchive ? (archiveData.tournaments || []) : [];
+    const archiveRecords = includeArchive ? (archiveData.records || []) : [];
+    const archivePlayers = includeArchive ? (archiveData.players || []) : [];
+    const selectedNew = createdTournaments.filter(t => seriesTag === 'all' || (t.seriesTags || []).includes(seriesTag));
+    const maxArchiveNumber = archiveTournaments.reduce((max, t) => Math.max(max, Number(t.number) || 0), 0);
+    const players = new Map(archivePlayers.map(p => [canonicalAccountId(p.id), { ...p, id: canonicalAccountId(p.id) }]));
+    const records = archiveRecords.map(r => ({ ...r, winnerId: canonicalAccountId(r.winnerId), loserId: canonicalAccountId(r.loserId) }));
+    const tournaments = [...archiveTournaments];
+    selectedNew.forEach((t, index) => {
+      const number = maxArchiveNumber + index + 1;
+      tournaments.push({ number, name: t.name, players: t.players.length, id: t.id, seriesTags: t.seriesTags });
+      for (const player of t.players) {
+        const id = canonicalAccountId(player.id);
+        if (!players.has(id)) players.set(id, { id, name: player.name });
+      }
+      for (const match of t.matches) {
+        const winnerId = canonicalAccountId(match.winnerId);
+        const loserId = canonicalAccountId(match.loserId);
+        if (winnerId === loserId) continue;
+        records.push({ tournamentNumber: number, winnerId, loserId });
+      }
+    });
+    const stats = {};
+    for (const record of records) {
+      const winner = String(record.winnerId), loser = String(record.loserId);
+      if (!stats[winner]) stats[winner] = {};
+      if (!stats[loser]) stats[loser] = {};
+      if (!stats[winner][loser]) stats[winner][loser] = { wins: 0, losses: 0 };
+      if (!stats[loser][winner]) stats[loser][winner] = { wins: 0, losses: 0 };
+      stats[winner][loser].wins++;
+      stats[loser][winner].losses++;
+    }
+    for (const opponents of Object.values(stats)) for (const stat of Object.values(opponents)) {
+      stat.rate = Math.round(1000 * stat.wins / (stat.wins + stat.losses)) / 10;
+    }
+    return { ...archiveData, tournaments, records, players: [...players.values()], stats, matches: records.length };
+  }, [archiveData, createdTournaments, seriesTag]);
   const archiveInputRef = useRef(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1110,6 +1162,8 @@ export default function StatsPage() {
           </div>
         )}
 
+        <section className="seriesTagSelector"><label htmlFor="seriesTagSelect">大会タグ</label><select id="seriesTagSelect" value={seriesTag} onChange={e => {setSeriesTag(e.target.value);setSelected('all');setSeason('current');setMatrixSeason('current');}}><option value="all">すべて</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></section>
+        {newDataError && <p className="error">新しい大会の取得に失敗しました：{newDataError}</p>}
         <section className="statsGrid">
           <div className="stat card">
             <span>取得大会</span>
