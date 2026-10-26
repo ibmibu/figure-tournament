@@ -8,7 +8,7 @@ import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-
 
 const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '' };
 
-export default function MyPage() {
+export default function MyPage({ colorsOnly = false }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [draftName, setDraftName] = useState('no name');
@@ -189,9 +189,10 @@ export default function MyPage() {
   return <main className="page mypage-layout">
     <SiteHeader />
     <section className="my-page">
-      <h1>マイページ</h1>
+      <h1>{colorsOnly ? 'マイカラー登録' : 'マイページ'}</h1>
+      {colorsOnly && <Link className="my-colors-back" href="/mypage">← マイページに戻る</Link>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      <section className="profile-panel">
+      {!colorsOnly && <><section className="profile-panel">
         {<>
         <div className="profile-summary">
           {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
@@ -208,7 +209,10 @@ export default function MyPage() {
       <section className="my-results">
         <Link className="button-link results-link" href="/results">大会結果一覧を見る →</Link>
       </section>
-      <section className="my-results my-color-panel">
+      <section className="my-results">
+        <Link className="button-link results-link" href="/mypage/colors">マイカラー登録 →</Link>
+      </section></>}
+      {colorsOnly && <section className="my-results my-color-panel">
         <div className="my-color-heading">
           <h2>マイカラー登録</h2>
           <div style={{ display: 'flex', gap: 8 }}>
