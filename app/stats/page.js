@@ -1537,6 +1537,7 @@ export default function StatsPage() {
           )}
         </section>
 
+        {seriesTag === '人形劇' && (
         <section className="card">
           <div className="sectionHead">
             <div>
@@ -1547,10 +1548,6 @@ export default function StatsPage() {
               <h2>
                 レートランキング
               </h2>
-
-              <p>
-                25大会ごとにシーズンを区切り、レートを算出します。各シーズン1500から開始し、1試合ごとに更新します。RDはシーズンをまたいで引き継ぎ、長期間プレイしていない場合は経過期間に応じて増加します。相手のRDが自分より高い場合、シーズン別ランキングではRD差200以上で勝利時の獲得量を最大1.5倍にし、敗北時の減少量はRD差に応じて最大0.25倍に抑えます。「すべて」のランキングではRD差による勝利ボーナスを適用しません。
-              </p>
             </div>
 
           </div>
@@ -1843,7 +1840,7 @@ export default function StatsPage() {
             </div>
           )}
         </section>
-
+        )}
 
         <section className="card">
           <div className="sectionHead">
@@ -1852,7 +1849,7 @@ export default function StatsPage() {
                 TOURNAMENTS
               </div>
 
-              <h2>取得した人形劇</h2>
+              <h2>取得した大会</h2>
               <p className="tierExplanation">
                 Tier区分：
                 <span>S：24,000以上</span>
@@ -1863,9 +1860,6 @@ export default function StatsPage() {
               </p>
             </div>
 
-            <span className="badge">
-              {data.tournaments.length}
-            </span>
           </div>
 
           <div className="tournamentList">
@@ -1874,16 +1868,8 @@ export default function StatsPage() {
               .reverse()
               .map((tournament) => (
                 <div className="tournamentRow" key={tournament.number}>
-                  <a
-                    className="tournamentTitle"
-                    href={tournament.bracketUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <b>
-                      人形劇#
-                      {tournament.number}
-                    </b>
+                  <div className="tournamentTitle">
+                    <b>{tournament.name || `人形劇#${tournament.number}`}</b>
                     <small className="tournamentTier">
                       {(() => {
                         const score = Number(tournamentTierScores[Number(tournament.number)] || 0);
@@ -1901,7 +1887,7 @@ export default function StatsPage() {
                         {tournamentChampions.get(Number(tournament.number))}
                       </small>
                     )}
-                  </a>
+                  </div>
 
                   <span className="tournamentMeta">
                     {tournament.players}人
@@ -1910,11 +1896,6 @@ export default function StatsPage() {
               ))}
           </div>
         </section>
-
-        <footer>
-          NINGYOGEKI STATS <span>—</span>{' '}
-          Historical tournament results
-        </footer>
       </div>
     </main>
   );
