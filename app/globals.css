@@ -891,3 +891,42 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .tournament-create-page .create-panel .setup-group{margin:24px 0 20px;padding-top:18px}
  .tournament-create-page .create-panel .stage-checkbox-grid{row-gap:4px}
 }
+
+/* Consistent site-wide spacing and readable responsive panels */
+.page{width:100%;max-width:1120px;margin-inline:auto;padding-inline:clamp(16px,3vw,32px)}
+.page .intro{padding-top:clamp(28px,4vw,46px);padding-bottom:clamp(20px,3vw,32px)}
+.page .intro h1{line-height:1.25}
+.page .tournaments,.page .create-panel,.page .profile-panel,.page .my-results{min-width:0}
+.page .tournaments,.page .profile-panel,.page .my-results{padding:clamp(18px,2.5vw,28px)}
+.page .form-actions{flex-wrap:wrap}
+.mypage-layout .my-page{max-width:900px;margin:0 auto;padding-top:clamp(22px,4vw,40px)}
+.mypage-layout .my-page>h1{margin-bottom:24px}
+.mypage-layout .profile-panel,.mypage-layout .my-results{margin-bottom:20px}
+.mypage-layout .profile-panel{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px}
+.mypage-layout .profile-summary{margin:0;min-width:0;flex:1}
+.mypage-layout .profile-edit-form{width:100%;margin-top:8px}
+.mypage-layout .my-results:has(.results-link){padding-block:16px}
+.mypage-layout .my-color-panel{padding:clamp(20px,3vw,32px)}
+.my-color-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.my-color-heading h2{margin:0}
+.my-color-edit-toggle{white-space:nowrap}
+.my-color-panel>.setting-help{display:block;margin-bottom:22px}
+.my-color-form{display:grid;grid-template-columns:minmax(0,1fr) 110px 88px;gap:12px;align-items:stretch;margin-bottom:24px}
+.my-color-form select{min-width:0;width:100%;height:44px;padding:10px 12px}
+.my-color-form .my-color-add{height:44px;margin:0;white-space:nowrap}
+.my-color-form .my-color-add:disabled{opacity:.5;cursor:not-allowed}
+.my-color-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.my-color-list>.setting-help{grid-column:1/-1;padding:18px 0}
+.my-color-item{display:flex;justify-content:space-between;align-items:center;gap:12px;min-width:0;min-height:54px;padding:12px 14px;border:1px solid #e5e3eb;background:#faf9fc;border-radius:9px}
+.my-color-item>span{min-width:0;overflow-wrap:anywhere;font-weight:600}
+.my-color-item .my-color-delete{flex-shrink:0}
+@media(max-width:700px){
+ .page{padding-inline:16px}
+ .mypage-layout .profile-panel{align-items:flex-start}
+ .mypage-layout .profile-summary{flex-basis:100%}
+ .my-color-list{grid-template-columns:1fr}
+ .my-color-form{grid-template-columns:minmax(0,1fr) 90px}
+ .my-color-form .my-color-add{grid-column:1/-1;width:100%}
+ .my-color-heading{align-items:center}
+ .my-color-panel>.setting-help{margin-bottom:16px}
+}
