@@ -2148,3 +2148,6 @@ footer span {
 }
 
 }
+
+/* Solo-achievement names must stay white on the gold badge. */
+.achievementItem .characterSoloCard strong { color: #fff; }
