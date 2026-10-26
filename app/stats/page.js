@@ -123,13 +123,15 @@ export default function StatsPage() {
     const archiveTournaments = includeArchive ? (archiveData.tournaments || []) : [];
     const archiveRecords = includeArchive ? (archiveData.records || []) : [];
     const archivePlayers = includeArchive ? (archiveData.players || []) : [];
-    const selectedNew = createdTournaments.filter(t => seriesTag === 'all' || (t.seriesTags || []).includes(seriesTag));
+    // The server is the source of truth for new tournaments; never append browser snapshots.
+    const uniqueNew = [...new Map(createdTournaments.filter(t => t.id != null).map(t => [String(t.id), t])).values()];
+    const selectedNew = uniqueNew.filter(t => seriesTag === 'all' || (t.seriesTags || []).includes(seriesTag));
     const maxArchiveNumber = archiveTournaments.reduce((max, t) => Math.max(max, Number(t.number) || 0), 0);
     const players = new Map(archivePlayers.map(p => [canonicalAccountId(p.id), { ...p, id: canonicalAccountId(p.id) }]));
     const records = archiveRecords.map(r => ({ ...r, winnerId: canonicalAccountId(r.winnerId), loserId: canonicalAccountId(r.loserId) }));
     const tournaments = [...archiveTournaments];
-    selectedNew.forEach((t, index) => {
-      const number = maxArchiveNumber + index + 1;
+    selectedNew.forEach(t => {
+      const number = maxArchiveNumber + uniqueNew.findIndex(item => String(item.id) === String(t.id)) + 1;
       tournaments.push({ number, name: t.name, players: t.players.length, id: t.id, seriesTags: t.seriesTags });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
