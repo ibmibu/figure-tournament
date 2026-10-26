@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 async function authenticate(request) {
-  const token = (request.headers.get('authorization') || '').match(/^Bearer\\s+(.+)$/i)?.[1];
+  const token = (request.headers.get('authorization') || '').match(/^Bearer\s+(.+)$/i)?.[1];
   if (!token) return { error: NextResponse.json({ error: 'ログインしてください。' }, { status: 401 }) };
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
