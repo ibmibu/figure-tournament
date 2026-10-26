@@ -22,6 +22,8 @@ export default function MyPage() {
   const [selectedFighter, setSelectedFighter] = useState('マリオ');
   const [selectedColor, setSelectedColor] = useState('1P');
   const [editingColors, setEditingColors] = useState(false);
+  const [colorsReady, setColorsReady] = useState(false);
+  const [savingColors, setSavingColors] = useState(false);
   const fighters = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
 
   useEffect(() => {
@@ -36,7 +38,31 @@ export default function MyPage() {
         }
         if (!active) return;
         setSession(currentSession);
-        try { setMyColors(JSON.parse(window.localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]')); } catch {}
+        let localColors = [];
+        try { localColors = JSON.parse(window.localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]'); } catch {}
+        if (!Array.isArray(localColors)) localColors = [];
+        setMyColors(localColors);
+        try {
+          const response = await fetch('/api/my-colors', { headers: { Authorization: `Bearer ${currentSession.access_token}` }, cache: 'no-store' });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'マイカラーを読み込めませんでした。');
+          if (!active) return;
+          if (Array.isArray(result.colors)) {
+            setMyColors(result.colors);
+            try { window.localStorage.setItem('figure-my-colors-' + currentSession.user.id, JSON.stringify(result.colors)); } catch {}
+          } else if (localColors.length) {
+            const migrated = await fetch('/api/my-colors', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentSession.access_token}` },
+              body: JSON.stringify({ colors: localColors }),
+            });
+            if (!migrated.ok) throw new Error('以前のマイカラーをアカウントに移行できませんでした。');
+          }
+        } catch (colorError) {
+          if (active) setError(colorError.message || 'マイカラーの同期に失敗しました。');
+        } finally {
+          if (active) setColorsReady(true);
+        }
         const cacheKey = 'figure-profile-' + currentSession.user.id;
         try {
           const cached = window.localStorage.getItem(cacheKey);
@@ -81,19 +107,35 @@ export default function MyPage() {
     return () => { active = false; };
   }, []);
 
-  function saveMyColors(next) {
-    setMyColors(next);
-    if (session) {
-      try { window.localStorage.setItem('figure-my-colors-' + session.user.id, JSON.stringify(next)); } catch {}
+  async function saveMyColors(next) {
+    if (!session || !colorsReady || savingColors) return;
+    setSavingColors(true);
+    setError('');
+    try {
+      const response = await fetch('/api/my-colors', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ colors: next }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'マイカラーを保存できませんでした。');
+      setMyColors(result.colors);
+      try { window.localStorage.setItem('figure-my-colors-' + session.user.id, JSON.stringify(result.colors)); } catch {}
+    } catch (e) {
+      setError(e.message || 'マイカラーを保存できませんでした。');
+    } finally {
+      setSavingColors(false);
     }
   }
 
   function addMyColor() {
-    if (myColors.some(item => item.fighter === selectedFighter)) {
+    const fighter = availableFighters.includes(selectedFighter) ? selectedFighter : availableFighters[0];
+    if (!fighter) return;
+    if (myColors.some(item => item.fighter === fighter)) {
       setError('このファイターのカラーは登録済みです。編集から削除して変更してください。');
       return;
     }
-    saveMyColors([...myColors, { fighter: selectedFighter, color: selectedColor }]);
+    saveMyColors([...myColors, { fighter, color: selectedColor }]);
     setError('');
   }
 
@@ -139,6 +181,8 @@ export default function MyPage() {
     }
   }
 
+  const availableFighters = fighters.filter(name => !myColors.some(item => item.fighter === name));
+  const activeFighter = availableFighters.includes(selectedFighter) ? selectedFighter : (availableFighters[0] || '');
   const avatar = editing ? draftAvatar : profile.avatar_data;
   const displayName = editing ? draftName : profile.display_name;
 
@@ -168,17 +212,17 @@ export default function MyPage() {
         <div className="my-color-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h2>マイカラー登録</h2>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={addMyColor} disabled={myColors.some(item => item.fighter === selectedFighter)}>追加</button>
+            <button type="button" onClick={addMyColor} disabled={!colorsReady || savingColors || availableFighters.length === 0}>追加</button>
             <button type="button" onClick={() => setEditingColors(value => !value)}>{editingColors ? '編集終了' : '編集'}</button>
           </div>
         </div>
         <p className="setting-help">キャラ報告で使うカラーを登録します。登録したカラーは初期値になります。</p>
         <div className="my-color-form" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <select aria-label="ファイター" value={selectedFighter} onChange={e => setSelectedFighter(e.target.value)} style={{ flex: 1, minWidth: 0, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{fighters.map(name => <option key={name} value={name}>{name}</option>)}</select>
+          <select aria-label="ファイター" value={activeFighter} onChange={e => setSelectedFighter(e.target.value)} disabled={!colorsReady || savingColors || availableFighters.length === 0} style={{ flex: 1, minWidth: 0, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{availableFighters.map(name => <option key={name} value={name}>{name}</option>)}</select>
           <select aria-label="カラー" value={selectedColor} onChange={e => setSelectedColor(e.target.value)} style={{ width: 100, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select>
         </div>
         <div className="my-color-list">
-          {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
+          {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" className="my-color-delete" disabled={savingColors || !colorsReady} onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
         </div>
       </section>
     </section>
