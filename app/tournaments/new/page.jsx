@@ -8,6 +8,13 @@ const STAGES = ['終点', '戦場', '小戦場', 'ポケモンスタジアム2',
 const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロウバスティオン'];
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
 
+function nextTournamentName(previousName) {
+  const match = previousName.match(/^(.*?)(\d+)([^\d]*)$/u);
+  if (!match) return previousName;
+  const nextNumber = String(Number(match[2]) + 1).padStart(match[2].length, '0');
+  return `${match[1]}${nextNumber}${match[3]}`;
+}
+
 export default function NewTournamentPage() {
   const [editId, setEditId] = useState('');
   const [loadingEdit, setLoadingEdit] = useState(false);
@@ -30,6 +37,26 @@ export default function NewTournamentPage() {
     })();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (checkingAuth || new URLSearchParams(window.location.search).has('edit')) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await getSupabaseBrowserClient().auth.getSession();
+        if (!data.session) return;
+        const response = await fetch('/api/tournaments', {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        const previous = (result.tournaments || []).find(t => t.isOwner && typeof t.name === 'string' && t.name.trim());
+        if (active && previous) setName(current => current || nextTournamentName(previous.name));
+      } catch { /* Keep the name empty if previous tournaments cannot be loaded. */ }
+    })();
+    return () => { active = false; };
+  }, [checkingAuth]);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('edit') || '';
