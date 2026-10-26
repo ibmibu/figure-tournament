@@ -28,6 +28,19 @@ export default function SiteHeader() {
     }
   }, []);
 
+  async function signIn() {
+    try {
+      const next = window.location.pathname + window.location.search;
+      const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}` },
+      });
+      if (error) throw error;
+    } catch (error) {
+      window.alert(error.message || 'Googleログインを開始できませんでした。');
+    }
+  }
+
   async function signOut() {
     try {
       await getSupabaseBrowserClient().auth.signOut();
@@ -46,12 +59,12 @@ export default function SiteHeader() {
   return <>
     <header className="site-header">
       <div className="site-header-left">
-        <Link className="site-logo" href="/">Figure Tournament</Link>
+        <Link className="site-logo" href="/" aria-label="ホームに戻る"><img className="site-logo-image" src="/amiconne-logo.svg" alt="アミコネ" width="720" height="124" /></Link>
       </div>
       <div className="site-header-right">
         {ready && (signedIn
           ? <button type="button" className="header-auth-button" onClick={signOut}>ログアウト</button>
-          : <a className="header-auth-button" href="/login">ログイン</a>)}
+          : <button type="button" className="header-auth-button" onClick={signIn}>ログイン</button>)}
       </div>
     </header>
     <nav className="bottom-tab-bar" aria-label="メインナビゲーション">

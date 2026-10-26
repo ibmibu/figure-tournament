@@ -838,3 +838,8 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .results-table-placement{padding:6px;color:#171717}
 .results-table-row:has(.results-table-placement) .results-table-placement{font-weight:400}
 @media(max-width:600px){.results-table-row{grid-template-columns:minmax(0,1fr) 86px;font-size:12px}}
+
+/* Header logo */
+.site-logo{display:inline-flex;align-items:center;max-width:100%}
+.site-logo-image{display:block;width:180px;max-width:100%;height:auto}
+@media(max-width:600px){.site-logo-image{width:142px}}

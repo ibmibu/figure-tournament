@@ -8,9 +8,55 @@ const STAGES = ['終点', '戦場', '小戦場', 'ポケモンスタジアム2',
 const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロウバスティオン'];
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
 
+function nextTournamentName(previousName) {
+  const match = previousName.match(/^(.*?)(\d+)([^\d]*)$/u);
+  if (!match) return previousName;
+  const nextNumber = String(Number(match[2]) + 1).padStart(match[2].length, '0');
+  return `${match[1]}${nextNumber}${match[3]}`;
+}
+
 export default function NewTournamentPage() {
   const [editId, setEditId] = useState('');
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { data, error } = await getSupabaseBrowserClient().auth.getSession();
+        if (error) throw error;
+        if (!data.session) {
+          window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+          return;
+        }
+        if (active) setCheckingAuth(false);
+      } catch (error) {
+        if (active) setError(error.message || 'ログイン状態を確認できませんでした。');
+      }
+    })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (checkingAuth || new URLSearchParams(window.location.search).has('edit')) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await getSupabaseBrowserClient().auth.getSession();
+        if (!data.session) return;
+        const response = await fetch('/api/tournaments', {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        const previous = (result.tournaments || []).find(t => t.isOwner && typeof t.name === 'string' && t.name.trim());
+        if (active && previous) setName(current => current || nextTournamentName(previous.name));
+      } catch { /* Keep the name empty if previous tournaments cannot be loaded. */ }
+    })();
+    return () => { active = false; };
+  }, [checkingAuth]);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('edit') || '';
@@ -21,8 +67,15 @@ export default function NewTournamentPage() {
   }, []);
   const [name, setName] = useState('');
   const [format, setFormat] = useState(3);
-  const [participants, setParticipants] = useState(8);
+  const [participants, setParticipants] = useState(16);
   const [date, setDate] = useState('');
+
+  useEffect(() => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const localDate = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, '0')}-${String(nextWeek.getDate()).padStart(2, '0')}`;
+    if (!new URLSearchParams(window.location.search).has('edit')) setDate(localDate);
+  }, []);
   const [hour, setHour] = useState('21');
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
   const [stageRejects, setStageRejects] = useState(false);
@@ -35,7 +88,7 @@ export default function NewTournamentPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!editId) return;
+    if (!editId || checkingAuth) return;
     let active = true;
     (async () => {
       try {
@@ -65,7 +118,7 @@ export default function NewTournamentPage() {
       finally { if (active) setLoadingEdit(false); }
     })();
     return () => { active = false; };
-  }, [editId]);
+  }, [editId, checkingAuth]);
 
   function toggleStage(stage, setter) {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
@@ -139,6 +192,8 @@ export default function NewTournamentPage() {
   }
 
   const weekday = date ? ['日', '月', '火', '水', '木', '金', '土'][new Date(date + 'T12:00:00').getDay()] : '';
+
+  if (checkingAuth && !error) return <main className="page"><SiteHeader /><p className="setting-help">ログイン状態を確認しています…</p></main>;
 
   return <main className="page">
     <SiteHeader />

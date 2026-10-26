@@ -13,7 +13,9 @@ export default function LoginPage() {
     try {
       const supabase = getSupabaseBrowserClient();
       supabase.auth.getSession().then(({ data }) => {
-        if (data.session) router.replace('/');
+        const next = new URLSearchParams(window.location.search).get('next');
+        const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+        if (data.session) router.replace(safeNext);
       });
     } catch (loadError) {
       setError(loadError.message);
