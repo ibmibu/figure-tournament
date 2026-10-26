@@ -1906,11 +1906,6 @@ export default function StatsPage() {
               ))}
           </div>
         </section>
-
-        <footer>
-          NINGYOGEKI STATS <span>—</span>{' '}
-          Historical tournament results
-        </footer>
       </div>
     </main>
   );
