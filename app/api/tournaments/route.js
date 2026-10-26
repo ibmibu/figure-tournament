@@ -130,6 +130,30 @@ export async function PUT(request) {
       return NextResponse.json({ error: '更新する権限がありません。' }, { status: 403 });
     }
 
+    // Ordinary participants may update their own in-progress match, but must not
+    // undo finished results or create organizer-only walkover decisions via PUT.
+    if (!isCurrentOwner) {
+      const activeIds = new Set(existingMatches.filter(match =>
+        !match.winnerId && match.player1 && match.player2 &&
+        [match.player1, match.player2].some(player =>
+          String(player?.id) === String(user.id)
+        )
+      ).map(match => String(match.id)));
+      const nextById = new Map(inputMatches.map(match => [String(match.id), match]));
+      if (existingMatches.length !== inputMatches.length || existingMatches.some(match => {
+        const next = nextById.get(String(match.id));
+        if (!next) return true;
+        if ((match.resultType || null) !== (next.resultType || null)) return true;
+        if (match.winnerId != null && String(next.winnerId) !== String(match.winnerId)) return true;
+        if (match.winnerId != null &&
+          JSON.stringify(match.matchState ?? null) !== JSON.stringify(next.matchState ?? null)) return true;
+        if (match.winnerId == null && next.winnerId != null && !activeIds.has(String(match.id))) return true;
+        return false;
+      })) {
+        return NextResponse.json({ error: '確定結果の変更・不戦勝設定は主催者のみ行えます。' }, { status: 403 });
+      }
+    }
+
     const { ownerId, ownerUserId, ...safeInput } = input;
     const updated = isCurrentOwner
       ? { ...safeInput, ownerUserId: existingOwnerId || user.id }
