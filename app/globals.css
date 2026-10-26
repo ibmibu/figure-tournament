@@ -930,3 +930,7 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .my-color-heading{align-items:center}
  .my-color-panel>.setting-help{margin-bottom:16px}
 }
+
+.my-colors-back{display:inline-block;margin:-8px 0 22px;color:#6244ae;font-size:14px;text-decoration:none}
+.my-colors-back:hover{text-decoration:underline}
+.mypage-layout .my-results:has(> .results-link){padding-block:16px}
