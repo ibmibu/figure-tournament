@@ -11,6 +11,25 @@ const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カ�
 export default function NewTournamentPage() {
   const [editId, setEditId] = useState('');
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { data, error } = await getSupabaseBrowserClient().auth.getSession();
+        if (error) throw error;
+        if (!data.session) {
+          window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+          return;
+        }
+        if (active) setCheckingAuth(false);
+      } catch (error) {
+        if (active) setError(error.message || 'ログイン状態を確認できませんでした。');
+      }
+    })();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('edit') || '';
@@ -42,7 +61,7 @@ export default function NewTournamentPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!editId) return;
+    if (!editId || checkingAuth) return;
     let active = true;
     (async () => {
       try {
@@ -72,7 +91,7 @@ export default function NewTournamentPage() {
       finally { if (active) setLoadingEdit(false); }
     })();
     return () => { active = false; };
-  }, [editId]);
+  }, [editId, checkingAuth]);
 
   function toggleStage(stage, setter) {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
@@ -146,6 +165,8 @@ export default function NewTournamentPage() {
   }
 
   const weekday = date ? ['日', '月', '火', '水', '木', '金', '土'][new Date(date + 'T12:00:00').getDay()] : '';
+
+  if (checkingAuth && !error) return <main className="page"><SiteHeader /><p className="setting-help">ログイン状態を確認しています…</p></main>;
 
   return <main className="page">
     <SiteHeader />
