@@ -186,7 +186,7 @@ export default function MyPage() {
   const avatar = editing ? draftAvatar : profile.avatar_data;
   const displayName = editing ? draftName : profile.display_name;
 
-  return <main className="page">
+  return <main className="page mypage-layout">
     <SiteHeader />
     <section className="my-page">
       <h1>マイページ</h1>
@@ -209,7 +209,7 @@ export default function MyPage() {
         <Link className="button-link results-link" href="/results">大会結果一覧を見る →</Link>
       </section>
       <section className="my-results my-color-panel">
-        <div className="my-color-heading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div className="my-color-heading">
           <h2>マイカラー登録</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             <button type="button" onClick={addMyColor} disabled={!colorsReady || savingColors || availableFighters.length === 0}>追加</button>
@@ -217,9 +217,9 @@ export default function MyPage() {
           </div>
         </div>
         <p className="setting-help">キャラ報告で使うカラーを登録します。登録したカラーは初期値になります。</p>
-        <div className="my-color-form" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <select aria-label="ファイター" value={activeFighter} onChange={e => setSelectedFighter(e.target.value)} disabled={!colorsReady || savingColors || availableFighters.length === 0} style={{ flex: 1, minWidth: 0, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{availableFighters.map(name => <option key={name} value={name}>{name}</option>)}</select>
-          <select aria-label="カラー" value={selectedColor} onChange={e => setSelectedColor(e.target.value)} style={{ width: 100, padding: 10, border: '1px solid #d8d5e0', borderRadius: 7, background: '#fff' }}>{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select>
+        <div className="my-color-form">
+          <select aria-label="ファイター" value={activeFighter} onChange={e => setSelectedFighter(e.target.value)} disabled={!colorsReady || savingColors || availableFighters.length === 0} className="my-color-fighter-select">{availableFighters.map(name => <option key={name} value={name}>{name}</option>)}</select>
+          <select aria-label="カラー" value={selectedColor} onChange={e => setSelectedColor(e.target.value)} className="my-color-variant-select">{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select>
         </div>
         <div className="my-color-list">
           {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" className="my-color-delete" disabled={savingColors || !colorsReady} onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
