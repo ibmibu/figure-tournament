@@ -1915,4 +1915,17 @@ footer span {
   }
 }
 
+/* Light tables: invert the former dark table surfaces and text. */
+.matrixWrap, .playerTableWrap { border-color: #d8d3df; background: #fff; }
+.matrix th, .matrix td { border-color: #e2dee7; }
+.matrix thead th, .playerTable th { background: #eae6ef; color: #514b5b; }
+.matrix tbody th { background: #f5f2f8; color: #25202c; }
+.matrix td { background: #fff; color: #827b89; }
+.matrix td.hasData { background: #f0eaf7; color: #211b2a; }
+.matrix td small { color: #6d6574; }
+.matrix .self { background: #e8e3eb; color: #a59dac; }
+.playerTable th, .playerTable td { border-color: #e2dee7; }
+.playerTable td { background: #fff; color: #3f3749; }
+.playerTable td strong, .playerTable .opponentName { color: #211b2a; }
+
 }
