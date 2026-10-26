@@ -5,7 +5,7 @@ import './stats.css';
 import SiteHeader from '../../components/SiteHeader';
 import { CHARACTER_ALIASES } from './data/characterAliases';
 import { MANUAL_CHARACTER_REPORTS } from './data/manualCharacterReports';
-import { calculateElo, calculateTournamentTierScores } from '../../lib/ratings';
+import { ELO_INITIAL_RATING, calculateElo, calculateTournamentTierScores } from '../../lib/ratings';
 import { getPlayerAchievements } from '../../lib/stats-data';
 
 const STORAGE_KEY = 'ningyogeki-stats-v4';
@@ -1775,6 +1775,7 @@ export default function StatsPage() {
         </section>
         )}
 
+        {seriesTag === '人形劇' && (
         <section className="card matchesCard">
           <button
             className="collapse"
@@ -1841,7 +1842,9 @@ export default function StatsPage() {
             </div>
           )}
         </section>
+        )}
 
+        {seriesTag === '人形劇' && (
         <section className="card">
           <div className="sectionHead">
             <div>
@@ -1896,6 +1899,7 @@ export default function StatsPage() {
               ))}
           </div>
         </section>
+        )}
       </div>
     </main>
   );
