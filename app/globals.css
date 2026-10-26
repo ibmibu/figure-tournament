@@ -872,3 +872,22 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .legal-page section p{margin:0}
 .legal-draft-notice{background:#fff7e6;padding:12px 16px;border-radius:8px;color:#785622}
 .legal-updated{font-size:13px;color:#667085;margin-top:24px}
+
+/* Tournament creation: balanced centered desktop form and consistent vertical rhythm. */
+.tournament-create-page .intro{max-width:760px;margin:0 auto;padding:34px 0 24px}
+.tournament-create-page .create-panel{max-width:760px;width:100%;margin:0 auto 64px;padding:32px 36px}
+.tournament-create-page .create-panel form>label{margin:0 0 24px}
+.tournament-create-page .create-panel .setup-group{margin:28px 0 24px;padding:22px 0 0}
+.tournament-create-page .create-panel .setup-group legend{padding-right:14px}
+.tournament-create-page .create-panel .format-options,
+.tournament-create-page .create-panel .toggle-options{margin-top:10px;gap:12px}
+.tournament-create-page .create-panel .setup-group>label{margin:10px 0 18px}
+.tournament-create-page .create-panel .stage-checkbox-grid{row-gap:7px;margin-top:14px}
+.tournament-create-page .create-panel .stage-checkbox{padding:4px 0!important}
+.tournament-create-page .create-panel .form-actions{margin-top:30px}
+@media(max-width:640px){
+ .tournament-create-page .intro{padding:30px 0 22px}
+ .tournament-create-page .create-panel{padding:22px 18px;margin-bottom:32px}
+ .tournament-create-page .create-panel .setup-group{margin:24px 0 20px;padding-top:18px}
+ .tournament-create-page .create-panel .stage-checkbox-grid{row-gap:4px}
+}
