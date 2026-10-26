@@ -6,3 +6,7 @@ create table if not exists public.user_fighter_colors (
 );
 alter table public.user_fighter_colors enable row level security;
 -- The authenticated server API uses the service role; no public RLS policies.
+
+-- Explicit API grants for projects where new tables receive no automatic grants.
+grant usage on schema public to service_role;
+grant select, insert, update, delete on table public.user_fighter_colors to service_role;
