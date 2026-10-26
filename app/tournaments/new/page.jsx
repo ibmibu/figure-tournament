@@ -202,7 +202,7 @@ export default function NewTournamentPage() {
 
   if (checkingAuth && !error) return <main className="page"><SiteHeader /><p className="setting-help">ログイン状態を確認しています…</p></main>;
 
-  return <main className="page">
+  return <main className="page tournament-create-page">
     <SiteHeader />
     <section className="intro">
       
