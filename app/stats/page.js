@@ -10,6 +10,43 @@ import { getPlayerAchievements } from '../../lib/stats-data';
 
 const STORAGE_KEY = 'ningyogeki-stats-v4';
 
+function SeriesTournamentStats({ tournaments }) {
+  const matches = tournaments.flatMap(t => (t.bracket?.rounds || []).flatMap(round =>
+    round.filter(m => m.player1 && m.player2 && m.winnerId).map(m => ({
+      winner: String(m.winnerId),
+      p1: m.player1,
+      p2: m.player2,
+    }))
+  ));
+  const players = new Map();
+  for (const m of matches) for (const p of [m.p1, m.p2]) players.set(String(p.id), p.name || p.displayName || String(p.id));
+  for (const t of tournaments) for (const p of t.joinedPlayers || []) if (!p.isDemo) players.set(String(p.id), p.name || p.displayName || String(p.id));
+  const ids = [...players.keys()].sort((a,b) => players.get(a).localeCompare(players.get(b), 'ja'));
+  const stats = new Map();
+  for (const m of matches) {
+    for (const [self, opponent] of [[m.p1,m.p2],[m.p2,m.p1]]) {
+      const key = String(self.id) + '|' + String(opponent.id);
+      const s = stats.get(key) || {wins:0,losses:0};
+      if (String(self.id) === m.winner) s.wins++; else s.losses++;
+      stats.set(key,s);
+    }
+  }
+  return <>
+    <section className="statsGrid">
+      <div className="stat card"><span>取得大会</span><strong>{tournaments.length}</strong><small>tournaments</small></div>
+      <div className="stat card"><span>参加人数</span><strong>{ids.length}</strong><small>players</small></div>
+      <div className="stat card"><span>総対戦数</span><strong>{matches.length}</strong><small>matches</small></div>
+    </section>
+    <section className="card matrixCard">
+      <div className="sectionHead"><div><div className="sectionLabel">PLAYER VIEW</div><h2>対戦表</h2></div></div>
+      {ids.length ? <div className="matrixWrap"><table className="matrix"><thead><tr><th>PLAYER</th>{ids.map(id=><th key={id}>{players.get(id)}</th>)}</tr></thead><tbody>{ids.map(id=><tr key={id}><th>{players.get(id)}</th>{ids.map(other=>{
+        const s=stats.get(id+'|'+other);
+        return <td key={other} className={id===other?'self':s?'hasData':''}>{id===other?'—':s?<><strong>{Math.round(s.wins/(s.wins+s.losses)*1000)/10}%</strong><small>{s.wins}-{s.losses}</small></>:'—'}</td>;
+      })}</tr>)}</tbody></table></div> : <p>このタグの対戦記録はまだありません。</p>}
+    </section>
+  </>;
+}
+
 const ACCOUNT_ALIASES = {
   '99450': '145071',
   '118591': '149650',
@@ -105,6 +142,14 @@ const removeExactName = (text, name) => {
 
 export default function StatsPage() {
   const [data, setData] = useState(null);
+  const [seriesTag, setSeriesTag] = useState('人形劇');
+  const [createdTournaments, setCreatedTournaments] = useState([]);
+  useEffect(() => {
+    fetch('/api/tournaments', {cache:'no-store'}).then(r => r.ok ? r.json() : null).then(result => { if (result?.tournaments) setCreatedTournaments(result.tournaments); }).catch(() => {});
+  }, []);
+  const availableTags = [...new Set(['人形劇', ...createdTournaments.flatMap(t => Array.isArray(t.seriesTags) ? t.seriesTags : [])])].sort((a,b)=>a.localeCompare(b,'ja'));
+  const filteredCreated = createdTournaments.filter(t => seriesTag === 'all' || (Array.isArray(t.seriesTags) && t.seriesTags.includes(seriesTag)));
+  const showArchive = seriesTag === '人形劇' || seriesTag === 'all';
   const archiveInputRef = useRef(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1110,6 +1155,9 @@ export default function StatsPage() {
           </div>
         )}
 
+        <section className="seriesTagSelector"><label htmlFor="seriesTagSelect">大会タグ</label><select id="seriesTagSelect" value={seriesTag} onChange={e=>setSeriesTag(e.target.value)}><option value="all">すべて</option>{availableTags.map(tag=><option key={tag} value={tag}>{tag}</option>)}</select></section>
+        {filteredCreated.length > 0 && <SeriesTournamentStats tournaments={filteredCreated} />}
+        {showArchive && <>
         <section className="statsGrid">
           <div className="stat card">
             <span>取得大会</span>
@@ -1857,6 +1905,7 @@ export default function StatsPage() {
           </div>
         </section>
 
+        </>}
         <footer>
           NINGYOGEKI STATS <span>—</span>{' '}
           Historical tournament results
