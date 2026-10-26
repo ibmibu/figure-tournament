@@ -46,7 +46,7 @@ export default function SiteHeader() {
   return <>
     <header className="site-header">
       <div className="site-header-left">
-        <Link className="site-logo" href="/">Figure Tournament</Link>
+        <Link className="site-logo" href="/" aria-label="ホームに戻る"><img className="site-logo-image" src="/amiconne-logo.svg" alt="アミコネ" width="720" height="124" /></Link>
       </div>
       <div className="site-header-right">
         {ready && (signedIn
