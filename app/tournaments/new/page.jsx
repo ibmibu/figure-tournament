@@ -21,8 +21,15 @@ export default function NewTournamentPage() {
   }, []);
   const [name, setName] = useState('');
   const [format, setFormat] = useState(3);
-  const [participants, setParticipants] = useState(8);
+  const [participants, setParticipants] = useState(16);
   const [date, setDate] = useState('');
+
+  useEffect(() => {
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    const localDate = `${nextWeek.getFullYear()}-${String(nextWeek.getMonth() + 1).padStart(2, '0')}-${String(nextWeek.getDate()).padStart(2, '0')}`;
+    if (!new URLSearchParams(window.location.search).has('edit')) setDate(localDate);
+  }, []);
   const [hour, setHour] = useState('21');
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
   const [stageRejects, setStageRejects] = useState(false);
