@@ -223,8 +223,6 @@ export default function StatsPage() {
       );
     }
 
-    syncToOverlay(data);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   function toggleSort(key) {
