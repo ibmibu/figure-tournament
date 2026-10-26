@@ -1537,6 +1537,7 @@ export default function StatsPage() {
           )}
         </section>
 
+        {seriesTag === '人形劇' && (
         <section className="card">
           <div className="sectionHead">
             <div>
@@ -1839,7 +1840,7 @@ export default function StatsPage() {
             </div>
           )}
         </section>
-
+        )}
 
         <section className="card">
           <div className="sectionHead">
@@ -1848,7 +1849,7 @@ export default function StatsPage() {
                 TOURNAMENTS
               </div>
 
-              <h2>取得した人形劇</h2>
+              <h2>取得した大会</h2>
               <p className="tierExplanation">
                 Tier区分：
                 <span>S：24,000以上</span>
@@ -1859,9 +1860,6 @@ export default function StatsPage() {
               </p>
             </div>
 
-            <span className="badge">
-              {data.tournaments.length}
-            </span>
           </div>
 
           <div className="tournamentList">
@@ -1870,16 +1868,8 @@ export default function StatsPage() {
               .reverse()
               .map((tournament) => (
                 <div className="tournamentRow" key={tournament.number}>
-                  <a
-                    className="tournamentTitle"
-                    href={tournament.bracketUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <b>
-                      人形劇#
-                      {tournament.number}
-                    </b>
+                  <div className="tournamentTitle">
+                    <b>{tournament.name || `人形劇#${tournament.number}`}</b>
                     <small className="tournamentTier">
                       {(() => {
                         const score = Number(tournamentTierScores[Number(tournament.number)] || 0);
@@ -1897,7 +1887,7 @@ export default function StatsPage() {
                         {tournamentChampions.get(Number(tournament.number))}
                       </small>
                     )}
-                  </a>
+                  </div>
 
                   <span className="tournamentMeta">
                     {tournament.players}人
