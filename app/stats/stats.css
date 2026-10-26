@@ -2075,4 +2075,76 @@ footer span {
  .record{font-size:9px}
 }
 
+
+/* Historical tournaments: comfortable rows with readable tier scores and winners. */
+.tournamentList {
+  border-top: 1px solid #e2e7ef;
+}
+.tournamentList .tournamentRow {
+  gap: 12px;
+  padding: 12px 12px;
+  background: #fff;
+  border-bottom: 1px solid #e2e7ef;
+}
+.tournamentList .tournamentRow:nth-child(even) {
+  background: #f8f9fc;
+}
+.tournamentList .tournamentRow:hover {
+  background: #f0f3fa;
+}
+.tournamentList .tournamentTitle {
+  grid-template-columns: 102px 78px minmax(0, 1fr);
+  column-gap: 12px;
+  overflow: hidden;
+  color: #26354d;
+}
+.tournamentList .tournamentTitle b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 750;
+}
+.tournamentList .tournamentTier {
+  color: #5c697c;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  gap: 6px;
+}
+.tournamentList .tournamentChampion {
+  color: #28714c;
+  font-size: 12px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tournamentList .tournamentMeta {
+  color: #526076;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 700px) {
+  .tournamentList .tournamentRow {
+    gap: 9px;
+    padding: 11px 8px;
+  }
+  .tournamentList .tournamentTitle {
+    grid-template-columns: 84px 67px minmax(0, 1fr);
+    column-gap: 7px;
+  }
+  .tournamentList .tournamentTitle b { font-size: 13px; }
+  .tournamentList .tournamentTier { font-size: 10.5px; gap: 5px; }
+  .tournamentList .tournamentChampion { font-size: 11px; }
+  .tournamentList .tournamentMeta { font-size: 11px; }
+}
+@media (max-width: 380px) {
+  .tournamentList .tournamentRow { gap: 7px; padding-inline: 6px; }
+  .tournamentList .tournamentTitle {
+    grid-template-columns: 76px 63px minmax(0, 1fr);
+    column-gap: 6px;
+  }
+  .tournamentList .tournamentTitle b { font-size: 12px; }
+}
+
 }
