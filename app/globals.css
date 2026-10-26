@@ -936,3 +936,96 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-colors-back{display:inline-block;margin:-8px 0 22px;color:#6244ae;font-size:14px;text-decoration:none}
 .my-colors-back:hover{text-decoration:underline}
 .mypage-layout .my-results:has(> .results-link){padding-block:16px}
+
+
+/* Tournament organizer match actions */
+.tournament-detail-page .bracket-admin-hint {
+  margin: 10px 0 14px;
+  font-size: 12px;
+  color: #52657b;
+}
+.tournament-detail-page .bracket-admin-panel {
+  margin: 10px 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #b9d2e9;
+  border-radius: 10px;
+  background: #f5f9fe;
+  color: #162940;
+}
+.tournament-detail-page .bracket-admin-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  font-size: 14px;
+}
+.tournament-detail-page .bracket-admin-heading strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tournament-detail-page .bracket-admin-heading button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #53657c;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tournament-detail-page .bracket-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 8px;
+}
+.tournament-detail-page .bracket-admin-actions button {
+  padding: 9px 12px;
+  border: 1px solid #a8c4df;
+  border-radius: 7px;
+  background: #fff;
+  color: #194e83;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.tournament-detail-page .bracket-admin-actions .bracket-admin-reset {
+  border-color: #d89c9c;
+  color: #b83232;
+}
+.tournament-detail-page .bracket-admin-actions button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.tournament-detail-page .bracket-admin-panel > p {
+  margin: 10px 0 0;
+  color: #68788a;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match.match-admin-selected {
+  border-color: #3170b8 !important;
+  box-shadow: 0 0 0 2px rgba(49,112,184,.28);
+}
+.tournament-detail-page .bracket-forfeit-label {
+  position: absolute;
+  top: -10px;
+  left: 7px;
+  z-index: 2;
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid #b3d3c2;
+  border-radius: 4px;
+  background: #e7f6ed;
+  color: #17683e;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .tournament-detail-page .bracket-admin-panel {padding: 12px;}
+  .tournament-detail-page .bracket-admin-actions {flex-direction: column;}
+  .tournament-detail-page .bracket-admin-actions button {width: 100%; text-align: left;}
+}
