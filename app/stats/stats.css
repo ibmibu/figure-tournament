@@ -2151,3 +2151,125 @@ footer span {
 
 /* Solo-achievement names must stay white on the gold badge. */
 .achievementItem .characterSoloCard strong { color: #fff; }
+
+
+/* Ningyogeki-style achievement layout on the existing Figure Tournament palette. */
+.stats-shell .achievementPanel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 18px;
+  row-gap: 0;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #dfe3ed;
+  border-radius: 14px;
+}
+.stats-shell .achievementPanel .achievementItem {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  align-items: flex-start;
+  gap: 8px;
+}
+.stats-shell .achievementPanel .characterUsageItem {
+  grid-column: 1 / -1;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+}
+.stats-shell .achievementPanel .titleItem {
+  grid-column: 1 / -1;
+  padding-bottom: 20px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #e4e7ee;
+}
+.stats-shell .achievementPanel .achievementItem > span {
+  color: #657087;
+  font-size: 12px;
+}
+.stats-shell .achievementPanel .achievementItem > strong {
+  color: #253149;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+.stats-shell .achievementPanel .achievementItem > small {
+  color: #6f798b;
+  font-size: 12px;
+}
+.stats-shell .achievementTournaments > .achievementTournament {
+  background: #eff3eb;
+  color: #253149;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+.stats-shell .achievementTournaments > .achievementTournament > span {
+  color: #253149;
+}
+.stats-shell .achievementTierCounts {
+  gap: 12px;
+  margin-top: 12px;
+}
+.stats-shell .achievementTierCounts > span {
+  color: #566074;
+}
+.stats-shell .achievementPanel .streakItem {
+  padding-left: 0;
+  border-left: 0;
+}
+@media (max-width: 560px) {
+  .stats-shell .achievementPanel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 10px;
+    padding: 14px;
+  }
+  .stats-shell .achievementPanel .characterUsageItem {
+    min-height: 0;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+  }
+  .stats-shell .achievementPanel .titleItem {
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+  }
+  .stats-shell .achievementTournaments {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .stats-shell .achievementTournaments > .achievementTournament {
+    padding: 7px 7px;
+    min-height: 32px;
+    font-size: 11px;
+  }
+  .stats-shell .achievementTierCounts {
+    justify-content: space-between;
+    gap: 3px;
+    margin-top: 12px;
+  }
+  .stats-shell .achievementTierCounts > span {
+    gap: 3px;
+    font-size: 11px;
+  }
+  .stats-shell .achievementPanel .achievementItem:not(.titleItem):not(.characterUsageItem) {
+    justify-content: flex-start;
+    gap: 5px;
+    min-height: 90px;
+  }
+  .stats-shell .achievementPanel .achievementItem > span {
+    font-size: 11px;
+  }
+  .stats-shell .achievementPanel .achievementItem > strong {
+    font-size: clamp(16px, 4.8vw, 20px);
+    line-height: 1.3;
+  }
+  .stats-shell .achievementPanel .achievementItem > small {
+    font-size: 10px;
+    letter-spacing: -0.3px;
+    margin-top: 2px;
+  }
+}
