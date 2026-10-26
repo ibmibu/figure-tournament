@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import SiteHeader from '../../components/SiteHeader';
+export const metadata = { title: 'お問い合わせ | アミコネ' };
+export default function Page(){return <main className="page"><SiteHeader/><article className="legal-page"><Link href="/">← ホームに戻る</Link><h1>お問い合わせ</h1><p className="legal-draft-notice">※ 以下は公開前のひな型です。運営方針・実際のデータ取扱いに合わせて内容を確認・修正してください。</p><section><h2>お問い合わせについて</h2><p>不具合の報告、大会データの修正、アカウント情報や個人情報に関するご相談、権利に関するお問い合わせを受け付けるためのページです。</p></section><section><h2>連絡先</h2><p>【公開前に設定してください】運営者の連絡用メールアドレス、問い合わせフォームURL、または公式SNSの連絡先をここに記載してください。現時点では、このページから直接送信することはできません。</p></section><section><h2>お問い合わせ時のお願い</h2><p>不具合については発生したページ、操作手順、発生日時、エラー表示をお知らせください。パスワードや認証トークンなどの秘密情報は送らないでください。</p></section><p className="legal-updated">制定日：公開時に記入</p></article></main>}
