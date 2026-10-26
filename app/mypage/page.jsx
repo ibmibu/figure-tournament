@@ -226,7 +226,7 @@ export default function MyPage({ colorsOnly = false }) {
           <select aria-label="カラー" value={selectedColor} onChange={e => setSelectedColor(e.target.value)} className="my-color-variant-select">{['1P','2P','3P','4P','5P','6P','7P','8P'].map(color => <option key={color} value={color}>{color}</option>)}</select>
         </div>
         <div className="my-color-list">
-          {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" className="my-color-delete" disabled={savingColors || !colorsReady} onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
+          {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className={`my-color-item${editingColors ? ' is-editing' : ''}`} key={item.fighter}><span className="my-color-name">{item.fighter}</span><span className="my-color-value">{item.color}</span>{editingColors && <button type="button" className="my-color-delete" disabled={savingColors || !colorsReady} onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
         </div>
       </section>}
     </section>

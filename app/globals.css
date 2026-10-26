@@ -915,11 +915,13 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-color-form select{min-width:0;width:100%;height:44px;padding:10px 12px}
 .my-color-form .my-color-add{height:44px;margin:0;white-space:nowrap}
 .my-color-form .my-color-add:disabled{opacity:.5;cursor:not-allowed}
-.my-color-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.my-color-list>.setting-help{grid-column:1/-1;padding:18px 0}
-.my-color-item{display:flex;justify-content:space-between;align-items:center;gap:12px;min-width:0;min-height:54px;padding:12px 14px;border:1px solid #e5e3eb;background:#faf9fc;border-radius:9px}
-.my-color-item>span{min-width:0;overflow-wrap:anywhere;font-weight:600}
-.my-color-item .my-color-delete{flex-shrink:0}
+.my-color-list{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+.my-color-list>.setting-help{padding:18px 0}
+.my-color-item{display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:center;column-gap:12px;min-width:0;min-height:44px;padding:8px 2px;border:0;background:transparent;border-radius:0;box-shadow:none}
+.my-color-item.is-editing{grid-template-columns:minmax(0,1fr) 48px 72px}
+.my-color-item .my-color-name{min-width:0;overflow-wrap:anywhere;font-weight:600}
+.my-color-item .my-color-value{width:48px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700}
+.my-color-item .my-color-delete{flex-shrink:0;margin-left:0}
 @media(max-width:700px){
  .page{padding-inline:16px}
  .mypage-layout .profile-panel{align-items:flex-start}
