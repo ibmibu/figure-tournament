@@ -228,7 +228,7 @@ export default function MyPage({ colorsOnly = false }) {
         <div className="my-color-list">
           {myColors.length === 0 ? <p className="setting-help">登録したカラーはここに表示されます。</p> : myColors.map(item => <div className="my-color-item" key={item.fighter}><span>{item.fighter}　{item.color}</span>{editingColors && <button type="button" className="my-color-delete" disabled={savingColors || !colorsReady} onClick={() => saveMyColors(myColors.filter(value => value.fighter !== item.fighter))}>削除</button>}</div>)}
         </div>
-      </section>
+      </section>}
     </section>
     <footer>Figure Tournament</footer>
   </main>;
