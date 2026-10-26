@@ -849,3 +849,10 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .bottom-tab{flex-direction:row;gap:0;font-size:14px;min-height:54px}
 .bottom-tab+.bottom-tab{border-left:1px solid #d9d5e0}
 @media(max-width:600px){.bottom-tab-bar{padding-left:0;padding-right:0}.bottom-tab{min-height:52px;font-size:13px}}
+
+/* Home legal footer */
+.home-legal-footer{margin-top:56px;padding:28px 0 24px;border-top:1px solid #ddd9e4;color:#686374;font-size:12px;line-height:1.8}
+.home-legal-footer strong{display:block;color:#292533;font-size:17px;margin-bottom:8px}
+.home-legal-footer p{margin:0 0 14px;max-width:850px}
+.home-legal-links{display:flex;flex-wrap:wrap;gap:8px 22px}
+.home-legal-links span{color:#625b70}
