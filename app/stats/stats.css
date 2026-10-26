@@ -2015,4 +2015,9 @@ footer span {
 .stats-shell .trendAxisLabel { fill: #59677d; }
 .stats-shell footer { color: #657087; }
 
+
+.seriesTagSelector { display:flex;align-items:center;gap:16px;padding:16px 20px;margin:18px 0 8px;background:#fff;border:1px solid #dfe3ed;border-radius:16px;color:#253149; }
+.seriesTagSelector label { font-size:14px;font-weight:800;white-space:nowrap; }
+.seriesTagSelector select { flex:1;min-width:0;background:#f7f8fc;color:#253149;border:1px solid #dfe3ed;border-radius:9px;padding:11px 14px;font:inherit; }
+
 }
