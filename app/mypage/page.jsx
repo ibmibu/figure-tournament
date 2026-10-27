@@ -192,26 +192,27 @@ export default function MyPage({ colorsOnly = false }) {
       <h1>{colorsOnly ? 'マイカラー登録' : 'マイページ'}</h1>
       {colorsOnly && <Link className="my-colors-back" href="/mypage">← マイページに戻る</Link>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      {!colorsOnly && <><section className="profile-panel">
-        {<>
-        <div className="profile-summary">
-          {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
-          <div className="profile-name">{displayName || 'no name'}</div>
-        </div>
-        {!editing ? <button type="button" className="button-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setEditing(true); }}>プロフィールを編集</button> : <form onSubmit={saveProfile} className="profile-edit-form">
-          <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
-          <label>アイコン画像<input type="file" accept="image/*" onChange={chooseImage} /></label>
-          <p className="setting-help">画像は1MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
-          <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
-        </form>}
-        </>}
-      </section>
-      <section className="my-results">
-        <Link className="button-link results-link" href="/results">大会結果一覧を見る →</Link>
-      </section>
-      <section className="my-results">
-        <Link className="button-link results-link" href="/mypage/colors">マイカラー登録 →</Link>
-      </section></>}
+      {!colorsOnly && <>
+        <section className="mypage-minimal-profile">
+          <div className="profile-summary">
+            {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
+            <div className="mypage-profile-info">
+              <div className="profile-name">{displayName || 'no name'}</div>
+              {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>}
+            </div>
+          </div>
+          {editing && <form onSubmit={saveProfile} className="profile-edit-form">
+            <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
+            <label>アイコン画像<input type="file" accept="image/*" onChange={chooseImage} /></label>
+            <p className="setting-help">画像は1MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
+            <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
+          </form>}
+        </section>
+        <nav className="mypage-minimal-nav" aria-label="マイページメニュー">
+          <Link href="/results" className="mypage-minimal-link">大会結果一覧 <span aria-hidden="true">›</span></Link>
+          <Link href="/mypage/colors" className="mypage-minimal-link">マイカラー登録 <span aria-hidden="true">›</span></Link>
+        </nav>
+      </>}
       {colorsOnly && <section className="my-results my-color-panel">
         <div className="my-color-heading">
           <h2>マイカラー登録</h2>
