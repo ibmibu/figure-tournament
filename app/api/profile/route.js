@@ -44,7 +44,7 @@ export async function PUT(request) {
     const displayName = String(body.display_name || '').trim();
     const avatarData = String(body.avatar_data || '');
     const friendCode = String(body.friend_code || '').trim().toUpperCase();
-    if (friendCode && !/^SW-\\d{4}-\\d{4}-\\d{4}$/.test(friendCode)) return NextResponse.json({ error: 'フレンドコードはSW-0000-0000-0000形式で入力してください。' }, { status: 400 });
+    if (friendCode && !/^[A-Z0-9-]+$/.test(friendCode)) return NextResponse.json({ error: 'フレンドコードは英数字とハイフンのみで入力してください。' }, { status: 400 });
     if (!displayName || displayName.length > 40) return NextResponse.json({ error: '名前は1〜40文字で入力してください。' }, { status: 400 });
     if (avatarData && (!avatarData.startsWith('data:image/') || avatarData.length > 1400000)) {
       return NextResponse.json({ error: '画像は1MB以下の画像を選択してください。' }, { status: 400 });
