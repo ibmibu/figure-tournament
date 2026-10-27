@@ -60,7 +60,7 @@ export async function POST(request) {
       }
       bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
       const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, completedAt: bracket.complete ? new Date().toISOString() : current.completedAt };
-      const { data: changed, error: writeError } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', current).select('id');
+      const { data: changed, error: writeError } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
       if (writeError) throw writeError;
       if (changed?.length) return NextResponse.json({ ok: true, tournament: updated });
       // Another player committed first. Reload, merge this vote and retry.
