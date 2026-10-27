@@ -1120,3 +1120,22 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .home-tournament-name{min-width:85px}
  .home-tournament-table .status{font-size:10px;padding:4px 6px}
 }
+
+/* Mobile home: each tournament becomes a compact two-line row; no horizontal scroll. */
+@media (max-width:640px){
+ .home-tournament-table-wrap{overflow-x:visible;max-width:100%}
+ .home-tournament-table,.home-tournament-table tbody{display:block;width:100%;min-width:0}
+ .home-tournament-table thead{display:none}
+ .home-tournament-table .home-tournament-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:13px 2px;border-bottom:1px solid #e8ebef;align-items:center}
+ .home-tournament-table .home-tournament-row:last-child{border-bottom:0}
+ .home-tournament-table .home-tournament-row td{display:block;padding:0;border:0;min-width:0;white-space:normal}
+ .home-tournament-table .home-tournament-row td:nth-child(1){grid-column:1;grid-row:1;font-size:14px}
+ .home-tournament-table .home-tournament-row td:nth-child(2){grid-column:1;grid-row:2;font-size:11px;color:#667085}
+ .home-tournament-table .home-tournament-row td:nth-child(2)::before{content:"形式："}
+ .home-tournament-table .home-tournament-row td:nth-child(3){grid-column:1;grid-row:3;font-size:11px;color:#667085}
+ .home-tournament-table .home-tournament-row td:nth-child(3)::before{content:"参加："}
+ .home-tournament-table .home-tournament-row td:nth-child(4){grid-column:1 / -1;grid-row:4;font-size:11px;color:#667085}
+ .home-tournament-table .home-tournament-row td:nth-child(4)::before{content:"開催："}
+ .home-tournament-table .home-tournament-row td:nth-child(5){grid-column:2;grid-row:1;justify-self:end}
+ .home-tournament-name{min-width:0;overflow-wrap:anywhere}
+}
