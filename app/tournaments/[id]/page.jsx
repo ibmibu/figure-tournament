@@ -570,13 +570,37 @@ export default function TournamentPage() {
       </div>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
-      <h3>使用ステージ</h3>
-      <div className="detail-stage-list">{(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
-      {tournament.stageRejects && tournament.stageSettings && <>
+      {!tournament.stageRejects && <>
+        <h3>使用ステージ</h3>
+        <div className="detail-stage-list">
+          {(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}
+        </div>
+      </>}
+      {tournament.stageRejects && <>
         <h3>拒否ステージ設定</h3>
-        <p className="generated-description">スターター：{(tournament.stageSettings.starterStages || []).join('、') || '未設定'}</p>
-        <p className="generated-description">カウンターピック：{(tournament.stageSettings.counterpickStages || []).join('、') || '未設定'}</p>
-        <p className="generated-description">最初のプレイヤー：{tournament.stageSettings.firstPlayerRejects}ステージ拒否／次のプレイヤー：{tournament.stageSettings.secondPlayerRejects}ステージ拒否／2ゲーム目以降：{tournament.stageSettings.laterRejects}ステージ拒否</p>
+        <div className="reject-stage-groups">
+          <div className="reject-stage-group">
+            <strong>スターター</strong>
+            <div className="detail-stage-list">
+              {(tournament.stageSettings?.starterStages || []).length
+                ? tournament.stageSettings.starterStages.map(stage => <span key={stage}>{stage}</span>)
+                : <span>未設定</span>}
+            </div>
+          </div>
+          <div className="reject-stage-group">
+            <strong>カウンターピック</strong>
+            <div className="detail-stage-list">
+              {(tournament.stageSettings?.counterpickStages || []).length
+                ? tournament.stageSettings.counterpickStages.map(stage => <span key={stage}>{stage}</span>)
+                : <span>未設定</span>}
+            </div>
+          </div>
+        </div>
+        {tournament.stageSettings && <div className="reject-stage-rule-grid">
+          <div><span>最初のプレイヤー</span><strong>{tournament.stageSettings.firstPlayerRejects ?? 1}ステージ拒否</strong></div>
+          <div><span>次のプレイヤー</span><strong>{tournament.stageSettings.secondPlayerRejects ?? 2}ステージ拒否</strong></div>
+          <div><span>2ゲーム目以降</span><strong>{tournament.stageSettings.laterRejects ?? 3}ステージ拒否</strong></div>
+        </div>}
       </>}
 
       {isOwner && !tournament.bracket && <section className="bracket-panel" id="tournament-bracket">
