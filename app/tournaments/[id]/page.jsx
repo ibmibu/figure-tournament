@@ -461,7 +461,7 @@ export default function TournamentPage() {
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
           const demoMatch = isOwner && Boolean(demoPerspective) && [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective));
-          const viewingPlayerId = demoMatch ? demoPerspective : String(p1Id);
+          const viewingPlayerId = demoMatch ? demoPerspective : (isOwner ? String(p1Id) : String(currentUserId));
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
@@ -471,6 +471,8 @@ export default function TournamentPage() {
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
+          const canActFor = id => isOwner && !demoMatch ? true : String(id) === String(viewingPlayerId);
+          const waitingFor = id => <p className="setting-help match-turn-waiting">🟢 {[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
 
             <div className="game-top">
@@ -483,15 +485,15 @@ export default function TournamentPage() {
             </div>
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               {!game?.stage ? <>
-                {rejectsDone ? <>
+                {rejectsDone ? (canActFor(chooserId) ? <>
                   <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={stageSelection===stage?'stage selected':'stage'} onClick={()=>setStageSelection(stage)}>{stage}</button>)}</div>
                   <button className="submit" type="button" disabled={!stageSelection || savingBracket || (demoMatch && String(chooserId) !== String(viewingPlayerId))} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
-                </> : <>
+                </> : waitingFor(chooserId)) : (canActFor(rejectTurnId) ? <>
                   <p className="setting-help">ステージ拒否：{[match.player1,match.player2].find(p=>p?.id===rejectTurnId)?.name || 'プレイヤー'}（{state.gameNumber===1 ? (rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))}個選択）</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={rejectSelection.includes(stage)?'stage selected':'stage'} disabled={rejectSelection.length >= (state.gameNumber===1 ? Number(rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))) && !rejectSelection.includes(stage)} onClick={()=>setRejectSelection(old=>old.includes(stage)?old.filter(s=>s!==stage):[...old,stage])}>{stage}</button>)}</div>
                   <button className="submit" type="button" disabled={savingBracket || (demoMatch && String(rejectTurnId) !== String(viewingPlayerId))} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
-                </>}
+                </> : waitingFor(rejectTurnId))}
               </> : <>
                 <p className="setting-help">決定ステージ：{game.stage}</p>
                 <h3 className="match-result-heading">試合結果を入力</h3>
