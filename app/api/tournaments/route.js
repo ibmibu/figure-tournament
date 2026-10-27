@@ -40,7 +40,11 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     ownerUserId === user.id ||
     (!ownerUserId && legacyOwnerToken && row.owner_token === legacyOwnerToken)
   ));
-  return { ...publicData, isOwner };
+  const activeMatches = (data.bracket?.rounds || []).flat();
+  const organizerMatch = activeMatches.find(match => !match.winnerId && match.player1 && match.player2 &&
+    [match.player1, match.player2].some(player => !player.isDemo && String(player.userId || player.id) === String(ownerUserId)));
+  const effectiveStreamMatchId = data.streamMatchId === undefined ? (organizerMatch?.id || null) : data.streamMatchId;
+  return { ...publicData, isOwner, effectiveStreamMatchId };
 }
 
 function errorResponse(error, fallback) {
