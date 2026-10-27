@@ -1067,3 +1067,10 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .tournament-board-form textarea{display:block;width:100%;resize:vertical;min-height:82px;border:1px solid #cfcbd9;border-radius:8px;padding:12px;font:inherit;color:inherit;background:#fff}
 .tournament-board-form button{align-self:flex-end}
 @media(max-width:600px){.tournament-board{padding:14px}.tournament-board-meta{align-items:flex-start;flex-direction:column}}
+
+
+.tournament-board-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.tournament-board-heading h2{margin:0}
+.tournament-board-toggle{white-space:nowrap;font-weight:700;color:#453487}
+.tournament-board-latest{border-color:#cbc3e3;background:#f8f6fd}
+.tournament-board-latest p{max-height:5.2em;overflow:auto}
