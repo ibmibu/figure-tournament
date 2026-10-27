@@ -175,8 +175,8 @@ export default function NewTournamentPage() {
       try { const url = new URL(streamUrl.trim()); if (!['https:', 'http:'].includes(url.protocol)) throw new Error(); }
       catch { setError('配信先URLはhttps://から始まる正しいURLを入力してください。'); return; }
     }
-    if (streamFriendCode.trim() && !/^SW-\d{4}-\d{4}-\d{4}$/.test(streamFriendCode.trim().toUpperCase())) {
-      setError('配信台のフレンドコードはSW-0000-0000-0000形式で入力してください。'); return;
+    if (streamFriendCode.trim() && !/^[A-Z0-9-]+$/.test(streamFriendCode.trim().toUpperCase())) {
+      setError('配信台のフレンドコードは英数字とハイフンのみで入力してください。'); return;
     }
 
     const tournament = {
@@ -332,7 +332,7 @@ export default function NewTournamentPage() {
           <input type="url" value={streamUrl} onChange={event => setStreamUrl(event.target.value)} placeholder="https://www.youtube.com/live/..." />
         </label>
         <label>配信台のフレンドコード（任意）
-          <input type="text" value={streamFriendCode} onChange={event => setStreamFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" maxLength={17} pattern="SW-[0-9]{4}-[0-9]{4}-[0-9]{4}" title="SW-0000-0000-0000形式" />
+          <input type="text" value={streamFriendCode} onChange={event => setStreamFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" />
         </label>
         <label>大会説明（任意）
           <textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="大会について伝えたいことがあれば入力してください。" rows={4} maxLength={2000} />
