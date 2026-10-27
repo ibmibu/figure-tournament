@@ -30,6 +30,7 @@ export default function TournamentPage() {
   const [boardMessages, setBoardMessages] = useState([]);
   const [boardText, setBoardText] = useState('');
   const [boardBusy, setBoardBusy] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
   const [boardError, setBoardError] = useState('');
 
   async function refreshBoard() {
@@ -599,18 +600,28 @@ export default function TournamentPage() {
 {!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="大会掲示板">
-        <h2>大会掲示板</h2>
-        <p className="setting-help">主催者からのお知らせ・対戦相手への連絡・トラブル相談にご利用ください。投稿内容は誰でも閲覧できます。</p>
-        <div className="tournament-board-messages">
-          {boardMessages.length === 0 ? <p className="setting-help">まだ投稿はありません。</p> : boardMessages.map(message => <article className="tournament-board-message" key={message.id}>
-            <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
-            <p>{message.body}</p>
-          </article>)}
+        <div className="tournament-board-heading">
+          <h2>大会掲示板</h2>
+          <button type="button" className="tournament-board-toggle" aria-expanded={boardOpen} onClick={() => setBoardOpen(open => !open)}>{boardOpen ? '閉じる ▲' : '履歴を開く ▼'}</button>
         </div>
-        {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
-          <textarea aria-label="掲示板への投稿" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="メッセージを入力（1000文字以内）" rows={3} />
-          <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
-        </form> : <p className="setting-help">投稿できるのは主催者と大会参加者のみです。</p>}
+        {boardMessages.length ? <article className="tournament-board-message tournament-board-latest">
+          <div className="tournament-board-meta"><strong>最新：{boardMessages[boardMessages.length - 1].author_name}{boardMessages[boardMessages.length - 1].is_organizer ? '（主催者）' : ''}</strong><time dateTime={boardMessages[boardMessages.length - 1].created_at}>{new Date(boardMessages[boardMessages.length - 1].created_at).toLocaleString('ja-JP')}</time></div>
+          <p>{boardMessages[boardMessages.length - 1].body}</p>
+        </article> : <p className="setting-help">まだ投稿はありません。</p>}
+        {boardOpen && <>
+          <p className="setting-help">主催者からのお知らせ・対戦相手への連絡・トラブル相談にご利用ください。投稿内容は誰でも閲覧できます。</p>
+          <div className="tournament-board-messages">
+            {boardMessages.length > 1 && boardMessages.slice(0, -1).map(message => <article className="tournament-board-message" key={message.id}>
+              <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
+              <p>{message.body}</p>
+            </article>)}
+            {boardMessages.length <= 1 && <p className="setting-help">過去の投稿はありません。</p>}
+          </div>
+          {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
+            <textarea aria-label="掲示板への投稿" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="メッセージを入力（1000文字以内）" rows={3} />
+            <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+          </form> : <p className="setting-help">投稿できるのは主催者と大会参加者のみです。</p>}
+        </>}
         {boardError && <p className="form-error" role="alert">{boardError}</p>}
       </section>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
