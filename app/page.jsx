@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import SiteHeader from '../components/SiteHeader';
 import Link from 'next/link';
-import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
 
 function formatStartDate(value) {
   if (!value) return '';
@@ -28,23 +27,22 @@ function TournamentTable({items}) {
 
 export default function Home() {
   const [tournaments, setTournaments] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    const cached = readTournamentCache();
-    if (cached) setTournaments(cached);
     fetch('/api/tournaments', { cache: 'no-store' })
       .then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
-        writeTournamentCache(latest);
-        if (active) setTournaments(latest);
+        if (active) { setTournaments(latest); setLoadError(''); }
       })
       .catch(error => {
         console.error(error);
-        if (active) setTournaments([]);
-      });
+        if (active) { setTournaments([]); setLoadError(error.message || '大会データを読み込めませんでした。'); }
+      }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
 
@@ -58,11 +56,11 @@ export default function Home() {
         <h2>大会一覧</h2>
         <a className="button-link" href="/tournaments/new">＋ 大会を作成</a>
       </div>
-      {active.length===0?<div className="empty"><p>開催予定・進行中の大会はありません。</p></div>:<TournamentTable items={active}/>}
+      {loading ? <div className="empty"><p>大会を読み込み中…</p></div> : loadError ? <div className="empty"><p role="alert">{loadError}</p></div> : active.length===0?<div className="empty"><p>開催予定・進行中の大会はありません。</p></div>:<TournamentTable items={active}/>}
     </section>
     <section className="tournaments home-finished-tournaments">
       <div className="section-title"><h2>終了した大会</h2><span className="home-finished-period">過去2週間</span></div>
-      {finished.length===0?<div className="empty"><p>過去2週間に終了した大会はありません。</p></div>:<TournamentTable items={finished}/>}
+      {loading ? <div className="empty"><p>大会を読み込み中…</p></div> : loadError ? <div className="empty"><p role="alert">{loadError}</p></div> : finished.length===0?<div className="empty"><p>過去2週間に終了した大会はありません。</p></div>:<TournamentTable items={finished}/>}
     </section>
     <footer className="home-legal-footer">
       <p>本サイトは非公式の大会管理サービスです。任天堂株式会社および『大乱闘スマッシュブラザーズ』公式とは関係ありません。</p>
