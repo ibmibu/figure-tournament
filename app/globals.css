@@ -1052,3 +1052,71 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .match-controls-below .stage-striker-results .active{border-color:currentColor;background:#f0f8f5!important}
 .match-controls-below .stage-striker-results button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:640px){.match-controls-below .stage-striker-results{grid-template-columns:1fr 1fr}}
+
+
+/* Tournament board */
+.tournament-board{margin:20px 0;padding:20px;background:#fff;border:1px solid #dedbe6;border-radius:12px}
+.tournament-board h2{margin:0 0 8px;font-size:19px}
+.tournament-board-messages{display:flex;flex-direction:column;gap:10px;max-height:440px;overflow-y:auto;margin:14px 0}
+.tournament-board-message{padding:12px 14px;border:1px solid #e4e1ea;border-radius:9px;background:#faf9fc}
+.tournament-board-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;align-items:center;font-size:12px}
+.tournament-board-meta strong{color:#453487;font-size:13px}
+.tournament-board-meta time{color:#77717f}
+.tournament-board-message p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
+.tournament-board-form{display:flex;flex-direction:column;gap:9px}
+.tournament-board-form textarea{display:block;width:100%;resize:vertical;min-height:82px;border:1px solid #cfcbd9;border-radius:8px;padding:12px;font:inherit;color:inherit;background:#fff}
+.tournament-board-form button{align-self:flex-end}
+@media(max-width:600px){.tournament-board{padding:14px}.tournament-board-meta{align-items:flex-start;flex-direction:column}}
+
+
+.tournament-board-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.tournament-board-heading h2{margin:0}
+.tournament-board-toggle{white-space:nowrap;font-weight:700;color:#453487}
+.tournament-board-latest{border-color:#cbc3e3;background:#f8f6fd}
+.tournament-board-latest p{max-height:5.2em;overflow:auto}
+
+
+/* Streaming station in the tournament bracket */
+.bracket-match.match-streaming{border:2px solid #e85b36!important;background:#fff4eb!important;box-shadow:0 0 0 2px rgba(232,91,54,.12)}
+.bracket-stream-badge{position:absolute;top:-12px;left:8px;z-index:2;display:inline-flex;align-items:center;padding:2px 9px;border-radius:5px;background:#d94428;color:#fff;font-size:11px;font-weight:800;line-height:1.4;white-space:nowrap}
+.bracket-admin-forfeit{margin-top:12px;padding:12px;border:1px solid #e6c7b6;background:#fffaf6;border-radius:8px}
+.bracket-admin-forfeit p{margin:0 0 10px;font-weight:700}
+
+
+/* My Page: minimal, border-led layout */
+.mypage-layout .mypage-minimal-profile{padding:8px 0 20px;border-bottom:1px solid #dfe3e8}
+.mypage-layout .mypage-minimal-profile .profile-summary{display:flex;align-items:center;gap:16px;margin:0}
+.mypage-layout .mypage-minimal-profile .profile-avatar{width:58px;height:58px;border-radius:50%;flex-shrink:0}
+.mypage-layout .mypage-minimal-profile .profile-avatar-empty{background:#f0edf8}
+.mypage-layout .mypage-profile-info{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.mypage-layout .mypage-profile-info .profile-name{font-size:19px;color:#142033}
+.mypage-layout .mypage-edit-link{border:0;background:transparent;padding:0;color:#6046a6;font-weight:700;font-size:13px;text-align:left}
+.mypage-layout .mypage-edit-link span{font-size:19px;vertical-align:-1px}
+.mypage-layout .mypage-minimal-profile .profile-edit-form{margin:20px 0 0;width:100%}
+.mypage-layout .mypage-minimal-nav{display:block}
+.mypage-layout .mypage-minimal-link{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0;border-bottom:1px solid #dfe3e8;text-decoration:none;color:#142033;font-size:15px;font-weight:700}
+.mypage-layout .mypage-minimal-link span{font-size:27px;line-height:1;color:#89909a;font-weight:400}
+.mypage-layout .mypage-minimal-link:hover{color:#6046a6}
+@media(max-width:600px){.mypage-layout .mypage-minimal-profile .profile-avatar{width:52px;height:52px}.mypage-layout .mypage-minimal-link{padding:19px 0}}
+
+
+/* Home tournament list: compact table, not nested cards */
+.home-tournament-table-wrap{width:100%;overflow-x:auto;margin-top:22px;-webkit-overflow-scrolling:touch}
+.home-tournament-table{width:100%;border-collapse:collapse;table-layout:auto;text-align:left;color:var(--ink,#101b2d);font-size:14px}
+.home-tournament-table th{padding:12px 14px;font-size:12px;font-weight:800;white-space:nowrap;border-bottom:1px solid #dfe3e8}
+.home-tournament-table td{padding:14px;border-bottom:1px solid #e8ebef;vertical-align:middle;white-space:nowrap}
+.home-tournament-table tbody tr:last-child td{border-bottom:0}
+.home-tournament-row{cursor:pointer;transition:background-color .15s}
+.home-tournament-row:hover{background:#f5f5fa}
+.home-tournament-name{font-weight:800;text-decoration:none;color:inherit;white-space:normal;overflow-wrap:anywhere;display:block;min-width:100px}
+.home-tournament-name:hover{color:#5e45a8}
+.home-tournament-date{font-variant-numeric:tabular-nums}
+.home-tournament-table .status{display:inline-block}
+@media(max-width:640px){
+ .home-tournament-table-wrap{margin-top:16px}
+ .home-tournament-table{font-size:12px}
+ .home-tournament-table th{font-size:11px;padding:10px 8px}
+ .home-tournament-table td{padding:12px 8px}
+ .home-tournament-name{min-width:85px}
+ .home-tournament-table .status{font-size:10px;padding:4px 6px}
+}

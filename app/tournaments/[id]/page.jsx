@@ -23,9 +23,54 @@ export default function TournamentPage() {
   const [savingBracket, setSavingBracket] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
+  const [showForfeitChoices, setShowForfeitChoices] = useState(false);
   const [rejectSelection, setRejectSelection] = useState([]);
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
+
+  const [boardMessages, setBoardMessages] = useState([]);
+  const [boardText, setBoardText] = useState('');
+  const [boardBusy, setBoardBusy] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [boardError, setBoardError] = useState('');
+
+  async function refreshBoard() {
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/tournaments/board?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('掲示板を読み込めませんでした。');
+      const data = await response.json();
+      setBoardMessages(data.messages || []);
+      setBoardError('');
+    } catch { setBoardError('掲示板を読み込めませんでした。'); }
+  }
+
+  useEffect(() => {
+    refreshBoard();
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') refreshBoard(); }, 10000);
+    return () => clearInterval(timer);
+  }, [id]);
+
+  async function postBoardMessage(event) {
+    event.preventDefault();
+    if (!boardText.trim() || boardBusy) return;
+    setBoardBusy(true);
+    setBoardError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('投稿にはログインが必要です。');
+      const response = await fetch('/api/tournaments/board', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ id, text: boardText.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '投稿できませんでした。');
+      setBoardText('');
+      await refreshBoard();
+    } catch (error) { setBoardError(error.message || '投稿できませんでした。'); }
+    finally { setBoardBusy(false); }
+  }
 
   async function loadTournament() {
     setLoading(true);
@@ -128,7 +173,7 @@ export default function TournamentPage() {
       if (mi >= 0) {
         const ownMatch = round[mi];
         setActiveMatchId(ownMatch.id);
-        if (!ownMatch.matchState && !tournament.isOwner) startMatch(ri, mi);
+        if (!ownMatch.matchState) startMatch(ri, mi);
         return;
       }
     }
@@ -229,7 +274,7 @@ export default function TournamentPage() {
     if (!isOwner) return;
     const players = tournament.joinedPlayers || [];
     if (players.length < 2) { setError('トーナメント開始には参加者が2人以上必要です。'); return; }
-    const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), resultPlacements: null };
+    const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), streamMatchId: undefined, resultPlacements: null };
     await saveBracket(next);
     setTimeout(() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
@@ -408,6 +453,27 @@ export default function TournamentPage() {
     }
   }
 
+  async function setStreamMatch(matchId) {
+    if (!tournament?.isOwner || savingBracket) return;
+    setSavingBracket(true);
+    setError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('主催者としてログインしてください。');
+      const response = await fetch('/api/tournaments/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ id, matchId, ownerToken: ownerId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '配信台を設定できませんでした。');
+      setTournament(result.tournament);
+      updateCachedTournament(result.tournament);
+      setNotice(matchId ? '配信台を変更しました。' : '配信台設定を解除しました。');
+    } catch (e) { setError(e.message || '配信台を設定できませんでした。'); }
+    finally { setSavingBracket(false); }
+  }
+
   async function joinTournament(event) {
     event.preventDefault();
     setError('');
@@ -477,6 +543,7 @@ export default function TournamentPage() {
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
   const canEditAdminMatch = Boolean(selectedAdminMatch?.player1 && selectedAdminMatch?.player2);
+  const streamMatchId = tournament.effectiveStreamMatchId ?? null;
 
   return <main className="page tournament-detail-page">
     <section className="intro tournament-heading">
@@ -555,24 +622,54 @@ export default function TournamentPage() {
         })()}
 {!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
+      {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="大会掲示板">
+        <div className="tournament-board-heading">
+          <h2>大会掲示板</h2>
+          <button type="button" className="tournament-board-toggle" aria-expanded={boardOpen} onClick={() => setBoardOpen(open => !open)}>{boardOpen ? '閉じる ▲' : '履歴を開く ▼'}</button>
+        </div>
+        {boardMessages.length ? <article className="tournament-board-message tournament-board-latest">
+          <div className="tournament-board-meta"><strong>最新：{boardMessages[boardMessages.length - 1].author_name}{boardMessages[boardMessages.length - 1].is_organizer ? '（主催者）' : ''}</strong><time dateTime={boardMessages[boardMessages.length - 1].created_at}>{new Date(boardMessages[boardMessages.length - 1].created_at).toLocaleString('ja-JP')}</time></div>
+          <p>{boardMessages[boardMessages.length - 1].body}</p>
+        </article> : <p className="setting-help">まだ投稿はありません。</p>}
+        {boardOpen && <>
+          <p className="setting-help">主催者からのお知らせ・対戦相手への連絡・トラブル相談にご利用ください。投稿内容は誰でも閲覧できます。</p>
+          <div className="tournament-board-messages">
+            {boardMessages.length > 1 && boardMessages.slice(0, -1).map(message => <article className="tournament-board-message" key={message.id}>
+              <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
+              <p>{message.body}</p>
+            </article>)}
+            {boardMessages.length <= 1 && <p className="setting-help">過去の投稿はありません。</p>}
+          </div>
+          {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
+            <textarea aria-label="掲示板への投稿" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="メッセージを入力（1000文字以内）" rows={3} />
+            <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+          </form> : <p className="setting-help">投稿できるのは主催者と大会参加者のみです。</p>}
+        </>}
+        {boardError && <p className="form-error" role="alert">{boardError}</p>}
+      </section>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
-        {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセットや不戦勝の設定ができます。</div>}
+        {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
         {isOwner && selectedAdminMatch && <section className="bracket-admin-panel" aria-label="主催者の対戦管理">
           <div className="bracket-admin-heading">
             <strong>選択中：{selectedAdminMatch.player1?.name || '未定'} VS {selectedAdminMatch.player2?.name || '未定'}</strong>
-            <button type="button" onClick={() => setAdminMatchSelection(null)}>閉じる ×</button>
+            <button type="button" onClick={() => { setAdminMatchSelection(null); setShowForfeitChoices(false); }}>閉じる ×</button>
           </div>
-          {!canEditAdminMatch ? <p>両方の対戦相手が決まると操作できます。</p> : <div className="bracket-admin-actions">
-            {selectedAdminMatch.winnerId || selectedAdminMatch.matchState ? <button type="button" className="bracket-admin-reset" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'reset')}>結果をリセット</button> : null}
-            <button type="button" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'forfeit', selectedAdminMatch.player1.id)}>不戦勝：{selectedAdminMatch.player1.name}</button>
-            <button type="button" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'forfeit', selectedAdminMatch.player2.id)}>不戦勝：{selectedAdminMatch.player2.name}</button>
-            {!selectedAdminMatch.winnerId && !tournament.bracket.complete && <button type="button" disabled={savingBracket} onClick={() => {
-              if (selectedAdminMatch.matchState) setActiveMatchId(selectedAdminMatch.id);
-              else startMatch(adminMatchSelection.roundIndex, adminMatchSelection.matchIndex);
-            }}>対戦画面を開く</button>}
-          </div>}
+          {!canEditAdminMatch ? <p>両方の対戦相手が決まると操作できます。</p> : <>
+            <div className="bracket-admin-actions">
+              {selectedAdminMatch.winnerId || selectedAdminMatch.matchState ? <button type="button" className="bracket-admin-reset" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'reset')}>結果をリセット</button> : null}
+              {!selectedAdminMatch.winnerId && <button type="button" disabled={savingBracket} onClick={() => setShowForfeitChoices(value => !value)}>{showForfeitChoices ? '不戦勝設定を閉じる' : '不戦勝にする'}</button>}
+              {String(streamMatchId) === String(selectedAdminMatch.id) ? <button type="button" disabled={savingBracket} onClick={() => setStreamMatch(null)}>配信台を解除</button> : !selectedAdminMatch.winnerId ? <button type="button" disabled={savingBracket} onClick={() => setStreamMatch(selectedAdminMatch.id)}>配信台に設定</button> : null}
+            </div>
+            {showForfeitChoices && !selectedAdminMatch.winnerId && <div className="bracket-admin-forfeit">
+              <p>不戦勝にする選手を選択してください。</p>
+              <div className="bracket-admin-actions">
+                <button type="button" disabled={savingBracket} onClick={() => { setShowForfeitChoices(false); administerMatch(selectedAdminMatch, 'forfeit', selectedAdminMatch.player1.id); }}>{selectedAdminMatch.player1.name} を勝者にする</button>
+                <button type="button" disabled={savingBracket} onClick={() => { setShowForfeitChoices(false); administerMatch(selectedAdminMatch, 'forfeit', selectedAdminMatch.player2.id); }}>{selectedAdminMatch.player2.name} を勝者にする</button>
+              </div>
+            </div>}
+          </>}
           <p>変更すると、このカードにつながる後続の対戦結果も必要に応じてリセットされます。</p>
         </section>}
         <div className="bracket-rounds" style={{ "--bracket-height": `${64 + tournament.bracket.rounds[0].length * 104}px` }}>{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
@@ -596,12 +693,14 @@ export default function TournamentPage() {
           const canStartMatch = !state && (isOwner || isOwnMatch) && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete;
           const canSelect = isOwner || canStartMatch;
           const handleSelect = () => {
-            if (isOwner) setAdminMatchSelection({ roundIndex: ri, matchIndex: mi });
+            if (isOwner) { setAdminMatchSelection({ roundIndex: ri, matchIndex: mi }); setShowForfeitChoices(false); }
             else if (canStartMatch) startMatch(ri, mi);
           };
           const isAdminSelected = isOwner && adminMatchSelection?.roundIndex === ri && adminMatchSelection?.matchIndex === mi;
-          return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
+          const isStreamMatch = String(streamMatchId) === String(match.id);
+          return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}${isStreamMatch ? ' match-streaming' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
             
+            {isStreamMatch && <span className="bracket-stream-badge">● 配信台</span>}
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{player?.name || ""}{player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (state?.score?.[player.id] || 0)) : ""}</strong></div>)}</div>
 
 
