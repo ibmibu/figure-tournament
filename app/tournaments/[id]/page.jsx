@@ -14,6 +14,8 @@ export default function TournamentPage() {
   const [loading, setLoading] = useState(true);
   const [ownerId, setOwnerId] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [savedFriendCode, setSavedFriendCode] = useState('');
+  const [joinFriendCode, setJoinFriendCode] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
@@ -91,6 +93,7 @@ export default function TournamentPage() {
               if (!response.ok) return;
               const profileResult = await response.json();
               setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
+              setSavedFriendCode(String(profileResult.profile?.friend_code || '').trim());
             }).catch(() => {});
         }
       } catch {}
@@ -519,7 +522,7 @@ export default function TournamentPage() {
       const response = await fetch('/api/tournaments/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, friendCode: savedFriendCode || joinFriendCode.trim().toUpperCase() }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '参加登録を保存できませんでした。');
@@ -780,6 +783,7 @@ export default function TournamentPage() {
         <h3>参加する</h3>
         {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
           {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
+          {savedFriendCode ? <p className="setting-help">フレンドコード：{savedFriendCode}（マイページ登録済み）</p> : <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" maxLength={17} pattern="SW-[0-9]{4}-[0-9]{4}-[0-9]{4}" title="SW-0000-0000-0000形式" required /></label>}
           {error && <p className="form-error" role="alert">{error}</p>}
           {notice && <p className="form-success" role="status">{notice}</p>}
           <button className="submit" type="submit">参加登録する</button>
