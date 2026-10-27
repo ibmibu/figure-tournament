@@ -1268,3 +1268,21 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .bracket-admin-modal-backdrop{padding:14px}
  .tournament-detail-page .bracket-admin-modal{padding:18px}
 }
+
+/* Keep the four tournament overview facts in a balanced 2-by-2 grid on phones. */
+@media(max-width:640px){
+ .tournament-detail-page #tournament-overview .detail-grid{
+   display:grid;
+   grid-template-columns:repeat(2,minmax(0,1fr));
+   gap:10px;
+ }
+ .tournament-detail-page #tournament-overview .detail-grid>div{
+   min-width:0;
+   padding:12px 10px;
+ }
+ .tournament-detail-page #tournament-overview .detail-grid strong{
+   font-size:13px;
+   line-height:1.5;
+   overflow-wrap:anywhere;
+ }
+}
