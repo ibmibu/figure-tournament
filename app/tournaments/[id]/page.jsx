@@ -623,9 +623,13 @@ export default function TournamentPage() {
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
             </div>
             <div className="player-strip">
-              <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b><span>{state?.score?.[p1Id] || 0} 勝</span></div>
-              <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b><span>{state?.score?.[match.player2.id] || 0} 勝</span></div>
+              <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b></div>
+              <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b></div>
             </div>
+            {(() => {
+              const opponent = [match.player1, match.player2].find(player => String(player.id) !== String(viewingPlayerId));
+              return opponent?.friendCode ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{opponent.friendCode}</strong></div> : null;
+            })()}
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               {!game?.stage ? <>
                 {rejectsDone ? (canActFor(chooserId) ? <>
@@ -638,7 +642,7 @@ export default function TournamentPage() {
                   <button className="submit" type="button" disabled={savingBracket || (demoMatch && String(rejectTurnId) !== String(viewingPlayerId))} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
                 </> : waitingFor(rejectTurnId))}
               </> : <>
-                <p className="setting-help">決定ステージ：{game.stage}</p>
+                
                 <h3 className="match-result-heading">試合結果を入力</h3>
                 {(!isOwner || demoMatch) && [match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
                   <div className="match-result-buttons stage-striker-results">
