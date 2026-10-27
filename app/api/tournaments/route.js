@@ -43,7 +43,8 @@ function publicTournament(row, user, legacyOwnerToken = '') {
   const activeMatches = (data.bracket?.rounds || []).flat();
   const organizerMatch = activeMatches.find(match => !match.winnerId && match.player1 && match.player2 &&
     [match.player1, match.player2].some(player => !player.isDemo && String(player.userId || player.id) === String(ownerUserId)));
-  const effectiveStreamMatchId = data.streamMatchId === undefined ? (organizerMatch?.id || null) : data.streamMatchId;
+  const selectedStreamMatch = activeMatches.find(match => String(match.id) === String(data.streamMatchId) && match.player1 && match.player2 && !match.winnerId);
+  const effectiveStreamMatchId = data.streamMatchId === undefined ? (organizerMatch?.id || null) : (selectedStreamMatch?.id || null);
   return { ...publicData, isOwner, effectiveStreamMatchId };
 }
 
