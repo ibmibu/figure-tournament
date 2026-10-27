@@ -2273,3 +2273,40 @@ footer span {
     margin-top: 2px;
   }
 }
+
+/* Use the same vivid tier markers for tournament wins and tier totals. */
+.achievementTournament .achievementTier,
+.achievementTierCounts .achievementTier {
+  display: inline-grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  min-width: 19px;
+  flex: 0 0 19px;
+  padding: 0;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 5px;
+  font-family: Arial, Inter, "Noto Sans JP", sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  box-sizing: border-box;
+}
+.achievementTournament .achievementTier .tierLetter,
+.achievementTierCounts .achievementTier .tierLetter {
+  display: inline-block;
+  line-height: 1;
+  transform: none;
+}
+.achievementTournament .achievementTier.tierS,
+.achievementTierCounts .achievementTier.tierS { background:#4a202b; color:#ff8da5; border-color:#b94d69; }
+.achievementTournament .achievementTier.tierA,
+.achievementTierCounts .achievementTier.tierA { background:#4a2d19; color:#ffad5c; border-color:#b87536; }
+.achievementTournament .achievementTier.tierB,
+.achievementTierCounts .achievementTier.tierB { background:#494019; color:#f6df64; border-color:#a89536; }
+.achievementTournament .achievementTier.tierC,
+.achievementTierCounts .achievementTier.tierC { background:#183f2a; color:#61e49a; border-color:#2e8c5a; }
+.achievementTournament .achievementTier.tierD,
+.achievementTierCounts .achievementTier.tierD { background:#173d4a; color:#75ddf5; border-color:#348ba4; }
