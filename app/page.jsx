@@ -46,18 +46,19 @@ export default function Home() {
       {tournaments.length === 0 ? (
         <div className="empty"><p>大会はまだありません。</p><span>大会を作成すると、ここに表示されます。</span></div>
       ) : (
-        <div className="tournament-list">
-          {tournaments.map(tournament => (
-            <Link className="tournament-card tournament-card-link" href={`/tournaments/${encodeURIComponent(tournament.id)}`} key={tournament.id}>
-              <div className="tournament-card-top"><h3>{tournament.name}</h3><span className="status">{tournament.status || '募集中'}</span></div>
-              <div className="tournament-meta">
-                <span>{tournament.format}</span>
-                <span>参加者：{(tournament.joinedPlayers || []).length}/{tournament.participants || 8}人</span>
-                {tournament.date && <span>開始時刻：{formatStartDate(tournament.date)}</span>}
-              </div>
-              <span className="open-tournament">大会ページへ →</span>
-            </Link>
-          ))}
+        <div className="home-tournament-table-wrap">
+          <table className="home-tournament-table">
+            <thead><tr><th scope="col">大会名</th><th scope="col">形式</th><th scope="col">参加人数</th><th scope="col">開催日時</th><th scope="col">状態</th></tr></thead>
+            <tbody>{tournaments.map(tournament => (
+              <tr key={tournament.id} className="home-tournament-row" onClick={() => { window.location.href = `/tournaments/${encodeURIComponent(tournament.id)}`; }}>
+                <td><Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="home-tournament-name">{tournament.name}</Link></td>
+                <td>{tournament.format || '—'}</td>
+                <td>{(tournament.joinedPlayers || []).length} / {tournament.participants || 8}</td>
+                <td className="home-tournament-date">{formatStartDate(tournament.date) || '—'}</td>
+                <td><span className="status">{tournament.status || '募集中'}</span></td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
       )}
     </section>
