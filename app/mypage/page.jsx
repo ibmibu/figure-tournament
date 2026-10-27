@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
 
-const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '' };
+const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '', friend_code: '' };
 
 export default function MyPage({ colorsOnly = false }) {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [draftName, setDraftName] = useState('no name');
   const [draftAvatar, setDraftAvatar] = useState('');
+  const [draftFriendCode, setDraftFriendCode] = useState('');
   const [editing, setEditing] = useState(false);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +72,7 @@ export default function MyPage({ colorsOnly = false }) {
             setProfile(cachedProfile);
             setDraftName(cachedProfile.display_name || 'no name');
             setDraftAvatar(cachedProfile.avatar_data || '');
+            setDraftFriendCode(cachedProfile.friend_code || '');
           }
         } catch {}
         const cachedTournaments = readTournamentCache();
@@ -93,6 +95,7 @@ export default function MyPage({ colorsOnly = false }) {
         try { window.localStorage.setItem(cacheKey, JSON.stringify(loadedProfile)); } catch {}
         setDraftName(loadedProfile.display_name || 'no name');
         setDraftAvatar(loadedProfile.avatar_data || '');
+        setDraftFriendCode(loadedProfile.friend_code || '');
         const all = tournamentResult.tournaments || [];
         writeTournamentCache(all);
         const myName = (loadedProfile.display_name || 'no name').trim().toLowerCase();
@@ -167,7 +170,7 @@ export default function MyPage({ colorsOnly = false }) {
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ display_name: draftName, avatar_data: draftAvatar }),
+        body: JSON.stringify({ display_name: draftName, avatar_data: draftAvatar, friend_code: draftFriendCode }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'プロフィールを保存できませんでした。');
@@ -198,11 +201,13 @@ export default function MyPage({ colorsOnly = false }) {
             {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
             <div className="mypage-profile-info">
               <div className="profile-name">{displayName || 'no name'}</div>
-              {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>}
+              {!editing && <div className="setting-help">フレンドコード：{profile.friend_code || '未登録'}</div>}
+              {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setDraftFriendCode(profile.friend_code || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>}
             </div>
           </div>
           {editing && <form onSubmit={saveProfile} className="profile-edit-form">
             <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
+            <label>フレンドコード<input value={draftFriendCode} onChange={e => setDraftFriendCode(e.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" maxLength={17} pattern="SW-[0-9]{4}-[0-9]{4}-[0-9]{4}" title="SW-0000-0000-0000形式" /></label>
             <label>アイコン画像<input type="file" accept="image/*" onChange={chooseImage} /></label>
             <p className="setting-help">画像は1MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
             <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
