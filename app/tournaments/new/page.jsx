@@ -5,6 +5,7 @@ import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
 const LAST_SERIES_TAG_KEY = 'figure-tournament-last-series-tag-v1';
+const LAST_TOURNAMENT_NAME_KEY = 'figure-tournament-last-name-v1';
 const STAGES = ['終点', '戦場', '小戦場', 'ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ', '村と街', 'ホロウバスティオン'];
 const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロウバスティオン'];
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
@@ -41,7 +42,7 @@ export default function NewTournamentPage() {
 
   useEffect(() => {
     if (checkingAuth || new URLSearchParams(window.location.search).has('edit')) return;
-    try { const savedTag = window.localStorage.getItem(LAST_SERIES_TAG_KEY); if (savedTag !== null) setSeriesTag(savedTag); } catch {}
+    try { const savedTag = window.localStorage.getItem(LAST_SERIES_TAG_KEY); if (savedTag !== null) setSeriesTag(savedTag); const savedName = window.localStorage.getItem(LAST_TOURNAMENT_NAME_KEY); if (savedName) setName(current => current || nextTournamentName(savedName)); } catch {}
     let active = true;
     (async () => {
       try {
@@ -212,7 +213,7 @@ export default function NewTournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
-      try { window.localStorage.setItem(LAST_SERIES_TAG_KEY, seriesTag.trim()); } catch {}
+      try { window.localStorage.setItem(LAST_SERIES_TAG_KEY, seriesTag.trim()); if (!editId) window.localStorage.setItem(LAST_TOURNAMENT_NAME_KEY, trimmedName); } catch {}
       window.location.href = editId ? `/tournaments/${encodeURIComponent(editId)}` : '/';
     } catch (saveError) {
       setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
