@@ -1098,3 +1098,25 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .mypage-layout .mypage-minimal-link span{font-size:27px;line-height:1;color:#89909a;font-weight:400}
 .mypage-layout .mypage-minimal-link:hover{color:#6046a6}
 @media(max-width:600px){.mypage-layout .mypage-minimal-profile .profile-avatar{width:52px;height:52px}.mypage-layout .mypage-minimal-link{padding:19px 0}}
+
+
+/* Home tournament list: compact table, not nested cards */
+.home-tournament-table-wrap{width:100%;overflow-x:auto;margin-top:22px;-webkit-overflow-scrolling:touch}
+.home-tournament-table{width:100%;border-collapse:collapse;table-layout:auto;text-align:left;color:var(--ink,#101b2d);font-size:14px}
+.home-tournament-table th{padding:12px 14px;font-size:12px;font-weight:800;white-space:nowrap;border-bottom:1px solid #dfe3e8}
+.home-tournament-table td{padding:14px;border-bottom:1px solid #e8ebef;vertical-align:middle;white-space:nowrap}
+.home-tournament-table tbody tr:last-child td{border-bottom:0}
+.home-tournament-row{cursor:pointer;transition:background-color .15s}
+.home-tournament-row:hover{background:#f5f5fa}
+.home-tournament-name{font-weight:800;text-decoration:none;color:inherit;white-space:normal;overflow-wrap:anywhere;display:block;min-width:100px}
+.home-tournament-name:hover{color:#5e45a8}
+.home-tournament-date{font-variant-numeric:tabular-nums}
+.home-tournament-table .status{display:inline-block}
+@media(max-width:640px){
+ .home-tournament-table-wrap{margin-top:16px}
+ .home-tournament-table{font-size:12px}
+ .home-tournament-table th{font-size:11px;padding:10px 8px}
+ .home-tournament-table td{padding:12px 8px}
+ .home-tournament-name{min-width:85px}
+ .home-tournament-table .status{font-size:10px;padding:4px 6px}
+}
