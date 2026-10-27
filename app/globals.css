@@ -1250,3 +1250,21 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 }
 .match-stream-announcement strong{font-size:16px;color:#ad351e}
 .match-stream-announcement b{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* Organizer match actions appear as a centered modal instead of shifting the bracket. */
+.bracket-admin-modal-backdrop{
+ position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;
+ padding:20px;background:rgba(16,27,45,.55);
+}
+.tournament-detail-page .bracket-admin-modal{
+ box-sizing:border-box;width:min(100%,480px);max-height:min(85dvh,720px);
+ overflow-y:auto;margin:0;padding:22px;border-radius:14px;background:#fff;
+ box-shadow:0 20px 60px rgba(0,0,0,.2);
+}
+.bracket-admin-modal .bracket-admin-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.bracket-admin-modal .bracket-admin-actions{display:flex;flex-wrap:wrap;gap:10px}
+.bracket-admin-modal .bracket-admin-actions button{min-height:40px}
+@media(max-width:600px){
+ .bracket-admin-modal-backdrop{padding:14px}
+ .tournament-detail-page .bracket-admin-modal{padding:18px}
+}
