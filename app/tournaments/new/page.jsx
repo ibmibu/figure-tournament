@@ -87,6 +87,7 @@ export default function NewTournamentPage() {
   const [hour, setHour] = useState('21');
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
   const [stageRejects, setStageRejects] = useState(false);
+  const [autoSeed, setAutoSeed] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
   const [counterpickStages, setCounterpickStages] = useState([...DEFAULT_COUNTERPICKS]);
   const [firstPlayerRejects, setFirstPlayerRejects] = useState(1);
@@ -117,6 +118,7 @@ export default function NewTournamentPage() {
         setHour(t.date ? t.date.slice(11, 13) : '21');
         setSelectedStages(Array.isArray(t.stages) ? t.stages : [...STAGES]);
         setStageRejects(Boolean(t.stageRejects));
+        setAutoSeed(Boolean(t.autoSeed));
         setStarterStages(t.stageSettings?.starterStages || [...DEFAULT_STARTERS]);
         setCounterpickStages(t.stageSettings?.counterpickStages || [...DEFAULT_COUNTERPICKS]);
         setFirstPlayerRejects(Number(t.stageSettings?.firstPlayerRejects) || 1);
@@ -176,6 +178,7 @@ export default function NewTournamentPage() {
       date: date ? `${date}T${hour}:00` : '',
       stages: selectedStages,
       stageRejects,
+      autoSeed,
       stageSettings: stageRejects ? {
         starterStages: effectiveStarters,
         counterpickStages: effectiveCounterpicks,
@@ -300,6 +303,15 @@ export default function NewTournamentPage() {
               </label>
             </div>
           </div>}
+        </fieldset>
+
+        <fieldset className="setup-group">
+          <legend>自動シード</legend>
+          <div className="toggle-options">
+            <button type="button" className={!autoSeed ? 'toggle-option selected' : 'toggle-option'} aria-pressed={!autoSeed} onClick={() => setAutoSeed(false)}>なし</button>
+            <button type="button" className={autoSeed ? 'toggle-option selected' : 'toggle-option'} aria-pressed={autoSeed} onClick={() => setAutoSeed(true)}>あり</button>
+          </div>
+          <p className="setting-help">ありの場合、参加者のレート上位25%（最低2名）を離して配置します。その他の配置はランダムです。</p>
         </fieldset>
 
         <label>大会説明（任意）
