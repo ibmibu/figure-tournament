@@ -310,25 +310,24 @@ export default function TournamentPage() {
 
   async function submitMatchResult(roundIndex, matchIndex, result) {
     const match = tournament?.bracket?.rounds?.[roundIndex]?.[matchIndex];
-    const game = match?.matchState?.currentGame;
-    if (!game?.stage || savingBracket) return;
-    const actorId = tournament.isOwner && demoPerspective &&
-      [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective))
-      ? demoPerspective : currentUserId;
-    if (![match.player1, match.player2].some(p => String(p.id) === String(actorId))) return;
-    const bracket = structuredClone(tournament.bracket);
-    const current = bracket.rounds[roundIndex][matchIndex].matchState.currentGame;
-    const results = { ...(current.results || {}), [String(actorId)]: result };
-    current.results = results;
-    const p1 = String(match.player1.id), p2 = String(match.player2.id);
-    const agrees = results[p1] && results[p2] && results[p1] !== results[p2];
-    const winnerId = agrees ? (results[p1] === 'win' ? match.player1.id : match.player2.id) : null;
-    if (winnerId) {
-      // Confirm both votes before recording a game, exactly once.
-      await recordMatchGame(roundIndex, matchIndex, winnerId, bracket);
-    } else {
-      await saveBracket({ ...tournament, bracket });
-    }
+    if (!match?.matchState?.currentGame?.stage || savingBracket) return;
+    setSavingBracket(true);
+    setError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('勝敗報告にはログインが必要です。');
+      const response = await fetch('/api/tournaments/match-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result, demoPerspective: isOwner ? demoPerspective : '' }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
+      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner }));
+      updateCachedTournament(body.tournament);
+    } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
+    finally { setSavingBracket(false); }
   }
 
   async function recordMatchGame(roundIndex, matchIndex, winnerId, confirmedBracket = null) {
