@@ -1052,3 +1052,18 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .match-controls-below .stage-striker-results .active{border-color:currentColor;background:#f0f8f5!important}
 .match-controls-below .stage-striker-results button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:640px){.match-controls-below .stage-striker-results{grid-template-columns:1fr 1fr}}
+
+
+/* Tournament board */
+.tournament-board{margin:20px 0;padding:20px;background:#fff;border:1px solid #dedbe6;border-radius:12px}
+.tournament-board h2{margin:0 0 8px;font-size:19px}
+.tournament-board-messages{display:flex;flex-direction:column;gap:10px;max-height:440px;overflow-y:auto;margin:14px 0}
+.tournament-board-message{padding:12px 14px;border:1px solid #e4e1ea;border-radius:9px;background:#faf9fc}
+.tournament-board-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px;align-items:center;font-size:12px}
+.tournament-board-meta strong{color:#453487;font-size:13px}
+.tournament-board-meta time{color:#77717f}
+.tournament-board-message p{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
+.tournament-board-form{display:flex;flex-direction:column;gap:9px}
+.tournament-board-form textarea{display:block;width:100%;resize:vertical;min-height:82px;border:1px solid #cfcbd9;border-radius:8px;padding:12px;font:inherit;color:inherit;background:#fff}
+.tournament-board-form button{align-self:flex-end}
+@media(max-width:600px){.tournament-board{padding:14px}.tournament-board-meta{align-items:flex-start;flex-direction:column}}
