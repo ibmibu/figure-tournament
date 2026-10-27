@@ -788,16 +788,15 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail participant-side-panel">
       <h2>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
       {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}{player.isDemo ? '（デモ）' : ''}</span>{isOwner && !tournament.bracket && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
-      {!tournament.bracket && !joinedPlayers.some(player => String(player.id) === String(currentUserId)) && <>
-        <h3>参加する</h3>
-        {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
-          {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
-          {savedFriendCode ? <p className="setting-help">フレンドコード：{savedFriendCode}（マイページ登録済み）</p> : <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" required /></label>}
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {notice && <p className="form-success" role="status">{notice}</p>}
-          <button className="submit" type="submit">参加登録する</button>
-        </form>}
-      </>}
+      {!tournament.bracket && !joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && (
+        joinedPlayers.length >= Number(tournament.participants || 8)
+          ? <p className="setting-help">定員に達しています。</p>
+          : <form onSubmit={joinTournament}>
+              {!savedFriendCode && <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" required /></label>}
+              {error && <p className="form-error" role="alert">{error}</p>}
+              <button className="submit" type="submit">参加登録する</button>
+            </form>
+      )}
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
