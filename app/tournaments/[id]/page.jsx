@@ -739,8 +739,14 @@ export default function TournamentPage() {
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{player?.name || ""}{player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? (state?.score?.[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
 
 
-            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && !(ri === 0 && Boolean(round[mi + 1].player1) !== Boolean(round[mi + 1].player2)) && <svg className="bracket-connector" width="38" height={104 * (2 ** ri)} viewBox={`0 0 38 ${104 * (2 ** ri)}`} aria-hidden="true"><path d={ri === 0 && Boolean(round[mi].player1) !== Boolean(round[mi].player2) ? 'M 0 0 H 38' : `M 0 0 H 19 V ${104 * (2 ** ri)} M 0 ${104 * (2 ** ri)} H 19 M 19 ${52 * (2 ** ri)} H 38`} fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
-            {ri === 0 && mi % 2 === 1 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2) && <svg className="bracket-connector" width="38" height="2" viewBox="0 0 38 2" aria-hidden="true"><path d="M 0 1 H 38" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
+            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && (() => {
+              const next = round[mi + 1];
+              const nextVisible = !(ri === 0 && Boolean(next.player1) !== Boolean(next.player2));
+              const distance = 104 * (2 ** ri);
+              return <svg className="bracket-connector" width="38" height={distance} viewBox={`0 0 38 ${distance}`} aria-hidden="true"><path d={nextVisible ? `M 0 0 H 19 V ${distance} M 19 ${distance / 2} H 38` : `M 0 0 H 19 V ${distance / 2} H 38`} fill="none" stroke="#3170b8" strokeWidth="2" /></svg>;
+            })()}
+            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 1 && !(ri === 0 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2)) && <svg className="bracket-connector" width="19" height="2" viewBox="0 0 19 2" aria-hidden="true"><path d="M 0 1 H 19" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
+            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 1 && ri === 0 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2) && <svg className="bracket-connector bracket-connector-up" width="38" height="104" viewBox="0 0 38 104" aria-hidden="true"><path d="M 0 104 H 19 V 52 H 38" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
           </div>;
         })}</div>)}</div>
 
