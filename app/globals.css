@@ -1205,3 +1205,8 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
   .tournament-board{margin-inline:0}
   .tournament-board-heading{align-items:flex-start}
 }
+
+.tournament-board-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.tournament-board-actions .tournament-board-quick-message{align-self:center!important;margin:0}
+.tournament-board-actions .submit{align-self:center;margin:0}
+@media(max-width:480px){.tournament-board-actions{gap:8px}.tournament-board-actions button{font-size:12px;padding:9px 11px}}
