@@ -27,7 +27,7 @@ export async function GET(request) {
     const result = await getAuthenticatedUser(request);
     if (result.error) return result.error;
     const { user, admin } = result;
-    const { data, error } = await admin.from('profiles').select('display_name,avatar_data').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await admin.from('profiles').select('display_name,avatar_data,friend_code').eq('user_id', user.id).maybeSingle();
     if (error) throw error;
     return NextResponse.json({ profile: data || { display_name: 'no name', avatar_data: '' } });
   } catch (error) {
@@ -43,6 +43,8 @@ export async function PUT(request) {
     const body = await request.json();
     const displayName = String(body.display_name || '').trim();
     const avatarData = String(body.avatar_data || '');
+    const friendCode = String(body.friend_code || '').trim().toUpperCase();
+    if (friendCode && !/^SW-\\d{4}-\\d{4}-\\d{4}$/.test(friendCode)) return NextResponse.json({ error: 'フレンドコードはSW-0000-0000-0000形式で入力してください。' }, { status: 400 });
     if (!displayName || displayName.length > 40) return NextResponse.json({ error: '名前は1〜40文字で入力してください。' }, { status: 400 });
     if (avatarData && (!avatarData.startsWith('data:image/') || avatarData.length > 1400000)) {
       return NextResponse.json({ error: '画像は1MB以下の画像を選択してください。' }, { status: 400 });
@@ -51,8 +53,9 @@ export async function PUT(request) {
       user_id: user.id,
       display_name: displayName,
       avatar_data: avatarData,
+      friend_code: friendCode,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' }).select('display_name,avatar_data').single();
+    }, { onConflict: 'user_id' }).select('display_name,avatar_data,friend_code').single();
     if (error) throw error;
     return NextResponse.json({ profile: data });
   } catch (error) {
