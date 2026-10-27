@@ -29,8 +29,8 @@ export async function POST(request) {
     }
 
     const friendCode = String(profile?.friend_code || submittedFriendCode || '').trim().toUpperCase();
-    if (!/^SW-\\d{4}-\\d{4}-\\d{4}$/.test(friendCode)) {
-      return NextResponse.json({ error: 'フレンドコードをSW-0000-0000-0000形式で入力してください。' }, { status: 400 });
+    if (!/^[A-Z0-9-]+$/.test(friendCode)) {
+      return NextResponse.json({ error: 'フレンドコードを英数字とハイフンのみで入力してください。' }, { status: 400 });
     }
 
     const { data: row, error: readError } = await supabase.from('tournaments').select('data').eq('id', String(id)).maybeSingle();
