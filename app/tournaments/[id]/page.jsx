@@ -14,6 +14,8 @@ export default function TournamentPage() {
   const [loading, setLoading] = useState(true);
   const [ownerId, setOwnerId] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [savedFriendCode, setSavedFriendCode] = useState('');
+  const [joinFriendCode, setJoinFriendCode] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
@@ -91,6 +93,7 @@ export default function TournamentPage() {
               if (!response.ok) return;
               const profileResult = await response.json();
               setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
+              setSavedFriendCode(String(profileResult.profile?.friend_code || '').trim());
             }).catch(() => {});
         }
       } catch {}
@@ -208,29 +211,30 @@ export default function TournamentPage() {
       const nextSize = seedOrder.length * 2;
       seedOrder = seedOrder.flatMap(seed => [seed, nextSize + 1 - seed]);
     }
-    const slots = Array(size).fill(null);
     const ranked = [...players].sort((a, b) => Number(b.rating) - Number(a.rating));
-    const canSeed = tournament.autoSeed && players.every(player => Number.isFinite(Number(player.rating)) && player.rating !== undefined && player.rating !== null);
+    const canSeed = tournament.autoSeed && players.every(player => player.rating !== undefined && player.rating !== null && Number.isFinite(Number(player.rating)));
     const seedCount = canSeed ? Math.min(players.length, Math.max(2, Math.ceil(players.length * 0.25))) : 0;
-    const seeded = canSeed ? ranked.slice(0, seedCount) : [];
-    const unseeded = shuffle(canSeed ? ranked.slice(seedCount) : players);
-    seeded.forEach((player, index) => { slots[seedOrder.indexOf(index + 1)] = player; });
-    // Spread byes across the draw rather than collecting them at the bottom.
-    const byeCount = size - players.length;
-    const available = seedOrder.map((seed, position) => ({ seed, position }))
-      .filter(({ position }) => !slots[position])
-      .sort((a, b) => b.seed - a.seed);
-    // Seeded players receive byes first; otherwise select bye positions randomly.
-    const byePositions = [];
-    const remainingPositions = available.map(item => item.position);
-    for (let i = 0; i < byeCount; i++) {
-      const preferred = seeded[i] ? seedOrder.indexOf(i + 1) ^ 1 : -1;
-      const candidates = remainingPositions.filter(position => !byePositions.includes(position) && (position % 2 === 0 ? !slots[position + 1] : !slots[position - 1]));
-      const choice = preferred >= 0 && remainingPositions.includes(preferred) ? preferred : shuffle(candidates.length ? candidates : remainingPositions)[0];
-      byePositions.push(choice);
-      remainingPositions.splice(remainingPositions.indexOf(choice), 1);
+    const entrants = canSeed
+      ? [...ranked.slice(0, seedCount), ...shuffle(ranked.slice(seedCount))]
+      : shuffle(players);
+    // Assign players to conventional seed positions; the remaining ranks are
+    // byes. This balances the two halves and avoids empty first-round matches.
+    // Without seeding, randomize the draw orientation as well.
+    let positions = seedOrder.map(rank => rank - 1);
+    if (!canSeed) {
+      for (let span = size; span >= 2; span /= 2) {
+        for (let start = 0; start < size; start += span) {
+          if (Math.random() < 0.5) {
+            const half = span / 2;
+            for (let offset = 0; offset < half; offset++) {
+              [positions[start + offset], positions[start + half + offset]] =
+                [positions[start + half + offset], positions[start + offset]];
+            }
+          }
+        }
+      }
     }
-    remainingPositions.forEach((position, index) => { slots[position] = unseeded[index]; });
+    const slots = positions.map(rank => entrants[rank] || null);
     const rounds = [];
     let count = size / 2;
     for (let round = 0; count >= 1; round++, count = count / 2) {
@@ -518,7 +522,7 @@ export default function TournamentPage() {
       const response = await fetch('/api/tournaments/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id, friendCode: savedFriendCode || joinFriendCode.trim().toUpperCase() }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '参加登録を保存できませんでした。');
@@ -567,6 +571,7 @@ export default function TournamentPage() {
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
+  const currentRoundNumber = Math.max(1, (tournament.bracket?.rounds || []).findIndex(round => round.some(match => match.player1 && match.player2 && !match.winnerId)) + 1 || tournament.bracket?.rounds?.length || 1);
   const selectedAdminMatch = isOwner && adminMatchSelection
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
@@ -619,9 +624,13 @@ export default function TournamentPage() {
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
             </div>
             <div className="player-strip">
-              <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b><span>{state?.score?.[p1Id] || 0} 勝</span></div>
-              <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b><span>{state?.score?.[match.player2.id] || 0} 勝</span></div>
+              <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b></div>
+              <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b></div>
             </div>
+            {(() => {
+              const opponent = [match.player1, match.player2].find(player => String(player.id) !== String(viewingPlayerId));
+              return opponent?.friendCode ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{opponent.friendCode}</strong></div> : null;
+            })()}
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               {!game?.stage ? <>
                 {rejectsDone ? (canActFor(chooserId) ? <>
@@ -634,7 +643,7 @@ export default function TournamentPage() {
                   <button className="submit" type="button" disabled={savingBracket || (demoMatch && String(rejectTurnId) !== String(viewingPlayerId))} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
                 </> : waitingFor(rejectTurnId))}
               </> : <>
-                <p className="setting-help">決定ステージ：{game.stage}</p>
+                
                 <h3 className="match-result-heading">試合結果を入力</h3>
                 {(!isOwner || demoMatch) && [match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
                   <div className="match-result-buttons stage-striker-results">
@@ -650,19 +659,20 @@ export default function TournamentPage() {
         })()}
 {!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
-      {<section className="tournament-board" aria-label="コメント">
+      {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="コメント">
         <div className="tournament-board-heading"><h2>コメント</h2><button type="button" className="tournament-board-toggle" aria-expanded={boardOpen} onClick={() => setBoardOpen(open => !open)}>{boardOpen ? '履歴を閉じる ▲' : '過去のコメント ▼'}</button></div>
-        {boardMessages.length ? <article className="tournament-board-message tournament-board-latest">
+        {boardMessages.length ? <article className="tournament-board-entry tournament-board-latest">
           <div className="tournament-board-meta"><strong>{boardMessages[boardMessages.length - 1].author_name}{boardMessages[boardMessages.length - 1].is_organizer ? '（主催者）' : ''}</strong><time dateTime={boardMessages[boardMessages.length - 1].created_at}>{new Date(boardMessages[boardMessages.length - 1].created_at).toLocaleString('ja-JP')}</time></div>
-          <p>{boardMessages[boardMessages.length - 1].body}</p>
+          <p className="tournament-board-message">{boardMessages[boardMessages.length - 1].body}</p>
         </article> : <p className="setting-help">まだコメントはありません。</p>}
         {boardOpen && boardMessages.length > 1 && <div className="tournament-board-messages">
-          {boardMessages.slice(0, -1).map(message => <article className="tournament-board-message" key={message.id}>
+          {boardMessages.slice(0, -1).map(message => <article className="tournament-board-entry" key={message.id}>
             <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
-            <p>{message.body}</p>
+            <p className="tournament-board-message">{message.body}</p>
           </article>)}
         </div>}
         {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
+          {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${currentRoundNumber}回戦を開始してください。配信台の方は入室お願いします。`)}>回戦開始のお知らせを入力</button>}
           <textarea aria-label="コメント入力" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="コメントを入力（1000文字以内）" rows={3} />
           <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
         </form> : <p className="setting-help">コメントできるのは主催者と大会参加者のみです。</p>}
@@ -719,6 +729,7 @@ export default function TournamentPage() {
           };
           const isAdminSelected = isOwner && adminMatchSelection?.roundIndex === ri && adminMatchSelection?.matchIndex === mi;
           const isStreamMatch = String(streamMatchId) === String(match.id);
+          if (ri === 0 && Boolean(match.player1) !== Boolean(match.player2)) return <div key={match.id} className="bracket-bye-spacer" style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} aria-hidden="true" />;
           return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}${isStreamMatch ? ' match-streaming' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
             
             {isStreamMatch && <span className="bracket-stream-badge">● 配信台</span>}
@@ -778,6 +789,7 @@ export default function TournamentPage() {
         <h3>参加する</h3>
         {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
           {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}
+          {savedFriendCode ? <p className="setting-help">フレンドコード：{savedFriendCode}（マイページ登録済み）</p> : <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" maxLength={17} pattern="SW-[0-9]{4}-[0-9]{4}-[0-9]{4}" title="SW-0000-0000-0000形式" required /></label>}
           {error && <p className="form-error" role="alert">{error}</p>}
           {notice && <p className="form-success" role="status">{notice}</p>}
           <button className="submit" type="submit">参加登録する</button>

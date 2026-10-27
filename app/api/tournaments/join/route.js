@@ -17,15 +17,20 @@ export async function POST(request) {
     const { data: authData, error: authError } = await auth.auth.getUser(token);
     if (authError || !authData?.user) return NextResponse.json({ error: 'ログインし直してください。' }, { status: 401 });
 
-    const { id } = await request.json();
+    const { id, friendCode: submittedFriendCode } = await request.json();
     if (!id) return NextResponse.json({ error: '大会IDがありません。' }, { status: 400 });
 
     const supabase = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data: profile, error: profileError } = await supabase.from('profiles').select('display_name').eq('user_id', authData.user.id).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('display_name,friend_code').eq('user_id', authData.user.id).maybeSingle();
     if (profileError) throw profileError;
     const name = String(profile?.display_name || '').trim();
     if (!name || name.toLowerCase() === 'no name') {
       return NextResponse.json({ error: '参加する前にマイページで名前を設定してください。' }, { status: 400 });
+    }
+
+    const friendCode = String(profile?.friend_code || submittedFriendCode || '').trim().toUpperCase();
+    if (!/^SW-\\d{4}-\\d{4}-\\d{4}$/.test(friendCode)) {
+      return NextResponse.json({ error: 'フレンドコードをSW-0000-0000-0000形式で入力してください。' }, { status: 400 });
     }
 
     const { data: row, error: readError } = await supabase.from('tournaments').select('data').eq('id', String(id)).maybeSingle();
@@ -38,7 +43,7 @@ export async function POST(request) {
       return NextResponse.json({ error: '同じ名前の参加者がすでに登録されています。' }, { status: 409 });
     }
 
-    const joinedPlayers = [...players, { id: authData.user.id, userId: authData.user.id, name, joinedAt: new Date().toISOString() }];
+    const joinedPlayers = [...players, { id: authData.user.id, userId: authData.user.id, name, friendCode, joinedAt: new Date().toISOString() }];
     const { error: updateError } = await supabase.from('tournaments').update({ data: { ...tournament, joinedPlayers } }).eq('id', String(id));
     if (updateError) throw updateError;
     return NextResponse.json({ ok: true, joinedPlayers });

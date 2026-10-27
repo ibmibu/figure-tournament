@@ -94,6 +94,8 @@ export default function NewTournamentPage() {
   const [secondPlayerRejects, setSecondPlayerRejects] = useState(2);
   const [laterRejects, setLaterRejects] = useState(3);
   const [description, setDescription] = useState('');
+  const [streamUrl, setStreamUrl] = useState('');
+  const [streamFriendCode, setStreamFriendCode] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -111,6 +113,8 @@ export default function NewTournamentPage() {
         if (!t.isOwner) throw new Error('この大会を編集する権限がありません。');
         if (!active) return;
         setName(t.name || '');
+        setStreamUrl(t.streamUrl || '');
+        setStreamFriendCode(t.streamFriendCode || '');
         setSeriesTag(Array.isArray(t.seriesTags) ? (t.seriesTags[0] || '') : '');
         setFormat(Number(t.bestOf) === 5 ? 5 : 3);
         setParticipants(Number(t.participants) || 8);
@@ -167,9 +171,19 @@ export default function NewTournamentPage() {
       return;
     }
 
+    if (streamUrl.trim()) {
+      try { const url = new URL(streamUrl.trim()); if (!['https:', 'http:'].includes(url.protocol)) throw new Error(); }
+      catch { setError('配信先URLはhttps://から始まる正しいURLを入力してください。'); return; }
+    }
+    if (streamFriendCode.trim() && !/^SW-\d{4}-\d{4}-\d{4}$/.test(streamFriendCode.trim().toUpperCase())) {
+      setError('配信台のフレンドコードはSW-0000-0000-0000形式で入力してください。'); return;
+    }
+
     const tournament = {
       id: editId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       description: description.trim(),
+      streamUrl: streamUrl.trim(),
+      streamFriendCode: streamFriendCode.trim().toUpperCase(),
       name: trimmedName,
       seriesTags: seriesTag.trim() ? [seriesTag.trim()] : [],
       format: `BO${format}`,
@@ -314,6 +328,12 @@ export default function NewTournamentPage() {
           <p className="setting-help">ありの場合、参加者のレート上位25%（最低2名）を離して配置します。その他の配置はランダムです。</p>
         </fieldset>
 
+        <label>配信先URL（任意）
+          <input type="url" value={streamUrl} onChange={event => setStreamUrl(event.target.value)} placeholder="https://www.youtube.com/live/..." />
+        </label>
+        <label>配信台のフレンドコード（任意）
+          <input type="text" value={streamFriendCode} onChange={event => setStreamFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" maxLength={17} pattern="SW-[0-9]{4}-[0-9]{4}-[0-9]{4}" title="SW-0000-0000-0000形式" />
+        </label>
         <label>大会説明（任意）
           <textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="大会について伝えたいことがあれば入力してください。" rows={4} maxLength={2000} />
         </label>
