@@ -194,8 +194,43 @@ export default function TournamentPage() {
 
   function makeBracket(players) {
     const size = 2 ** Math.ceil(Math.log2(Math.max(2, players.length)));
-    const slots = [...players];
-    while (slots.length < size) slots.push(null);
+    const shuffle = items => {
+      const result = [...items];
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      return result;
+    };
+    // Standard bracket positions: top seeds occupy opposite halves/quarters.
+    let seedOrder = [1, 2];
+    while (seedOrder.length < size) {
+      const nextSize = seedOrder.length * 2;
+      seedOrder = seedOrder.flatMap(seed => [seed, nextSize + 1 - seed]);
+    }
+    const slots = Array(size).fill(null);
+    const ranked = [...players].sort((a, b) => Number(b.rating) - Number(a.rating));
+    const canSeed = tournament.autoSeed && players.every(player => Number.isFinite(Number(player.rating)) && player.rating !== undefined && player.rating !== null);
+    const seedCount = canSeed ? Math.min(players.length, Math.max(2, Math.ceil(players.length * 0.25))) : 0;
+    const seeded = canSeed ? ranked.slice(0, seedCount) : [];
+    const unseeded = shuffle(canSeed ? ranked.slice(seedCount) : players);
+    seeded.forEach((player, index) => { slots[seedOrder.indexOf(index + 1)] = player; });
+    // Spread byes across the draw rather than collecting them at the bottom.
+    const byeCount = size - players.length;
+    const available = seedOrder.map((seed, position) => ({ seed, position }))
+      .filter(({ position }) => !slots[position])
+      .sort((a, b) => b.seed - a.seed);
+    // Seeded players receive byes first; otherwise select bye positions randomly.
+    const byePositions = [];
+    const remainingPositions = available.map(item => item.position);
+    for (let i = 0; i < byeCount; i++) {
+      const preferred = seeded[i] ? seedOrder.indexOf(i + 1) ^ 1 : -1;
+      const candidates = remainingPositions.filter(position => !byePositions.includes(position) && (position % 2 === 0 ? !slots[position + 1] : !slots[position - 1]));
+      const choice = preferred >= 0 && remainingPositions.includes(preferred) ? preferred : shuffle(candidates.length ? candidates : remainingPositions)[0];
+      byePositions.push(choice);
+      remainingPositions.splice(remainingPositions.indexOf(choice), 1);
+    }
+    remainingPositions.forEach((position, index) => { slots[position] = unseeded[index]; });
     const rounds = [];
     let count = size / 2;
     for (let round = 0; count >= 1; round++, count = count / 2) {
