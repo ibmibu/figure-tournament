@@ -1286,3 +1286,22 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
    overflow-wrap:anywhere;
  }
 }
+
+/* Participation history: no nested frames; separate tournaments with horizontal rules. */
+.my-page .my-results:has(.results-table){
+  background:transparent!important;border:0!important;border-radius:0!important;
+  box-shadow:none!important;padding:0!important;
+}
+.my-page .results-table{
+  width:100%;background:transparent!important;border:0!important;
+}
+.my-page .results-table-row{
+  border:0!important;border-bottom:1px solid #cfd3d8!important;
+  border-radius:0!important;background:transparent!important;
+  box-shadow:none!important;
+  min-height:48px;
+}
+.my-page .results-table-row:first-child{border-top:1px solid #cfd3d8!important}
+.my-page .results-table-placement.results-placement-winner{
+  color:#d33b35!important;font-weight:700!important;
+}
