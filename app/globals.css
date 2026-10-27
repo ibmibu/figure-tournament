@@ -1139,3 +1139,10 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .home-tournament-table .home-tournament-row td:nth-child(5){grid-column:2;grid-row:1;justify-self:end}
  .home-tournament-name{min-width:0;overflow-wrap:anywhere}
 }
+
+/* Comment author and timestamp sit outside the message bubble. */
+.tournament-board-entry{display:flex;flex-direction:column;gap:5px;min-width:0}
+.tournament-board-entry .tournament-board-meta{padding:0 3px}
+.tournament-board-entry .tournament-board-message{margin:0;padding:12px 14px;border:1px solid #e4e1ea;border-radius:9px;background:#faf9fc;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65}
+.tournament-board-entry.tournament-board-latest{background:transparent;border:0;padding:0}
+.tournament-board-entry.tournament-board-latest .tournament-board-message{border-color:#cbc3e3;background:#f8f6fd;max-height:5.2em;overflow:auto}
