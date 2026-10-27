@@ -1222,7 +1222,8 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
   height:68px!important;
 }
 .bracket-stream-badge{
-  top:-16px!important;
+  top:0!important;
+  transform:translateY(calc(-100% - 5px))!important;
   left:8px!important;
   padding:4px 11px!important;
   border-radius:6px!important;
