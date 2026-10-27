@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
 
-const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '', friend_code: '' };
+const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '', friend_code: '', public_uid: null };
 
 export default function MyPage({ colorsOnly = false }) {
   const [session, setSession] = useState(null);
@@ -201,6 +201,7 @@ export default function MyPage({ colorsOnly = false }) {
             {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
             <div className="mypage-profile-info">
               <div className="profile-name">{displayName || 'no name'}</div>
+              {!editing && profile.public_uid != null && <div className="setting-help">UID:{String(profile.public_uid).padStart(4, '0')}</div>}
               {!editing && <div className="setting-help">フレンドコード：{profile.friend_code || '未登録'}</div>}
               {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setDraftFriendCode(profile.friend_code || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>}
             </div>
