@@ -308,8 +308,31 @@ export default function TournamentPage() {
     await saveBracket({ ...tournament, bracket });
   }
 
-  async function recordMatchGame(roundIndex, matchIndex, winnerId) {
-    const bracket = JSON.parse(JSON.stringify(tournament.bracket));
+  async function submitMatchResult(roundIndex, matchIndex, result) {
+    const match = tournament?.bracket?.rounds?.[roundIndex]?.[matchIndex];
+    const game = match?.matchState?.currentGame;
+    if (!game?.stage || savingBracket) return;
+    const actorId = tournament.isOwner && demoPerspective &&
+      [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective))
+      ? demoPerspective : currentUserId;
+    if (![match.player1, match.player2].some(p => String(p.id) === String(actorId))) return;
+    const bracket = structuredClone(tournament.bracket);
+    const current = bracket.rounds[roundIndex][matchIndex].matchState.currentGame;
+    const results = { ...(current.results || {}), [String(actorId)]: result };
+    current.results = results;
+    const p1 = String(match.player1.id), p2 = String(match.player2.id);
+    const agrees = results[p1] && results[p2] && results[p1] !== results[p2];
+    const winnerId = agrees ? (results[p1] === 'win' ? match.player1.id : match.player2.id) : null;
+    if (winnerId) {
+      // Confirm both votes before recording a game, exactly once.
+      await recordMatchGame(roundIndex, matchIndex, winnerId, bracket);
+    } else {
+      await saveBracket({ ...tournament, bracket });
+    }
+  }
+
+  async function recordMatchGame(roundIndex, matchIndex, winnerId, confirmedBracket = null) {
+    const bracket = confirmedBracket || JSON.parse(JSON.stringify(tournament.bracket));
     const match = bracket.rounds[roundIndex][matchIndex];
     const state = match.matchState;
     if (!state || state.complete || !state.currentGame.stage) return;
@@ -519,10 +542,14 @@ export default function TournamentPage() {
               </> : <>
                 <p className="setting-help">決定ステージ：{game.stage}</p>
                 <h3 className="match-result-heading">試合結果を入力</h3>
-                <div className="match-result-buttons">
-                  <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,demoMatch ? viewingPlayerId : match.player1.id)}>WIN — {demoMatch ? viewingPlayer?.name : match.player1.name}</button>
-                  <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,demoMatch ? (String(viewingPlayerId) === String(p1Id) ? match.player2.id : p1Id) : match.player2.id)}>LOSE — {demoMatch ? [match.player1,match.player2].find(p => String(p.id) !== String(viewingPlayerId))?.name : match.player2.name}</button>
-                </div>
+                {(!isOwner || demoMatch) && [match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
+                  <div className="match-result-buttons">
+                    <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'win')}>WIN</button>
+                    <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'lose')}>LOSE</button>
+                  </div>
+                  {game?.results?.[String(viewingPlayerId)] && !game?.results?.[String(viewingPlayerId===String(p1Id)?match.player2.id:p1Id)] && <p className="setting-help match-turn-waiting">相手の勝敗報告を待っています…</p>}
+                  {game?.results?.[String(p1Id)] && game?.results?.[String(match.player2.id)] && game.results[String(p1Id)]===game.results[String(match.player2.id)] && <p className="form-error">勝敗報告が一致していません。WIN / LOSEを確認してください。</p>}
+                </> : <p className="setting-help">選手の勝敗報告を待っています…</p>}
               </>}
             </>}
           </section>;
