@@ -2274,39 +2274,48 @@ footer span {
   }
 }
 
-/* Use the same vivid tier markers for tournament wins and tier totals. */
-.achievementTournament .achievementTier,
-.achievementTierCounts .achievementTier {
+
+/* Ningyogeki original tier badge: same 17px frame, font and optical centering. */
+.stats-shell .achievementTier {
   display: inline-grid;
   place-items: center;
-  width: 19px;
-  height: 19px;
-  min-width: 19px;
-  flex: 0 0 19px;
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  flex: 0 0 17px;
   padding: 0;
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
   font-family: Arial, Inter, "Noto Sans JP", sans-serif;
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 10px;
+  font-weight: 700;
   line-height: 1;
   text-align: center;
+  font-variant-numeric: lining-nums;
+  vertical-align: middle;
   box-sizing: border-box;
 }
-.achievementTournament .achievementTier .tierLetter,
-.achievementTierCounts .achievementTier .tierLetter {
-  display: inline-block;
+.stats-shell .achievementTierCounts .achievementTier {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex-basis: 17px;
+  padding: 0 0 1px;
   line-height: 1;
-  transform: none;
 }
-.achievementTournament .achievementTier.tierS,
-.achievementTierCounts .achievementTier.tierS { background:#4a202b; color:#ff8da5; border-color:#b94d69; }
-.achievementTournament .achievementTier.tierA,
-.achievementTierCounts .achievementTier.tierA { background:#4a2d19; color:#ffad5c; border-color:#b87536; }
-.achievementTournament .achievementTier.tierB,
-.achievementTierCounts .achievementTier.tierB { background:#494019; color:#f6df64; border-color:#a89536; }
-.achievementTournament .achievementTier.tierC,
-.achievementTierCounts .achievementTier.tierC { background:#183f2a; color:#61e49a; border-color:#2e8c5a; }
-.achievementTournament .achievementTier.tierD,
-.achievementTierCounts .achievementTier.tierD { background:#173d4a; color:#75ddf5; border-color:#348ba4; }
+.stats-shell .achievementTier.tierS { background:#4a202b; color:#ff8da5; border-color:#b94d69; }
+.stats-shell .achievementTier.tierA { background:#4a2d19; color:#ffad5c; border-color:#b87536; }
+.stats-shell .achievementTier.tierB { background:#494019; color:#f6df64; border-color:#a89536; }
+.stats-shell .achievementTier.tierC { background:#183f2a; color:#61e49a; border-color:#2e8c5a; }
+.stats-shell .achievementTier.tierD { background:#173d4a; color:#75ddf5; border-color:#348ba4; }
+.stats-shell .achievementTier .tierLetter { display:block; line-height:1; transform-origin:center; }
+.stats-shell .achievementTier.tierS .tierLetter { transform:translate(.15px,.35px); }
+.stats-shell .achievementTier.tierA .tierLetter { transform:translate(.1px,-.1px); }
+.stats-shell .achievementTier.tierB .tierLetter { transform:translate(0,-.1px); }
+.stats-shell .achievementTier.tierC .tierLetter { transform:translate(.1px,.2px); }
+.stats-shell .achievementTier.tierD .tierLetter { transform:translate(0,0); }
+
+/* Matchup win/loss totals on white table cells must be dark. */
+.stats-shell .playerTable .recordWin,
+.stats-shell .playerTable .recordLoss { color:#211b2a; }
