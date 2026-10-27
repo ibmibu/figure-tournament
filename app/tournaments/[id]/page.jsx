@@ -672,9 +672,11 @@ export default function TournamentPage() {
           </article>)}
         </div>}
         {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
-          {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${currentRoundNumber}回戦を開始してください。配信台の方は入室お願いします。`)}>回戦開始のお知らせを入力</button>}
           <textarea aria-label="コメント入力" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="コメントを入力（1000文字以内）" rows={3} />
-          <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+          <div className="tournament-board-actions">
+            {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${currentRoundNumber}回戦を開始してください。配信台の方は入室お願いします。`)}>試合開始アナウンス</button>}
+            <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+          </div>
         </form> : <p className="setting-help">コメントできるのは主催者と大会参加者のみです。</p>}
         {boardError && <p className="form-error" role="alert">{boardError.replaceAll('掲示板', 'コメント')}</p>}
       </section>}
