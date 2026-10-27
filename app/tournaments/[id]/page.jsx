@@ -27,6 +27,49 @@ export default function TournamentPage() {
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
 
+  const [boardMessages, setBoardMessages] = useState([]);
+  const [boardText, setBoardText] = useState('');
+  const [boardBusy, setBoardBusy] = useState(false);
+  const [boardError, setBoardError] = useState('');
+
+  async function refreshBoard() {
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/tournaments/board?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('掲示板を読み込めませんでした。');
+      const data = await response.json();
+      setBoardMessages(data.messages || []);
+      setBoardError('');
+    } catch { setBoardError('掲示板を読み込めませんでした。'); }
+  }
+
+  useEffect(() => {
+    refreshBoard();
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') refreshBoard(); }, 10000);
+    return () => clearInterval(timer);
+  }, [id]);
+
+  async function postBoardMessage(event) {
+    event.preventDefault();
+    if (!boardText.trim() || boardBusy) return;
+    setBoardBusy(true);
+    setBoardError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('投稿にはログインが必要です。');
+      const response = await fetch('/api/tournaments/board', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ id, text: boardText.trim() }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '投稿できませんでした。');
+      setBoardText('');
+      await refreshBoard();
+    } catch (error) { setBoardError(error.message || '投稿できませんでした。'); }
+    finally { setBoardBusy(false); }
+  }
+
   async function loadTournament() {
     setLoading(true);
     setError('');
@@ -555,6 +598,21 @@ export default function TournamentPage() {
         })()}
 {!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
+      {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="大会掲示板">
+        <h2>大会掲示板</h2>
+        <p className="setting-help">主催者からのお知らせ・対戦相手への連絡・トラブル相談にご利用ください。投稿内容は誰でも閲覧できます。</p>
+        <div className="tournament-board-messages">
+          {boardMessages.length === 0 ? <p className="setting-help">まだ投稿はありません。</p> : boardMessages.map(message => <article className="tournament-board-message" key={message.id}>
+            <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
+            <p>{message.body}</p>
+          </article>)}
+        </div>
+        {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
+          <textarea aria-label="掲示板への投稿" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="メッセージを入力（1000文字以内）" rows={3} />
+          <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+        </form> : <p className="setting-help">投稿できるのは主催者と大会参加者のみです。</p>}
+        {boardError && <p className="form-error" role="alert">{boardError}</p>}
+      </section>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
