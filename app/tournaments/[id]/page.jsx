@@ -617,7 +617,8 @@ export default function TournamentPage() {
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           const canActFor = id => isOwner && !demoMatch ? true : String(id) === String(viewingPlayerId);
           const waitingFor = id => <p className="setting-help match-turn-waiting">🟢 {[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
-          return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
+          return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
+            {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span>{tournament.streamFriendCode && <span>配信台フレンドコード：<b>{tournament.streamFriendCode}</b></span>}</div>}
 
             <div className="game-top">
               <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
