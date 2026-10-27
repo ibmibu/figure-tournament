@@ -1305,3 +1305,6 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-page .results-table-placement.results-placement-winner{
   color:#d33b35!important;font-weight:700!important;
 }
+
+/* Bye advancement: the visible lower match connects upward to the next round. */
+.tournament-detail-page .tournament-live-panel .bracket-connector.bracket-connector-up{top:calc(50% - 104px)!important}
