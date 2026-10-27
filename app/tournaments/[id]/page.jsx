@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
-import { readTournamentCache, updateCachedTournament, removeCachedTournament } from '../../../lib/tournament-cache';
+import { removeCachedTournament } from '../../../lib/tournament-cache';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
 
@@ -76,10 +76,6 @@ export default function TournamentPage() {
     setLoading(true);
     setError('');
     try {
-      const cached = readTournamentCache() || [];
-      const cachedTournament = cached.find(item => String(item.id) === String(id));
-      if (cachedTournament) setTournament(cachedTournament);
-
       const owner = localStorage.getItem(OWNER_KEY) || '';
       setOwnerId(owner);
       let accessToken = '';
@@ -104,16 +100,13 @@ export default function TournamentPage() {
       if (!response.ok) throw new Error(result.error || '大会を読み込めませんでした。');
       if (result.tournament) {
         setTournament(result.tournament);
-        updateCachedTournament(result.tournament);
-      } else if (!cachedTournament) {
+      } else {
         setTournament(null);
       }
     } catch (loadError) {
       console.error(loadError);
-      const cached = readTournamentCache() || [];
-      const cachedTournament = cached.find(item => String(item.id) === String(id));
-      if (cachedTournament) setTournament(cachedTournament);
-      else setTournament(null);
+      setTournament(null);
+      setError(loadError.message || '大会情報を読み込めませんでした。');
     } finally {
       setLoading(false);
     }
@@ -135,7 +128,7 @@ export default function TournamentPage() {
         const result = await response.json();
         if (!cancelled && result.tournament) {
           setTournament(result.tournament);
-          updateCachedTournament(result.tournament);
+
         }
       } catch {}
     };
@@ -192,7 +185,7 @@ export default function TournamentPage() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '大会情報を保存できませんでした。');
     setTournament(next);
-    updateCachedTournament(next);
+
   }
 
   function demoPlayersFor(current) {
@@ -370,7 +363,7 @@ export default function TournamentPage() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
       setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner }));
-      updateCachedTournament(body.tournament);
+
     } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
     finally { setSavingBracket(false); }
   }
@@ -443,7 +436,7 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '対戦結果を更新できませんでした。');
       setTournament(result.tournament);
-      updateCachedTournament(result.tournament);
+
       setActiveMatchId('');
       setNotice(action === 'reset' ? '対戦結果をリセットしました。' : '不戦勝として勝者を確定しました。');
     } catch (updateError) {
@@ -468,7 +461,7 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '配信台を設定できませんでした。');
       setTournament(result.tournament);
-      updateCachedTournament(result.tournament);
+
       setNotice(matchId ? '配信台を変更しました。' : '配信台設定を解除しました。');
     } catch (e) { setError(e.message || '配信台を設定できませんでした。'); }
     finally { setSavingBracket(false); }
@@ -496,7 +489,7 @@ export default function TournamentPage() {
       if (!response.ok) throw new Error(result.error || '参加登録を保存できませんでした。');
       setTournament(current => {
         const next = { ...current, joinedPlayers: result.joinedPlayers };
-        updateCachedTournament(next);
+
         return next;
       });
       setNotice('参加登録しました。');
@@ -535,7 +528,7 @@ export default function TournamentPage() {
 
   if (!tournament) return <main className="page">
     <SiteHeader /><section className="intro">
-      <a className="back-link" href="/">← 大会一覧に戻る</a><h1>大会が見つかりません</h1><p>このブラウザに大会データが保存されていないか、URLが正しくありません。</p></section></main>;
+      <a className="back-link" href="/">← 大会一覧に戻る</a><h1>{error || '大会が見つかりません'}</h1><p>大会情報はサーバーで管理されています。URLや通信状況を確認してください。</p></section></main>;
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
