@@ -44,9 +44,13 @@ export default function TournamentPage() {
         setAccessToken(accessToken);
         setCurrentUserId(data.session?.user?.id || '');
         if (accessToken) {
-          const profileResponse = await fetch('/api/profile', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' });
-          const profileResult = await profileResponse.json();
-          if (profileResponse.ok) setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
+          // Profile is supplemental: never block the tournament request on it.
+          fetch('/api/profile', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
+            .then(async response => {
+              if (!response.ok) return;
+              const profileResult = await response.json();
+              setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
+            }).catch(() => {});
         }
       } catch {}
       const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
@@ -91,12 +95,13 @@ export default function TournamentPage() {
 
   // 大会ページを開いたら自分の未完了対戦を自動表示し、管理者なら対戦状態も開始する。
   useEffect(() => {
-    if (!tournament?.bracket || !currentUserId || tournament.bracket.complete) return;
+    const perspectiveId = tournament?.isOwner && demoPerspective ? demoPerspective : currentUserId;
+    if (!tournament?.bracket || !perspectiveId || tournament.bracket.complete) return;
     for (let ri = 0; ri < (tournament.bracket.rounds || []).length; ri++) {
       const round = tournament.bracket.rounds[ri];
       const mi = round.findIndex(match =>
         !match.winnerId && match.player1 && match.player2 &&
-        (String(match.player1.id) === String(currentUserId) || String(match.player2.id) === String(currentUserId))
+        (String(match.player1.id) === String(perspectiveId) || String(match.player2.id) === String(perspectiveId))
       );
       if (mi >= 0) {
         const ownMatch = round[mi];
@@ -106,7 +111,7 @@ export default function TournamentPage() {
       }
     }
     setActiveMatchId('');
-  }, [tournament, currentUserId]);
+  }, [tournament, currentUserId, demoPerspective]);
 
   async function updateTournament(next) {
     const { data } = await getSupabaseBrowserClient().auth.getSession();
@@ -439,6 +444,7 @@ export default function TournamentPage() {
       {!showTournamentOverview && error && <p className="form-error" role="alert">{error}</p>}
       {!showTournamentOverview && notice && <p className="form-success" role="status">{notice}</p>}
       {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
+        {isOwner && joinedPlayers.some(p => p.isDemo) && <div className="bracket-panel demo-perspective-control"><label htmlFor="demoPerspective">現在の操作視点</label><select id="demoPerspective" value={demoPerspective} onChange={e => { setDemoPerspective(e.target.value); setActiveMatchId(''); setRejectSelection([]); setStageSelection(''); }}><option value="">主催者（通常操作）</option>{joinedPlayers.filter(p=>p.isDemo).map(p=><option key={p.id} value={p.id}>{p.name} として操作</option>)}</select><p className="setting-help">{demoPerspective ? '選択したデモ選手の視点で対戦を操作します。' : 'デモ選手を選ぶと、その選手の対戦画面が表示されます。'}</p></div>}
         {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
@@ -454,8 +460,8 @@ export default function TournamentPage() {
           const settings = tournament.stageSettings || {};
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
-          const demoMatch = isOwner && match.player1.isDemo && match.player2.isDemo;
-          const viewingPlayerId = demoMatch && [p1Id, match.player2.id].some(id => String(id) === String(demoPerspective)) ? demoPerspective : String(p1Id);
+          const demoMatch = isOwner && Boolean(demoPerspective) && [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective));
+          const viewingPlayerId = demoMatch ? demoPerspective : String(p1Id);
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
@@ -466,7 +472,7 @@ export default function TournamentPage() {
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
-            {demoMatch && <div className="demo-perspective-control"><label htmlFor="demoPerspective">操作する選手</label><select id="demoPerspective" value={viewingPlayerId} onChange={e => { setDemoPerspective(e.target.value); setRejectSelection([]); setStageSelection(''); }}><option value={p1Id}>{match.player1.name}</option><option value={match.player2.id}>{match.player2.name}</option></select></div>}
+
             <div className="game-top">
               <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
@@ -559,7 +565,7 @@ export default function TournamentPage() {
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
 
-    {(!tournament.bracket || showTournamentOverview) && tournament.bracket?.complete && <section className="create-panel tournament-results-card"><h2>大会結果</h2><div className="tournament-results-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).filter(row => ['優勝','準優勝','3位','ベスト4'].includes(row.place)).map(row => { const player = joinedPlayers.find(p => String(p.id) === String(row.playerId)); const report = tournament.characterReports?.[String(row.playerId)]; return player ? <div className="tournament-result-item" key={String(row.playerId)}><strong>{row.place === 'ベスト4' ? '3位' : row.place}</strong><span>{player.name}</span>{report && <span>{report.fighter}（{report.color}）</span>}{String(player.userId || player.id) === String(currentUserId) && <a href={`/tournaments/${encodeURIComponent(id)}/report`}>{report ? 'キャラ報告を確認' : 'キャラ報告へ'}</a>}</div> : null; })}</div></section>}
+    {(!tournament.bracket || showTournamentOverview) && tournament.bracket?.complete && <section className="create-panel tournament-results-card"><h2>大会結果</h2><div className="tournament-results-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).filter(row => ['優勝','準優勝','3位','ベスト4'].includes(row.place)).map(row => { const player = joinedPlayers.find(p => String(p.id) === String(row.playerId)); const report = tournament.characterReports?.[String(row.playerId)]; return player ? <div className="tournament-result-item" key={String(row.playerId)}><strong>{row.place === 'ベスト4' ? '3位' : row.place}</strong><span>{player.name}</span>{report && <span>{(Array.isArray(report.characters) ? report.characters : (report.fighter ? [{fighter:report.fighter,color:report.color}] : [])).map(c=>`${c.fighter}（${c.color}）`).join(" / ")}</span>}{String(player.userId || player.id) === String(currentUserId) && <a href={`/tournaments/${encodeURIComponent(id)}/report`}>{report ? 'キャラ報告を確認' : 'キャラ報告へ'}</a>}</div> : null; })}</div></section>}
     {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2>{isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}</div>
@@ -575,13 +581,16 @@ export default function TournamentPage() {
       </div>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
-      <h3>使用ステージ</h3>
-      <div className="detail-stage-list">{(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
-      {tournament.stageRejects && tournament.stageSettings && <>
+      {!tournament.stageRejects ? <>
+        <h3>使用ステージ</h3>
+        <div className="detail-stage-list">{(tournament.stages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
+      </> : <>
         <h3>拒否ステージ設定</h3>
-        <p className="generated-description">スターター：{(tournament.stageSettings.starterStages || []).join('、') || '未設定'}</p>
-        <p className="generated-description">カウンターピック：{(tournament.stageSettings.counterpickStages || []).join('、') || '未設定'}</p>
-        <p className="generated-description">最初のプレイヤー：{tournament.stageSettings.firstPlayerRejects}ステージ拒否／次のプレイヤー：{tournament.stageSettings.secondPlayerRejects}ステージ拒否／2ゲーム目以降：{tournament.stageSettings.laterRejects}ステージ拒否</p>
+        <h4 className="stage-group-heading">スターター</h4>
+        <div className="detail-stage-list">{(tournament.stageSettings?.starterStages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
+        <h4 className="stage-group-heading">カウンターピック</h4>
+        <div className="detail-stage-list">{(tournament.stageSettings?.counterpickStages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
+        <p className="generated-description">最初のプレイヤー：{tournament.stageSettings?.firstPlayerRejects ?? 1}ステージ拒否／次のプレイヤー：{tournament.stageSettings?.secondPlayerRejects ?? 2}ステージ拒否／2ゲーム目以降：{tournament.stageSettings?.laterRejects ?? 3}ステージ拒否</p>
       </>}
 
       {isOwner && !tournament.bracket && <section className="bracket-panel" id="tournament-bracket">
