@@ -76,6 +76,28 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // Keep both players in sync while a bracket is active, without flashing the loading screen.
+  useEffect(() => {
+    if (!tournament?.bracket || tournament.bracket.complete || showTournamentOverview || savingBracket) return;
+    let cancelled = false;
+    const refresh = async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const owner = localStorage.getItem(OWNER_KEY) || '';
+        const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
+        if (!response.ok || cancelled) return;
+        const result = await response.json();
+        if (!cancelled && result.tournament) {
+          setTournament(result.tournament);
+          updateCachedTournament(result.tournament);
+        }
+      } catch {}
+    };
+    const interval = setInterval(refresh, 4000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [id, Boolean(tournament?.bracket), tournament?.bracket?.complete, showTournamentOverview, savingBracket, accessToken]);
+
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
   useEffect(() => {
     if (!tournament?.bracket?.complete || !currentUserId || loading) return;
@@ -286,8 +308,30 @@ export default function TournamentPage() {
     await saveBracket({ ...tournament, bracket });
   }
 
-  async function recordMatchGame(roundIndex, matchIndex, winnerId) {
-    const bracket = JSON.parse(JSON.stringify(tournament.bracket));
+  async function submitMatchResult(roundIndex, matchIndex, result) {
+    const match = tournament?.bracket?.rounds?.[roundIndex]?.[matchIndex];
+    if (!match?.matchState?.currentGame?.stage || savingBracket) return;
+    setSavingBracket(true);
+    setError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('勝敗報告にはログインが必要です。');
+      const response = await fetch('/api/tournaments/match-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result, demoPerspective: isOwner ? demoPerspective : '' }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
+      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner }));
+      updateCachedTournament(body.tournament);
+    } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
+    finally { setSavingBracket(false); }
+  }
+
+  async function recordMatchGame(roundIndex, matchIndex, winnerId, confirmedBracket = null) {
+    const bracket = confirmedBracket || JSON.parse(JSON.stringify(tournament.bracket));
     const match = bracket.rounds[roundIndex][matchIndex];
     const state = match.matchState;
     if (!state || state.complete || !state.currentGame.stage) return;
@@ -461,7 +505,7 @@ export default function TournamentPage() {
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
           const demoMatch = isOwner && Boolean(demoPerspective) && [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective));
-          const viewingPlayerId = demoMatch ? demoPerspective : String(p1Id);
+          const viewingPlayerId = demoMatch ? demoPerspective : (isOwner ? String(p1Id) : String(currentUserId));
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
@@ -471,6 +515,8 @@ export default function TournamentPage() {
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
+          const canActFor = id => isOwner && !demoMatch ? true : String(id) === String(viewingPlayerId);
+          const waitingFor = id => <p className="setting-help match-turn-waiting">🟢 {[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
 
             <div className="game-top">
@@ -483,22 +529,26 @@ export default function TournamentPage() {
             </div>
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               {!game?.stage ? <>
-                {rejectsDone ? <>
+                {rejectsDone ? (canActFor(chooserId) ? <>
                   <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={stageSelection===stage?'stage selected':'stage'} onClick={()=>setStageSelection(stage)}>{stage}</button>)}</div>
                   <button className="submit" type="button" disabled={!stageSelection || savingBracket || (demoMatch && String(chooserId) !== String(viewingPlayerId))} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
-                </> : <>
+                </> : waitingFor(chooserId)) : (canActFor(rejectTurnId) ? <>
                   <p className="setting-help">ステージ拒否：{[match.player1,match.player2].find(p=>p?.id===rejectTurnId)?.name || 'プレイヤー'}（{state.gameNumber===1 ? (rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))}個選択）</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={rejectSelection.includes(stage)?'stage selected':'stage'} disabled={rejectSelection.length >= (state.gameNumber===1 ? Number(rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))) && !rejectSelection.includes(stage)} onClick={()=>setRejectSelection(old=>old.includes(stage)?old.filter(s=>s!==stage):[...old,stage])}>{stage}</button>)}</div>
                   <button className="submit" type="button" disabled={savingBracket || (demoMatch && String(rejectTurnId) !== String(viewingPlayerId))} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
-                </>}
+                </> : waitingFor(rejectTurnId))}
               </> : <>
                 <p className="setting-help">決定ステージ：{game.stage}</p>
                 <h3 className="match-result-heading">試合結果を入力</h3>
-                <div className="match-result-buttons">
-                  <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,demoMatch ? viewingPlayerId : match.player1.id)}>WIN — {demoMatch ? viewingPlayer?.name : match.player1.name}</button>
-                  <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,demoMatch ? (String(viewingPlayerId) === String(p1Id) ? match.player2.id : p1Id) : match.player2.id)}>LOSE — {demoMatch ? [match.player1,match.player2].find(p => String(p.id) !== String(viewingPlayerId))?.name : match.player2.name}</button>
-                </div>
+                {(!isOwner || demoMatch) && [match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
+                  <div className="match-result-buttons">
+                    <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'win')}>WIN</button>
+                    <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'lose')}>LOSE</button>
+                  </div>
+                  {game?.results?.[String(viewingPlayerId)] && !game?.results?.[String(viewingPlayerId===String(p1Id)?match.player2.id:p1Id)] && <p className="setting-help match-turn-waiting">相手の勝敗報告を待っています…</p>}
+                  {game?.results?.[String(p1Id)] && game?.results?.[String(match.player2.id)] && game.results[String(p1Id)]===game.results[String(match.player2.id)] && <p className="form-error">勝敗報告が一致していません。WIN / LOSEを確認してください。</p>}
+                </> : <p className="setting-help">選手の勝敗報告を待っています…</p>}
               </>}
             </>}
           </section>;
