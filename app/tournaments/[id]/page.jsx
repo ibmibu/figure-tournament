@@ -19,6 +19,7 @@ export default function TournamentPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [demoName, setDemoName] = useState('');
+  const [demoPerspective, setDemoPerspective] = useState('');
   const [savingBracket, setSavingBracket] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
@@ -453,6 +454,9 @@ export default function TournamentPage() {
           const settings = tournament.stageSettings || {};
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
+          const demoMatch = isOwner && match.player1.isDemo && match.player2.isDemo;
+          const viewingPlayerId = demoMatch && [p1Id, match.player2.id].some(id => String(id) === String(demoPerspective)) ? demoPerspective : String(p1Id);
+          const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
             : game?.previousWinnerId;
@@ -462,6 +466,7 @@ export default function TournamentPage() {
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
+            {demoMatch && <div className="demo-perspective-control"><label htmlFor="demoPerspective">操作する選手</label><select id="demoPerspective" value={viewingPlayerId} onChange={e => { setDemoPerspective(e.target.value); setRejectSelection([]); setStageSelection(''); }}><option value={p1Id}>{match.player1.name}</option><option value={match.player2.id}>{match.player2.name}</option></select></div>}
             <div className="game-top">
               <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
@@ -475,18 +480,18 @@ export default function TournamentPage() {
                 {rejectsDone ? <>
                   <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={stageSelection===stage?'stage selected':'stage'} onClick={()=>setStageSelection(stage)}>{stage}</button>)}</div>
-                  <button className="submit" type="button" disabled={!stageSelection || savingBracket} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
+                  <button className="submit" type="button" disabled={!stageSelection || savingBracket || (demoMatch && String(chooserId) !== String(viewingPlayerId))} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
                 </> : <>
                   <p className="setting-help">ステージ拒否：{[match.player1,match.player2].find(p=>p?.id===rejectTurnId)?.name || 'プレイヤー'}（{state.gameNumber===1 ? (rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))}個選択）</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={rejectSelection.includes(stage)?'stage selected':'stage'} disabled={rejectSelection.length >= (state.gameNumber===1 ? Number(rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))) && !rejectSelection.includes(stage)} onClick={()=>setRejectSelection(old=>old.includes(stage)?old.filter(s=>s!==stage):[...old,stage])}>{stage}</button>)}</div>
-                  <button className="submit" type="button" disabled={savingBracket} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
+                  <button className="submit" type="button" disabled={savingBracket || (demoMatch && String(rejectTurnId) !== String(viewingPlayerId))} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
                 </>}
               </> : <>
                 <p className="setting-help">決定ステージ：{game.stage}</p>
                 <h3 className="match-result-heading">試合結果を入力</h3>
                 <div className="match-result-buttons">
-                  <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,match.player1.id)}>WIN — {match.player1.name}</button>
-                  <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,match.player2.id)}>LOSE — {match.player2.name}</button>
+                  <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,demoMatch ? viewingPlayerId : match.player1.id)}>WIN — {demoMatch ? viewingPlayer?.name : match.player1.name}</button>
+                  <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>recordMatchGame(ri,mi,demoMatch ? (String(viewingPlayerId) === String(p1Id) ? match.player2.id : p1Id) : match.player2.id)}>LOSE — {demoMatch ? [match.player1,match.player2].find(p => String(p.id) !== String(viewingPlayerId))?.name : match.player2.name}</button>
                 </div>
               </>}
             </>}
