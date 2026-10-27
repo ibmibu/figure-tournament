@@ -1205,3 +1205,84 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
   .tournament-board{margin-inline:0}
   .tournament-board-heading{align-items:flex-start}
 }
+
+.tournament-board-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.tournament-board-actions .tournament-board-quick-message{align-self:center!important;margin:0}
+.tournament-board-actions .submit{align-self:center;margin:0}
+@media(max-width:480px){.tournament-board-actions{gap:8px}.tournament-board-actions button{font-size:12px;padding:9px 11px}}
+
+/* Streaming matches: strong but readable emphasis on bracket and match screen. */
+.tournament-detail-page .tournament-live-panel .bracket-match.match-streaming{
+  border:3px solid #d94b2b!important;
+  box-shadow:0 0 0 3px #f9d8ca,0 5px 15px #7e301b24!important;
+  background:#fff!important;
+  z-index:4!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match.match-streaming .match-players{
+  height:68px!important;
+}
+.bracket-stream-badge{
+  top:-16px!important;
+  left:8px!important;
+  padding:4px 11px!important;
+  border-radius:6px!important;
+  background:#c93d24!important;
+  box-shadow:0 2px 6px #0002;
+  font-size:12px!important;
+  letter-spacing:.03em;
+}
+.match-controls-streaming{
+  border:2px solid #df6343!important;
+  box-shadow:0 0 0 3px #fff0e9;
+}
+.match-stream-announcement{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:5px;
+  margin:0 0 16px;
+  padding:12px 15px;
+  border-left:4px solid #d94b2b;
+  border-radius:7px;
+  background:#fff1e9;
+  color:#783321;
+  font-size:13px;
+}
+.match-stream-announcement strong{font-size:16px;color:#ad351e}
+.match-stream-announcement b{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+
+/* Organizer match actions appear as a centered modal instead of shifting the bracket. */
+.bracket-admin-modal-backdrop{
+ position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;
+ padding:20px;background:rgba(16,27,45,.55);
+}
+.tournament-detail-page .bracket-admin-modal{
+ box-sizing:border-box;width:min(100%,480px);max-height:min(85dvh,720px);
+ overflow-y:auto;margin:0;padding:22px;border-radius:14px;background:#fff;
+ box-shadow:0 20px 60px rgba(0,0,0,.2);
+}
+.bracket-admin-modal .bracket-admin-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.bracket-admin-modal .bracket-admin-actions{display:flex;flex-wrap:wrap;gap:10px}
+.bracket-admin-modal .bracket-admin-actions button{min-height:40px}
+@media(max-width:600px){
+ .bracket-admin-modal-backdrop{padding:14px}
+ .tournament-detail-page .bracket-admin-modal{padding:18px}
+}
+
+/* Keep the four tournament overview facts in a balanced 2-by-2 grid on phones. */
+@media(max-width:640px){
+ .tournament-detail-page #tournament-overview .detail-grid{
+   display:grid;
+   grid-template-columns:repeat(2,minmax(0,1fr));
+   gap:10px;
+ }
+ .tournament-detail-page #tournament-overview .detail-grid>div{
+   min-width:0;
+   padding:12px 10px;
+ }
+ .tournament-detail-page #tournament-overview .detail-grid strong{
+   font-size:13px;
+   line-height:1.5;
+   overflow-wrap:anywhere;
+ }
+}

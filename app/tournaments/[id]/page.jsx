@@ -617,7 +617,8 @@ export default function TournamentPage() {
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           const canActFor = id => isOwner && !demoMatch ? true : String(id) === String(viewingPlayerId);
           const waitingFor = id => <p className="setting-help match-turn-waiting">🟢 {[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
-          return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
+          return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
+            {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span>{tournament.streamFriendCode && <span>配信台フレンドコード：<b>{tournament.streamFriendCode}</b></span>}</div>}
 
             <div className="game-top">
               <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
@@ -672,9 +673,11 @@ export default function TournamentPage() {
           </article>)}
         </div>}
         {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
-          {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${currentRoundNumber}回戦を開始してください。配信台の方は入室お願いします。`)}>回戦開始のお知らせを入力</button>}
           <textarea aria-label="コメント入力" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="コメントを入力（1000文字以内）" rows={3} />
-          <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+          <div className="tournament-board-actions">
+            {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${currentRoundNumber}回戦を開始してください。配信台の方は入室お願いします。`)}>試合開始アナウンス</button>}
+            <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
+          </div>
         </form> : <p className="setting-help">コメントできるのは主催者と大会参加者のみです。</p>}
         {boardError && <p className="form-error" role="alert">{boardError.replaceAll('掲示板', 'コメント')}</p>}
       </section>}
@@ -682,7 +685,7 @@ export default function TournamentPage() {
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
-        {isOwner && selectedAdminMatch && <section className="bracket-admin-panel" aria-label="主催者の対戦管理">
+        {isOwner && selectedAdminMatch && <div className="bracket-admin-modal-backdrop" onClick={() => { if (!savingBracket) { setAdminMatchSelection(null); setShowForfeitChoices(false); } }}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="主催者の対戦管理" onClick={event => event.stopPropagation()}>
           <div className="bracket-admin-heading">
             <strong>選択中：{selectedAdminMatch.player1?.name || '未定'} VS {selectedAdminMatch.player2?.name || '未定'}</strong>
             <button type="button" onClick={() => { setAdminMatchSelection(null); setShowForfeitChoices(false); }}>閉じる ×</button>
@@ -702,7 +705,7 @@ export default function TournamentPage() {
             </div>}
           </>}
           <p>変更すると、このカードにつながる後続の対戦結果も必要に応じてリセットされます。</p>
-        </section>}
+        </section></div>}
         <div className="bracket-rounds" style={{ "--bracket-height": `${64 + tournament.bracket.rounds[0].length * 104}px` }}>{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
           const state = match.matchState;
           const game = state?.currentGame;
@@ -736,8 +739,8 @@ export default function TournamentPage() {
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{player?.name || ""}{player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? (state?.score?.[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
 
 
-            {match.resultType === 'forfeit' && <span className="bracket-forfeit-label">不戦勝</span>}
-            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && !(ri === 0 && (Boolean(round[mi].player1) !== Boolean(round[mi].player2) || Boolean(round[mi + 1].player1) !== Boolean(round[mi + 1].player2))) && <svg className="bracket-connector" width="38" height={104 * (2 ** ri)} viewBox={`0 0 38 ${104 * (2 ** ri)}`} aria-hidden="true"><path d={`M 0 0 H 19 V ${104 * (2 ** ri)} M 0 ${104 * (2 ** ri)} H 19 M 19 ${52 * (2 ** ri)} H 38`} fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
+            {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && !(ri === 0 && Boolean(round[mi + 1].player1) !== Boolean(round[mi + 1].player2)) && <svg className="bracket-connector" width="38" height={104 * (2 ** ri)} viewBox={`0 0 38 ${104 * (2 ** ri)}`} aria-hidden="true"><path d={ri === 0 && Boolean(round[mi].player1) !== Boolean(round[mi].player2) ? 'M 0 0 H 38' : `M 0 0 H 19 V ${104 * (2 ** ri)} M 0 ${104 * (2 ** ri)} H 19 M 19 ${52 * (2 ** ri)} H 38`} fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
+            {ri === 0 && mi % 2 === 1 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2) && <svg className="bracket-connector" width="38" height="2" viewBox="0 0 38 2" aria-hidden="true"><path d="M 0 1 H 38" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}}
           </div>;
         })}</div>)}</div>
 
@@ -785,7 +788,7 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail participant-side-panel">
       <h2>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
       {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.name}{player.isDemo ? '（デモ）' : ''}</span>{isOwner && !tournament.bracket && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
-      {!joinedPlayers.some(player => String(player.id) === String(currentUserId)) && <>
+      {!tournament.bracket && !joinedPlayers.some(player => String(player.id) === String(currentUserId)) && <>
         <h3>参加する</h3>
         {joinedPlayers.length >= Number(tournament.participants || 8) ? <p className="setting-help">定員に達しています。</p> : <form onSubmit={joinTournament}>
           {accessToken ? <p className="setting-help">参加者名：{accountName || '読み込み中…'}</p> : <p className="setting-help">参加登録にはログインが必要です。</p>}

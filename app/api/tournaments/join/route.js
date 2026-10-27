@@ -37,6 +37,7 @@ export async function POST(request) {
     if (readError) throw readError;
     if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
     const tournament = row.data || {};
+    if (tournament.bracket || tournament.status === "対戦中" || tournament.status === "終了") return NextResponse.json({ error: "大会開始後は参加登録できません。" }, { status: 409 });
     const players = Array.isArray(tournament.joinedPlayers) ? tournament.joinedPlayers : [];
     if (players.length >= Number(tournament.participants || 8)) return NextResponse.json({ error: 'この大会は定員に達しています。' }, { status: 409 });
     if (players.some(player => String(player.name || '').trim().toLowerCase() === name.toLowerCase())) {
