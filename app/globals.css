@@ -1074,3 +1074,10 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .tournament-board-toggle{white-space:nowrap;font-weight:700;color:#453487}
 .tournament-board-latest{border-color:#cbc3e3;background:#f8f6fd}
 .tournament-board-latest p{max-height:5.2em;overflow:auto}
+
+
+/* Streaming station in the tournament bracket */
+.bracket-match.match-streaming{border:2px solid #e85b36!important;background:#fff4eb!important;box-shadow:0 0 0 2px rgba(232,91,54,.12)}
+.bracket-stream-badge{position:absolute;top:-12px;left:8px;z-index:2;display:inline-flex;align-items:center;padding:2px 9px;border-radius:5px;background:#d94428;color:#fff;font-size:11px;font-weight:800;line-height:1.4;white-space:nowrap}
+.bracket-admin-forfeit{margin-top:12px;padding:12px;border:1px solid #e6c7b6;background:#fffaf6;border-radius:8px}
+.bracket-admin-forfeit p{margin:0 0 10px;font-weight:700}
