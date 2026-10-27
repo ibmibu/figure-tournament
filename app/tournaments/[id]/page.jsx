@@ -76,6 +76,28 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // Keep both players in sync while a bracket is active, without flashing the loading screen.
+  useEffect(() => {
+    if (!tournament?.bracket || tournament.bracket.complete || showTournamentOverview || savingBracket) return;
+    let cancelled = false;
+    const refresh = async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const owner = localStorage.getItem(OWNER_KEY) || '';
+        const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
+        if (!response.ok || cancelled) return;
+        const result = await response.json();
+        if (!cancelled && result.tournament) {
+          setTournament(result.tournament);
+          updateCachedTournament(result.tournament);
+        }
+      } catch {}
+    };
+    const interval = setInterval(refresh, 4000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [id, Boolean(tournament?.bracket), tournament?.bracket?.complete, showTournamentOverview, savingBracket, accessToken]);
+
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
   useEffect(() => {
     if (!tournament?.bracket?.complete || !currentUserId || loading) return;
