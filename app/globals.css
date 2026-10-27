@@ -1043,3 +1043,12 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 
 /* My page navigation links: remove the redundant outer white cards. */
 .mypage-layout .my-results:has(> .results-link){background:transparent;border:0;border-radius:0;box-shadow:none;padding:0;margin-bottom:20px}
+
+/* Exact Stage Striker result-button geometry and colors (desktop and mobile). */
+.match-controls-below .stage-striker-results{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.match-controls-below .stage-striker-results button{width:100%;min-width:0;border:1px solid #dfe6ec;background:#fff!important;border-radius:8px;padding:18px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:none}
+.match-controls-below .stage-striker-results .match-result-win{color:#26856f!important}
+.match-controls-below .stage-striker-results .match-result-lose{color:#b24b55!important}
+.match-controls-below .stage-striker-results .active{border-color:currentColor;background:#f0f8f5!important}
+.match-controls-below .stage-striker-results button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:640px){.match-controls-below .stage-striker-results{grid-template-columns:1fr 1fr}}
