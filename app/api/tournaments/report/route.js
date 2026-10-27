@@ -13,7 +13,7 @@ export async function POST(request) {
   if(authError||!user)return NextResponse.json({error:'ログインが必要です。'},{status:401});
   const {id,characters}=await request.json();
   const fighters=['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
-  if(!Array.isArray(characters)||characters.length<1||characters.length>fighters.length||characters.some(c=>!c||!fighters.includes(c.fighter)||!['1P','2P','3P','4P','5P','6P','7P','8P'].includes(c.color))||new Set(characters.map(c=>c.fighter)).size!==characters.length)return NextResponse.json({error:'報告するキャラクター・カラーを確認してください。'},{status:400});
+  if(!Array.isArray(characters)||characters.length<1||characters.length>100||characters.some(c=>!c||!fighters.includes(c.fighter)||!['1P','2P','3P','4P','5P','6P','7P','8P'].includes(c.color)))return NextResponse.json({error:'報告するキャラクター・カラーを確認してください。'},{status:400});
   const admin=createClient(url,service,{auth:{persistSession:false,autoRefreshToken:false}});
   const {data:row,error:readError}=await admin.from('tournaments').select('data').eq('id',String(id)).maybeSingle();
   if(readError)throw readError;
