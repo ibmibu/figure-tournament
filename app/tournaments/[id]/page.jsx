@@ -542,9 +542,9 @@ export default function TournamentPage() {
                 <p className="setting-help">決定ステージ：{game.stage}</p>
                 <h3 className="match-result-heading">試合結果を入力</h3>
                 {(!isOwner || demoMatch) && [match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
-                  <div className="match-result-buttons">
-                    <button type="button" className="submit match-result-win" disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'win')}>WIN</button>
-                    <button type="button" className="submit match-result-lose" disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'lose')}>LOSE</button>
+                  <div className="match-result-buttons stage-striker-results">
+                    <button type="button" className={"match-result-win"+(game?.results?.[String(viewingPlayerId)]==="win"?" active":"")} disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'win')}>WIN</button>
+                    <button type="button" className={"match-result-lose"+(game?.results?.[String(viewingPlayerId)]==="lose"?" active":"")} disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'lose')}>LOSE</button>
                   </div>
                   {game?.results?.[String(viewingPlayerId)] && !game?.results?.[String(viewingPlayerId===String(p1Id)?match.player2.id:p1Id)] && <p className="setting-help match-turn-waiting">相手の勝敗報告を待っています…</p>}
                   {game?.results?.[String(p1Id)] && game?.results?.[String(match.player2.id)] && game.results[String(p1Id)]===game.results[String(match.player2.id)] && <p className="form-error">勝敗報告が一致していません。WIN / LOSEを確認してください。</p>}
