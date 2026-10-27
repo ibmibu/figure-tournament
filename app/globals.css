@@ -1029,3 +1029,8 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
   .tournament-detail-page .bracket-admin-actions {flex-direction: column;}
   .tournament-detail-page .bracket-admin-actions button {width: 100%; text-align: left;}
 }
+
+/* Tournament overview: consistent outlined chips for starter and counterpick stages */
+.tournament-detail-page .stage-group-heading{font-size:14px;font-weight:700;color:#475569;margin:16px 0 9px}
+.tournament-detail-page .stage-group-heading + .detail-stage-list{margin-bottom:14px}
+.tournament-detail-page .detail-stage-list span{display:inline-flex;align-items:center;border:1px solid #b8cce7;border-radius:6px;background:#edf5ff;color:#285b96;padding:7px 11px;font-size:13px;font-weight:600}
