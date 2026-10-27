@@ -740,7 +740,7 @@ export default function TournamentPage() {
 
 
             {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && !(ri === 0 && Boolean(round[mi + 1].player1) !== Boolean(round[mi + 1].player2)) && <svg className="bracket-connector" width="38" height={104 * (2 ** ri)} viewBox={`0 0 38 ${104 * (2 ** ri)}`} aria-hidden="true"><path d={ri === 0 && Boolean(round[mi].player1) !== Boolean(round[mi].player2) ? 'M 0 0 H 38' : `M 0 0 H 19 V ${104 * (2 ** ri)} M 0 ${104 * (2 ** ri)} H 19 M 19 ${52 * (2 ** ri)} H 38`} fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
-            {ri === 0 && mi % 2 === 1 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2) && <svg className="bracket-connector" width="38" height="2" viewBox="0 0 38 2" aria-hidden="true"><path d="M 0 1 H 38" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}}
+            {ri === 0 && mi % 2 === 1 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2) && <svg className="bracket-connector" width="38" height="2" viewBox="0 0 38 2" aria-hidden="true"><path d="M 0 1 H 38" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
           </div>;
         })}</div>)}</div>
 
