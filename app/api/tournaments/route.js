@@ -164,7 +164,7 @@ export async function PUT(request) {
           resultPlacements: safeInput.resultPlacements ?? existing.resultPlacements,
           completedAt: safeInput.completedAt ?? existing.completedAt,
         };
-    const { data: changed, error } = await supabase.from('tournaments').update({ data: updated }).eq('id', id).eq('data', existing).select('id');
+    const { data: changed, error } = await supabase.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(existing)).select('id');
     if (error) throw error;
     if (!changed?.length) return NextResponse.json({ error: '他の操作が先に保存されました。画面を更新してやり直してください。' }, { status: 409 });
     return NextResponse.json({ ok: true });
