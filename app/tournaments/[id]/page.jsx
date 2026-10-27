@@ -91,12 +91,13 @@ export default function TournamentPage() {
 
   // 大会ページを開いたら自分の未完了対戦を自動表示し、管理者なら対戦状態も開始する。
   useEffect(() => {
-    if (!tournament?.bracket || !currentUserId || tournament.bracket.complete) return;
+    const perspectiveId = tournament?.isOwner && demoPerspective ? demoPerspective : currentUserId;
+    if (!tournament?.bracket || !perspectiveId || tournament.bracket.complete) return;
     for (let ri = 0; ri < (tournament.bracket.rounds || []).length; ri++) {
       const round = tournament.bracket.rounds[ri];
       const mi = round.findIndex(match =>
         !match.winnerId && match.player1 && match.player2 &&
-        (String(match.player1.id) === String(currentUserId) || String(match.player2.id) === String(currentUserId))
+        (String(match.player1.id) === String(perspectiveId) || String(match.player2.id) === String(perspectiveId))
       );
       if (mi >= 0) {
         const ownMatch = round[mi];
@@ -106,7 +107,7 @@ export default function TournamentPage() {
       }
     }
     setActiveMatchId('');
-  }, [tournament, currentUserId]);
+  }, [tournament, currentUserId, demoPerspective]);
 
   async function updateTournament(next) {
     const { data } = await getSupabaseBrowserClient().auth.getSession();
@@ -439,6 +440,7 @@ export default function TournamentPage() {
       {!showTournamentOverview && error && <p className="form-error" role="alert">{error}</p>}
       {!showTournamentOverview && notice && <p className="form-success" role="status">{notice}</p>}
       {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
+        {isOwner && joinedPlayers.some(p => p.isDemo) && <div className="bracket-panel demo-perspective-control"><label htmlFor="demoPerspective">現在の操作視点</label><select id="demoPerspective" value={demoPerspective} onChange={e => { setDemoPerspective(e.target.value); setActiveMatchId(''); setRejectSelection([]); setStageSelection(''); }}><option value="">主催者（通常操作）</option>{joinedPlayers.filter(p=>p.isDemo).map(p=><option key={p.id} value={p.id}>{p.name} として操作</option>)}</select><p className="setting-help">{demoPerspective ? '選択したデモ選手の視点で対戦を操作します。' : 'デモ選手を選ぶと、その選手の対戦画面が表示されます。'}</p></div>}
         {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
@@ -454,8 +456,8 @@ export default function TournamentPage() {
           const settings = tournament.stageSettings || {};
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
-          const demoMatch = isOwner && match.player1.isDemo && match.player2.isDemo;
-          const viewingPlayerId = demoMatch && [p1Id, match.player2.id].some(id => String(id) === String(demoPerspective)) ? demoPerspective : String(p1Id);
+          const demoMatch = isOwner && Boolean(demoPerspective) && [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective));
+          const viewingPlayerId = demoMatch ? demoPerspective : String(p1Id);
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
@@ -466,7 +468,7 @@ export default function TournamentPage() {
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           return <section className="bracket-panel match-controls-below" aria-label="対戦操作">
-            {demoMatch && <div className="demo-perspective-control"><label htmlFor="demoPerspective">操作する選手</label><select id="demoPerspective" value={viewingPlayerId} onChange={e => { setDemoPerspective(e.target.value); setRejectSelection([]); setStageSelection(''); }}><option value={p1Id}>{match.player1.name}</option><option value={match.player2.id}>{match.player2.name}</option></select></div>}
+
             <div className="game-top">
               <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
