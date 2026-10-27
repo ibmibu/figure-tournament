@@ -208,29 +208,30 @@ export default function TournamentPage() {
       const nextSize = seedOrder.length * 2;
       seedOrder = seedOrder.flatMap(seed => [seed, nextSize + 1 - seed]);
     }
-    const slots = Array(size).fill(null);
     const ranked = [...players].sort((a, b) => Number(b.rating) - Number(a.rating));
-    const canSeed = tournament.autoSeed && players.every(player => Number.isFinite(Number(player.rating)) && player.rating !== undefined && player.rating !== null);
+    const canSeed = tournament.autoSeed && players.every(player => player.rating !== undefined && player.rating !== null && Number.isFinite(Number(player.rating)));
     const seedCount = canSeed ? Math.min(players.length, Math.max(2, Math.ceil(players.length * 0.25))) : 0;
-    const seeded = canSeed ? ranked.slice(0, seedCount) : [];
-    const unseeded = shuffle(canSeed ? ranked.slice(seedCount) : players);
-    seeded.forEach((player, index) => { slots[seedOrder.indexOf(index + 1)] = player; });
-    // Spread byes across the draw rather than collecting them at the bottom.
-    const byeCount = size - players.length;
-    const available = seedOrder.map((seed, position) => ({ seed, position }))
-      .filter(({ position }) => !slots[position])
-      .sort((a, b) => b.seed - a.seed);
-    // Seeded players receive byes first; otherwise select bye positions randomly.
-    const byePositions = [];
-    const remainingPositions = available.map(item => item.position);
-    for (let i = 0; i < byeCount; i++) {
-      const preferred = seeded[i] ? seedOrder.indexOf(i + 1) ^ 1 : -1;
-      const candidates = remainingPositions.filter(position => !byePositions.includes(position) && (position % 2 === 0 ? !slots[position + 1] : !slots[position - 1]));
-      const choice = preferred >= 0 && remainingPositions.includes(preferred) ? preferred : shuffle(candidates.length ? candidates : remainingPositions)[0];
-      byePositions.push(choice);
-      remainingPositions.splice(remainingPositions.indexOf(choice), 1);
+    const entrants = canSeed
+      ? [...ranked.slice(0, seedCount), ...shuffle(ranked.slice(seedCount))]
+      : shuffle(players);
+    // Assign players to conventional seed positions; the remaining ranks are
+    // byes. This balances the two halves and avoids empty first-round matches.
+    // Without seeding, randomize the draw orientation as well.
+    let positions = seedOrder.map(rank => rank - 1);
+    if (!canSeed) {
+      for (let span = size; span >= 2; span /= 2) {
+        for (let start = 0; start < size; start += span) {
+          if (Math.random() < 0.5) {
+            const half = span / 2;
+            for (let offset = 0; offset < half; offset++) {
+              [positions[start + offset], positions[start + half + offset]] =
+                [positions[start + half + offset], positions[start + offset]];
+            }
+          }
+        }
+      }
     }
-    remainingPositions.forEach((position, index) => { slots[position] = unseeded[index]; });
+    const slots = positions.map(rank => entrants[rank] || null);
     const rounds = [];
     let count = size / 2;
     for (let round = 0; count >= 1; round++, count = count / 2) {
@@ -719,6 +720,7 @@ export default function TournamentPage() {
           };
           const isAdminSelected = isOwner && adminMatchSelection?.roundIndex === ri && adminMatchSelection?.matchIndex === mi;
           const isStreamMatch = String(streamMatchId) === String(match.id);
+          if (ri === 0 && Boolean(match.player1) !== Boolean(match.player2)) return <div key={match.id} className="bracket-bye-spacer" style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} aria-hidden="true" />;
           return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}${isStreamMatch ? ' match-streaming' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
             
             {isStreamMatch && <span className="bracket-stream-badge">● 配信台</span>}
