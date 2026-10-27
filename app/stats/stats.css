@@ -2319,3 +2319,38 @@ footer span {
 /* Matchup win/loss totals on white table cells must be dark. */
 .stats-shell .playerTable .recordWin,
 .stats-shell .playerTable .recordLoss { color:#211b2a; }
+
+
+/* Keep victory-list Tier badges identical to the Tier totals below. */
+.stats-shell .achievementTournaments .achievementTournament .achievementTier,
+.stats-shell .achievementTierCounts .achievementTier{
+  display:inline-grid;
+  place-items:center;
+  box-sizing:border-box;
+  width:17px;
+  min-width:17px;
+  max-width:17px;
+  height:17px;
+  min-height:17px;
+  max-height:17px;
+  flex:0 0 17px;
+  aspect-ratio:1 / 1;
+  padding:0;
+  border-width:1px;
+  border-style:solid;
+  border-radius:4px;
+  font-size:10px;
+  font-weight:700;
+  line-height:1;
+}
+.stats-shell .achievementTournaments .achievementTournament .achievementTier.tierS,
+.stats-shell .achievementTierCounts .achievementTier.tierS{background:#4a202b;color:#ff8da5;border-color:#b94d69}
+.stats-shell .achievementTournaments .achievementTournament .achievementTier.tierA,
+.stats-shell .achievementTierCounts .achievementTier.tierA{background:#4a2d19;color:#ffad5c;border-color:#b87536}
+.stats-shell .achievementTournaments .achievementTournament .achievementTier.tierB,
+.stats-shell .achievementTierCounts .achievementTier.tierB{background:#494019;color:#f6df64;border-color:#a89536}
+.stats-shell .achievementTournaments .achievementTournament .achievementTier.tierC,
+.stats-shell .achievementTierCounts .achievementTier.tierC{background:#183f2a;color:#61e49a;border-color:#2e8c5a}
+.stats-shell .achievementTournaments .achievementTournament .achievementTier.tierD,
+.stats-shell .achievementTierCounts .achievementTier.tierD{background:#173d4a;color:#75ddf5;border-color:#348ba4}
+.stats-shell .achievementTournaments .achievementTournament .achievementTier .tierLetter{color:inherit;line-height:1}
