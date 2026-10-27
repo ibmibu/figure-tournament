@@ -74,7 +74,7 @@ export default function ResultsPage() {
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="results-table">
           {tournaments.map(tournament => <div className="results-table-row" key={tournament.id}>
             <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>
-            <span className="results-table-placement">{tournament.myPlacement === 'ベスト4' ? '3位' : tournament.myPlacement || '結果確定'}</span>
+            <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{tournament.myPlacement === 'ベスト4' ? '3位' : tournament.myPlacement || '結果確定'}</span>
           </div>)}
         </div>}
       </section>
