@@ -8,19 +8,24 @@ alter sequence public.figure_public_uid_seq owned by public.profiles.public_uid;
 select setval('public.figure_public_uid_seq',
   greatest(coalesce((select max(public_uid) from public.profiles), 0), 1),
   (select coalesce(max(public_uid), 0) > 0 from public.profiles));
-insert into public.profiles (user_id, display_name, avatar_data)
-select id, 'no name', '' from auth.users
-on conflict (user_id) do nothing;
-with ordered as materialized (
-  select p.user_id, row_number() over (order by u.created_at, u.id) as position
-  from public.profiles p join auth.users u on u.id = p.user_id
-  where p.public_uid is null
-), numbered as materialized (
-  select user_id, nextval('public.figure_public_uid_seq') as assigned
-  from ordered order by position
-)
-update public.profiles p set public_uid = numbered.assigned
-from numbered where p.user_id = numbered.user_id;
+-- Assign numbers strictly in auth.users creation order, including accounts
+-- that have not yet created a profile.
+do $$
+declare account record;
+begin
+  for account in
+    select u.id from auth.users u
+    left join public.profiles p on p.user_id = u.id
+    where p.public_uid is null
+    order by u.created_at, u.id
+  loop
+    insert into public.profiles (user_id, display_name, avatar_data, public_uid)
+    values (account.id, 'no name', '', nextval('public.figure_public_uid_seq'))
+    on conflict (user_id) do update
+      set public_uid = excluded.public_uid
+      where public.profiles.public_uid is null;
+  end loop;
+end $$;
 alter table public.profiles alter column public_uid set default nextval('public.figure_public_uid_seq');
 create unique index if not exists profiles_public_uid_unique on public.profiles(public_uid);
 create or replace function public.figure_create_profile_on_signup()
