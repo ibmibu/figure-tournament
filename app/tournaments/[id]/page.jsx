@@ -543,9 +543,7 @@ export default function TournamentPage() {
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
   const canEditAdminMatch = Boolean(selectedAdminMatch?.player1 && selectedAdminMatch?.player2);
-  const activeStreamMatches = (tournament.bracket?.rounds || []).flat().filter(match => match.player1 && match.player2 && !match.winnerId);
-  const ownStreamMatch = activeStreamMatches.find(match => [match.player1, match.player2].some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId)));
-  const streamMatchId = tournament.streamMatchId === undefined ? ownStreamMatch?.id || null : tournament.streamMatchId;
+  const streamMatchId = tournament.effectiveStreamMatchId ?? null;
 
   return <main className="page tournament-detail-page">
     <section className="intro tournament-heading">
