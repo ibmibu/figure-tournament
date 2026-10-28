@@ -81,7 +81,18 @@ export async function GET(request) {
     }
     const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').order('created_at', { ascending: false });
     if (error) throw error;
-    return NextResponse.json({ tournaments: (data || []).map(row => publicTournament(row, user)) });
+    const rows = data || [];
+    const ownerIds = [...new Set(rows.map(row => row.data?.ownerUserId).filter(Boolean))];
+    let ownerNames = new Map();
+    if (ownerIds.length) {
+      const { data: profiles, error: profileError } = await supabase.from('profiles').select('user_id,display_name').in('user_id', ownerIds);
+      if (profileError) console.error('Tournament organizer names could not be loaded:', profileError);
+      else ownerNames = new Map((profiles || []).map(profile => [profile.user_id, profile.display_name]));
+    }
+    return NextResponse.json({ tournaments: rows.map(row => ({
+      ...publicTournament(row, user),
+      organizerName: ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || ''
+    })) });
   } catch (error) {
     return errorResponse(error, '大会データを読み込めませんでした。Supabaseの設定を確認してください。');
   }
