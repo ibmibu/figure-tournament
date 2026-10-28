@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import SiteHeader from '../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import Link from 'next/link';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
@@ -84,7 +83,7 @@ export default function ResultsPage() {
   }, []);
 
   return <main className="page">
-    <SiteHeader />
+    
     <section className="my-page">
       <h1>参加大会一覧</h1>
       <section className="my-results">
