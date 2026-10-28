@@ -1323,3 +1323,24 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 /* Keep the shared header aligned across routes regardless of page-specific containers. */
 .site-header{width:100%;max-width:1120px;margin-inline:auto;padding-inline:clamp(16px,3vw,32px)}
 @media(max-width:640px){.site-header{padding-inline:16px}.site-header-left{margin:0}.site-logo{margin:0}.site-logo-image{width:142px}}
+
+/* Header sits inside padded .page on Home/My Page, but at root on Stats.
+   Cancel the parent inset so all three tabs align the logo to the viewport. */
+@media(max-width:640px){
+  .page > .site-header{
+    width:calc(100% + 32px);
+    max-width:none;
+    margin-left:-16px;
+    margin-right:-16px;
+    padding-left:16px;
+    padding-right:16px;
+  }
+  .stats-shell > .site-header{
+    width:100%;
+    max-width:none;
+    margin-left:0;
+    margin-right:0;
+    padding-left:16px;
+    padding-right:16px;
+  }
+}
