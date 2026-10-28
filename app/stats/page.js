@@ -665,8 +665,7 @@ export default function StatsPage() {
     let matchedComments = 0;
     let parsedComments = 0;
     const targetCanonicalId = canonicalAccountId(characterTargetPlayer.id);
-    const targetNormalizedName = normalizePlayerName(characterTargetPlayer.name);
-    // いぶ選手の過去大会は手動登録を優先し、同じ大会のコメント集計と二重計上しない。
+    // 過去の手動登録は保持し、新しい大会は終了後のキャラ報告を使用する。
     const manualReportsByTournament = new Map();
     const tournamentsByNormalizedName = new Map();
     const tournamentsByNumber = new Map();
@@ -705,41 +704,7 @@ export default function StatsPage() {
         if (characters.length > 0) manualReportsByTournament.set(number, characters);
       }
     }
-    for (const tournament of characterComments || []) {
-      // 過去大会を手動登録している場合、その大会のコメントは集計対象から外す。
-      if (manualReportsByTournament.has(Number(tournament.number))) continue;
-      const usedInTournament = new Set();
-      for (const comment of tournament.comments || []) {
-        const commentUserId = String(comment.userId || '').trim();
-        const matchesById =
-          Boolean(commentUserId) &&
-          canonicalAccountId(commentUserId) === targetCanonicalId;
-        // コメントHTMLの形式によって投稿者IDが取得できない場合に限り、名前の完全一致で補完する。
-        // IDが取得できているコメントは、従来どおりIDを優先して誤判定を避ける。
-        // IDが一致しない場合も、投稿者名が正規化後に完全一致するなら同一選手として扱う。
-        // 旧アカウントIDなどで登録IDとコメントIDが異なるケースを取りこぼさない。
-        const matchesByName =
-          normalizePlayerName(comment.name) === targetNormalizedName;
-        if (!matchesById && !matchesByName) continue;
-        matchedComments += 1;
-        let remainingText = String(comment.text || '').normalize('NFKC');
-        // 正式名と辞書の別表記を同じ正式名に統一してから、大会ごとに重複を除く。
-        for (const pattern of characterPatterns) {
-          const foundAt = findExactName(remainingText, pattern.match);
-          if (foundAt !== -1) {
-            if (!usedInTournament.has(pattern.officialName)) {
-              counts.set(pattern.officialName, (counts.get(pattern.officialName) || 0) + 1);
-              parsedComments += 1;
-              usedInTournament.add(pattern.officialName);
-              seenTournaments.add(Number(tournament.number));
-            }
-            remainingText = removeExactName(remainingText, pattern.match);
-          }
-        }
-      }
-      if (usedInTournament.size) reportedByTournament.set(Number(tournament.number), new Set([...(reportedByTournament.get(Number(tournament.number)) || []), ...usedInTournament]));
-    }
-    // Account-linked reports from completed Figure Tournament events.
+    // Completed tournament character declarations are the source of truth for new events.
     for (const tournament of data.tournaments || []) {
       if (!tournament.championId || !tournament.characterReports) continue;
       const reported = tournament.characterReports[targetCanonicalId];
