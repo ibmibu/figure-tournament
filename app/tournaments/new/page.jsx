@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
@@ -237,10 +236,10 @@ export default function NewTournamentPage() {
 
   const weekday = date ? ['日', '月', '火', '水', '木', '金', '土'][new Date(date + 'T12:00:00').getDay()] : '';
 
-  if (checkingAuth && !error) return <main className="page"><SiteHeader /><p className="setting-help">ログイン状態を確認しています…</p></main>;
+  if (checkingAuth && !error) return <main className="page"><p className="setting-help">ログイン状態を確認しています…</p></main>;
 
   return <main className="page tournament-create-page">
-    <SiteHeader />
+    
     <section className="intro">
       
       <a className="back-link" href="/">← 大会一覧に戻る</a>
