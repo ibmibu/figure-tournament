@@ -5,7 +5,7 @@ import {getSupabaseBrowserClient} from '../../../lib/supabase/client';
 export default function PlayerLinks(){
  const [links,setLinks]=useState([]),[players,setPlayers]=useState([]),[users,setUsers]=useState([]);
  const [legacyPlayerId,setLegacyPlayerId]=useState(''),[publicUid,setPublicUid]=useState('');
- const [tab,setTab]=useState('all'),[query,setQuery]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ const [query,setQuery]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
  async function request(method,body){
   const {data:{session}}=await getSupabaseBrowserClient().auth.getSession();
   if(!session)throw Error('ログインが必要です。');
@@ -14,7 +14,7 @@ export default function PlayerLinks(){
  }
  async function refresh(){try{const result=await request('GET');setLinks(result.links||[]);setPlayers(result.players||[]);setUsers(result.users||[]);setError('');}catch(e){setError(e.message);}}
  useEffect(()=>{refresh();},[]);
- const visible=useMemo(()=>players.filter(p=>(tab==='all'||(tab==='unlinked'&&!p.linked)||(tab==='linked'&&p.linked))&&(p.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())||p.id.includes(query))),[players,query,tab]);
+ const visible=useMemo(()=>players.filter(p=>p.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())||p.id.includes(query)),[players,query]);
  const selected=players.find(p=>p.id===legacyPlayerId&&!p.linked);
  async function save(e){e.preventDefault();if(!selected||!publicUid)return;setBusy(true);setError('');setMessage('');try{
   await request('POST',{legacyPlayerId,publicUid:Number(publicUid)});
@@ -28,11 +28,11 @@ export default function PlayerLinks(){
  <section className="profile-panel"><form onSubmit={save} className="profile-edit-form">
  <label htmlFor="legacy-search">過去の選手を検索</label>
  <input id="legacy-search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="選手名で検索" />
- <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}} role="tablist" aria-label="過去の選手の表示切替">{[['all','すべて'],['unlinked','未連携'],['linked','連携済み']].map(([key,label])=><button type="button" role="tab" aria-selected={tab===key} key={key} onClick={()=>setTab(key)} style={{padding:'7px 12px',borderRadius:7,border:tab===key?'2px solid #3170b8':'1px solid #d5dce5',background:tab===key?'#e7f1fc':'#fff',color:'#172333'}}>{label}{key==='all'?` (${players.length})`:key==='unlinked'?` (${players.filter(p=>!p.linked).length})`:` (${players.filter(p=>p.linked).length})`}</button>)}</div>
- <div style={{display:'flex',flexWrap:'wrap',gap:8,maxHeight:250,overflowY:'auto',padding:'10px 0'}} role="group" aria-label="過去の選手一覧">
- {visible.map(p=><button type="button" key={p.id} aria-pressed={legacyPlayerId===p.id} onClick={()=>{if(!p.linked)setLegacyPlayerId(p.id)}} disabled={p.linked} title={p.linked?'連携済み':'選択する'} style={{opacity:p.linked?.55:1,padding:'7px 11px',borderRadius:7,border:legacyPlayerId===p.id?'2px solid #3170b8':'1px solid #d5dce5',background:legacyPlayerId===p.id?'#e7f1fc':'#fff',color:'#172333',cursor:'pointer'}}>{p.name}{p.linked?'（連携済み）':''}</button>)}
+ <select aria-label="過去の選手一覧" value={legacyPlayerId} onChange={e=>setLegacyPlayerId(e.target.value)} size={Math.min(12,Math.max(2,visible.length+1))} style={{width:'100%',minHeight:64,maxHeight:340,overflowY:'auto',marginTop:10,padding:8,border:'1px solid #d5dce5',borderRadius:8,background:'#fff',color:'#172333'}}>
+ <option value="">全体（全選手） — {players.length}人</option>
+ {visible.map(p=><option key={p.id} value={p.id} disabled={p.linked}>{p.name}{p.linked?'（連携済み）':''}</option>)}
+ </select>
  {!visible.length&&<p>該当する選手はいません。</p>}
- </div>
  {selected&&<p>選択中：<strong>{selected.name}</strong>（旧ID：{selected.id}）</p>}
  <label>連携先のアミコネUID
  <select value={publicUid} onChange={e=>setPublicUid(e.target.value)} required>
