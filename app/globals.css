@@ -1319,3 +1319,73 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
  .home-tournament-table .home-tournament-row td:nth-child(4){grid-column:3;grid-row:2;white-space:nowrap;font-size:11px}
  .home-tournament-table .home-tournament-row td:nth-child(5){grid-column:3;grid-row:1;justify-self:end}
 }
+
+/* Home: separated, borderless sections and a cleaner mobile tournament list. */
+.page > .tournaments{
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  padding:22px 0 12px;
+}
+.page > .tournaments.home-finished-tournaments{
+  margin-top:38px;
+  padding-top:30px;
+  border-top:1px solid #dce3e9;
+}
+.page > .tournaments .empty{min-height:105px}
+.page > .tournaments .home-tournament-table-wrap{margin-top:20px}
+@media(max-width:640px){
+  .page > .tournaments{padding:20px 0 8px}
+  .page > .tournaments.home-finished-tournaments{margin-top:36px;padding-top:26px}
+  .page > .tournaments .empty{min-height:100px;padding:14px 0}
+  .home-tournament-table .home-tournament-row{
+    grid-template-columns:minmax(0,1fr) auto;
+    column-gap:10px;
+    row-gap:10px;
+    padding:16px 0;
+    align-items:start;
+  }
+  .home-tournament-table .home-tournament-row td:nth-child(1){
+    grid-column:1;grid-row:1;
+    min-width:0;
+    padding-right:4px;
+  }
+  .home-tournament-table .home-tournament-row td:nth-child(5){
+    grid-column:2;grid-row:1;
+    justify-self:end;
+    align-self:start;
+  }
+  .home-tournament-table .home-tournament-name{
+    display:block;
+    min-width:0;
+    max-width:100%;
+    white-space:normal;
+    overflow-wrap:break-word;
+    word-break:normal;
+    line-break:strict;
+    font-size:14px;
+    line-height:1.5;
+  }
+  .home-tournament-table .home-tournament-row td:nth-child(4),
+  .home-tournament-table .home-tournament-row td:nth-child(2),
+  .home-tournament-table .home-tournament-row td:nth-child(3){
+    grid-row:2;
+    grid-column:auto;
+    min-width:0;
+    font-size:11px;
+    white-space:nowrap;
+    color:#667085;
+  }
+  .home-tournament-table .home-tournament-row td:nth-child(4){grid-column:1;justify-self:start}
+  .home-tournament-table .home-tournament-row td:nth-child(2){grid-column:2;justify-self:start}
+  .home-tournament-table .home-tournament-row td:nth-child(3){grid-column:3;justify-self:end}
+  .home-tournament-table .home-tournament-row{
+    grid-template-columns:minmax(0,1fr) auto auto;
+  }
+  .home-tournament-table .home-tournament-row td:nth-child(1){grid-column:1 / 3}
+  .home-tournament-table .home-tournament-row td:nth-child(5){grid-column:3}
+  .home-tournament-table .home-tournament-row td:nth-child(4)::before{content:"開催："}
+  .home-tournament-table .home-tournament-row td:nth-child(2)::before{content:"形式："}
+  .home-tournament-table .home-tournament-row td:nth-child(3)::before{content:"参加："}
+}
