@@ -1504,7 +1504,7 @@ export default function StatsPage() {
           )}
         </section>
 
-        {(seriesTag === '人形劇' || seriesTag === 'all') && (
+        {seriesTag === '人形劇' && (
         <section className="card">
           <div className="sectionHead">
             <div>
@@ -1808,7 +1808,7 @@ export default function StatsPage() {
         </section>
         )}
 
-        {seriesTag === '人形劇' && (
+        {(seriesTag === '人形劇' || seriesTag === 'all') && (
         <section className="card">
           <div className="sectionHead">
             <div>
