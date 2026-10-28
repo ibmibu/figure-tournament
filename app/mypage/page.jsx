@@ -77,8 +77,7 @@ export default function MyPage({ colorsOnly = false }) {
         } catch {}
         const cachedTournaments = readTournamentCache();
         if (cachedTournaments) {
-          const cachedName = String(profile.display_name || 'no name').trim().toLowerCase();
-          setTournaments(cachedTournaments.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === cachedName)));
+          setTournaments(cachedTournaments.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentSession.user.id))));
         }
         const headers = { Authorization: `Bearer ${currentSession.access_token}` };
         const [profileResponse, tournamentResponse] = await Promise.all([
@@ -98,8 +97,7 @@ export default function MyPage({ colorsOnly = false }) {
         setDraftFriendCode(loadedProfile.friend_code || '');
         const all = tournamentResult.tournaments || [];
         writeTournamentCache(all);
-        const myName = (loadedProfile.display_name || 'no name').trim().toLowerCase();
-        setTournaments(all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => String(player.name || '').trim().toLowerCase() === myName)));
+        setTournaments(all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentSession.user.id))));
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
