@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import SiteHeader from '../../components/SiteHeader';
 import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
@@ -203,7 +202,7 @@ export default function MyPage({ colorsOnly = false }) {
   const displayName = editing ? draftName : profile.display_name;
 
   return <main className="page mypage-layout">
-    <SiteHeader />
+    
     <section className="my-page">
       <h1>{colorsOnly ? 'マイカラー登録' : 'マイページ'}</h1>
       {colorsOnly && <Link className="my-colors-back" href="/mypage">← マイページに戻る</Link>}
