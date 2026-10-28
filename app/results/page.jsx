@@ -97,6 +97,6 @@ export default function ResultsPage() {
         </div>}
       </section>
     </section>
-    <footer>Figure Tournament</footer>
+    <footer>アミコネ</footer>
   </main>;
 }
