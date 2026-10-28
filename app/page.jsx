@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import SiteHeader from '../components/SiteHeader';
 import Link from 'next/link';
 import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
 import { readTabSnapshot, writeTabSnapshot } from '../lib/tab-snapshot';
@@ -58,7 +57,7 @@ export default function Home() {
   const cutoff = Date.now()-14*24*60*60*1000;
   const finished = tournaments.filter(t=>isFinished(t)&&finishedAt(t)>=cutoff).sort((a,b)=>finishedAt(b)-finishedAt(a));
   return <main className="page">
-    <SiteHeader />
+    
     <section className="tournaments">
       <div className="section-title">
         <h2>大会一覧</h2>
