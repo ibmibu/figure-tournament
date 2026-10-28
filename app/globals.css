@@ -1387,3 +1387,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-page .my-results .results-table-name{font-size:13px!important;line-height:1.45!important}
 .my-page .my-results .results-table-placement{font-size:12px!important;line-height:1.4!important}
 @media(max-width:600px){.my-page .my-results .results-table-row{min-height:34px!important;padding:5px 2px!important}.my-page .my-results .results-table-name{font-size:12px!important}.my-page .my-results .results-table-placement{font-size:12px!important}}
+
+/* Personal results: match the compact Smashmate list density. */
+.my-page .my-results .results-table-row{min-height:0!important;padding:5px 4px!important;gap:8px!important}
+.my-page .my-results .results-table-name{font-size:13px!important;line-height:1.45!important}
+.my-page .my-results .results-table-placement{font-size:12px!important;line-height:1.45!important}
+@media(max-width:600px){.my-page .my-results .results-table-row{min-height:0!important;padding:5px 2px!important;gap:8px!important}.my-page .my-results .results-table-name{font-size:13px!important;line-height:1.45!important}.my-page .my-results .results-table-placement{font-size:12px!important}}
