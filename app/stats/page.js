@@ -635,7 +635,7 @@ export default function StatsPage() {
 
   const selectedCharacterStats = useMemo(() => {
     const characterTargetPlayer = data?.players?.find((player) => String(player.id) === String(selected));
-    if (!characterTargetPlayer || !characterComments) return { counts: [], total: 0, tournaments: 0 };
+    if (!characterTargetPlayer) return { counts: [], total: 0, tournaments: 0 };
     const counts = new Map();
     const seenTournaments = new Set();
     const reportedByTournament = new Map();
@@ -682,7 +682,7 @@ export default function StatsPage() {
         if (characters.length > 0) manualReportsByTournament.set(number, characters);
       }
     }
-    for (const tournament of characterComments) {
+    for (const tournament of (characterComments || [])) {
       // 過去大会を手動登録している場合、その大会のコメントは集計対象から外す。
       if (manualReportsByTournament.has(Number(tournament.number))) continue;
       const usedInTournament = new Set();
@@ -727,6 +727,23 @@ export default function StatsPage() {
         reportedByTournament.set(number, used);
       }
     }
+    // New events use the submitted post-tournament reports, never comment parsing.
+    // Recompute from the current server snapshot so a later ID link or report update
+    // cannot double-count the same tournament.
+    const allNew = [...new Map(createdTournaments.filter(t => t.id != null).map(t => [String(t.id), t])).values()];
+    const maxArchiveNumber = (archiveData?.tournaments || []).reduce((max, t) => Math.max(max, Number(t.number) || 0), 0);
+    for (const tournament of allNew) {
+      if (!(seriesTag === 'all' || (tournament.seriesTags || []).includes(seriesTag))) continue;
+      const number = maxArchiveNumber + allNew.findIndex(t => String(t.id) === String(tournament.id)) + 1;
+      const report = (tournament.characterReports || []).find(r => canonicalAccountId(r.playerId) === targetCanonicalId);
+      if (!report) continue;
+      const used = new Set((report.characters || []).map(name => String(name || '').trim()).filter(Boolean));
+      if (!used.size) continue;
+      // One fighter is counted once per event regardless of repeated copies or colors.
+      for (const character of used) counts.set(character, (counts.get(character) || 0) + 1);
+      seenTournaments.add(number);
+      reportedByTournament.set(number, used);
+    }
     // 参加大会・優勝集計で作成した大会別記録を再利用する。
     // キャラクター単騎判定では、各記録のIDを canonical 化してから判定する。
     const champions = new Map();
@@ -742,13 +759,18 @@ export default function StatsPage() {
       const unbeaten = [...participants].filter((id) => !losers.has(id));
       if (unbeaten.length === 1) champions.set(number, unbeaten[0]);
     }
+    for (const tournament of createdTournaments) {
+      if (!(seriesTag === 'all' || (tournament.seriesTags || []).includes(seriesTag))) continue;
+      const number = maxArchiveNumber + allNew.findIndex(t => String(t.id) === String(tournament.id)) + 1;
+      if (number > maxArchiveNumber && tournament.championId != null) champions.set(number, canonicalAccountId(tournament.championId));
+    }
     const playerId = targetCanonicalId;
     const soloAchievements = [...reportedByTournament.entries()]
       .filter(([number, characters]) => champions.get(number) === playerId && characters.size === 1)
       .map(([number, characters]) => ({ number, character: [...characters][0] }))
       .sort((a, b) => b.number - a.number);
-    return { counts: [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')), total: [...counts.values()].reduce((sum, value) => sum + value, 0), tournaments: seenTournaments.size, soloAchievements, matchedComments, parsedComments, targetId: String(characterTargetPlayer.id), fetchedComments: characterComments.reduce((sum, item) => sum + (item.comments?.length || 0), 0), fetchErrors: characterComments.filter((item) => item.error).length };
-  }, [data, selected, characterComments, playerTournamentStats]);
+    return { counts: [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')), total: [...counts.values()].reduce((sum, value) => sum + value, 0), tournaments: seenTournaments.size, soloAchievements, matchedComments, parsedComments, targetId: String(characterTargetPlayer.id), fetchedComments: (characterComments || []).reduce((sum, item) => sum + (item.comments?.length || 0), 0), fetchErrors: (characterComments || []).filter((item) => item.error).length };
+  }, [data, selected, characterComments, playerTournamentStats, createdTournaments, archiveData, seriesTag]);
 
   const recentResultsByOpponent = useMemo(() => {
     const results = new Map();
@@ -1191,7 +1213,7 @@ export default function StatsPage() {
           {selected !== 'all' && selectedPlayer && (
             <div className="achievementPanel">
               <div className="achievementItem characterUsageItem">
-                {characterComments && <>
+                {(characterComments || createdTournaments.length > 0) && <>
                   {selectedCharacterStats.counts.length > 0 ? <>
                     <div className="characterUsageGrid">
                       <section className="characterUsageSection">
@@ -1200,7 +1222,7 @@ export default function StatsPage() {
                       </section>
                       {selectedCharacterStats.soloAchievements?.length > 0 && <section className="characterUsageSection characterSoloSection"><span className="characterSectionTitle">単騎達成</span><div className="characterSoloList">{[...selectedCharacterStats.soloAchievements.reduce((grouped, item) => { if (!grouped.has(item.character)) grouped.set(item.character, []); grouped.get(item.character).push(item.number); return grouped; }, new Map())].map(([character, numbers]) => <div className="characterSoloEntry" key={character}><div className="characterSoloEntryHead"><button type="button" className="characterSoloCard" aria-expanded={expandedSoloCharacters.includes(character)} onClick={() => setExpandedSoloCharacters((current) => current.includes(character) ? current.filter((item) => item !== character) : [...current, character])}><strong>{character}</strong></button>{numbers.length > 1 && <span className="characterSoloCount">×{numbers.length}</span>}</div>{expandedSoloCharacters.includes(character) && <div className="characterSoloNumbers" aria-label={character + 'の達成大会'}>{numbers.map((number) => <span key={number}>#{number}</span>)}</div>}</div>)}</div></section>}
                     </div>
-                  </> : <p>この選手のコメントからキャラ報告を確認できませんでした。</p>}
+                  </> : <p>この選手のキャラ報告はまだありません。</p>}
                 </>}
                 {characterError && <p className="error">{characterError}</p>}
               </div>
