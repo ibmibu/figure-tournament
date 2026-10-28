@@ -1814,14 +1814,7 @@ export default function StatsPage() {
             <div>
 
               <h2>取得した大会</h2>
-              {seriesTag === '人形劇' && (<p className="tierExplanation">
-                Tier区分：
-                <span>S：24,000以上</span>
-                <span>A：20,000以上</span>
-                <span>B：16,000以上</span>
-                <span>C：12,000以上</span>
-                <span>D：12,000未満</span>
-              </p>)}
+
             </div>
 
           </div>
