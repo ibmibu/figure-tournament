@@ -1393,3 +1393,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-page .my-results .results-table-name{font-size:13px!important;line-height:1.45!important}
 .my-page .my-results .results-table-placement{font-size:12px!important;line-height:1.45!important}
 @media(max-width:600px){.my-page .my-results .results-table-row{min-height:0!important;padding:5px 2px!important;gap:8px!important}.my-page .my-results .results-table-name{font-size:13px!important;line-height:1.45!important}.my-page .my-results .results-table-placement{font-size:12px!important}}
+
+/* Align all tournament titles regardless of participant-count digits. */
+.my-page .my-results .results-table-name{display:grid!important;grid-template-columns:92px minmax(0,1fr);column-gap:8px;align-items:start}
+.my-page .my-results .results-participant-count{white-space:nowrap}
+.my-page .my-results .results-tournament-title{min-width:0;overflow-wrap:anywhere}
+@media(max-width:600px){.my-page .my-results .results-table-name{grid-template-columns:83px minmax(0,1fr);column-gap:6px}}
