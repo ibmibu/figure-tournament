@@ -14,7 +14,7 @@ export default function CharacterReportPage(){
  const t=result.tournament;const p=(t?.joinedPlayers||[]).find(p=>!p.isDemo&&String(p.userId||p.id)===String(session.user.id));
  const rounds=t?.bracket?.rounds||[];const final=rounds.at(-1)?.[0];const podium=new Set([final?.winnerId,...[final?.player1,final?.player2].filter(Boolean).map(p=>p.id)]);
  if(rounds.length>=2)for(const m of rounds.at(-2))for(const q of [m.player1,m.player2])if(q&&m.winnerId&&String(q.id)!==String(m.winnerId))podium.add(q.id);
- const wins=rounds.flat().filter(m=>String(m.winnerId)===String(p?.id)&&m.player1&&m.player2).length;
+ const wins=rounds.flat().filter(m=>String(m.winnerId)===String(p?.id)&&m.player1&&m.player2&&m.resultType!=='forfeit').length;
  if(live){setTournament(t);setPlayer(p);setColors(mine);setEligible(Boolean(t?.bracket?.complete&&p&&wins>=1&&[...podium].some(v=>String(v)===String(p.id))));const saved=t?.characterReports?.[String(p?.id)];if(saved){setCharacters(Array.isArray(saved.characters)?saved.characters:(saved.fighter?[{fighter:saved.fighter,color:saved.color||'1P'}]:[]));}setColor(mine.find(c=>c.fighter==='マリオ')?.color||'1P');}
  }catch(e){if(live)setError(e.message);}finally{if(live)setLoading(false);}})();return()=>{live=false}},[id]);
  const availableFighters=fighters;
