@@ -1381,3 +1381,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-page .my-results .results-table-placement{padding:0!important;text-align:right;font-size:14px;line-height:1.4;color:#333;font-weight:500!important;white-space:nowrap}
 .my-page .my-results .results-table-placement.results-placement-winner{color:#d33b35!important;font-weight:800!important}
 @media(max-width:600px){.my-page .my-results .results-table-row{grid-template-columns:minmax(0,1fr) 78px;gap:10px}.my-page .my-results .results-table-name{font-size:14px}.my-page .my-results .results-table-placement{font-size:13px}}
+
+/* Tighter personal tournament results rows */
+.my-page .my-results .results-table-row{min-height:36px!important;padding:5px 4px!important;gap:9px!important}
+.my-page .my-results .results-table-name{font-size:13px!important;line-height:1.45!important}
+.my-page .my-results .results-table-placement{font-size:12px!important;line-height:1.4!important}
+@media(max-width:600px){.my-page .my-results .results-table-row{min-height:34px!important;padding:5px 2px!important}.my-page .my-results .results-table-name{font-size:12px!important}.my-page .my-results .results-table-placement{font-size:12px!important}}
