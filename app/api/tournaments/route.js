@@ -162,26 +162,6 @@ export async function PUT(request) {
     // Participants can submit match progress only. All other tournament fields remain server-owned.
     if (!isCurrentOwner) {
       const stable = value => JSON.stringify(value ?? null);
-      const allowedMatchIds = new Set(existingMatches.filter(match =>
-        !match.winnerId && match.player1 && match.player2 &&
-        [match.player1, match.player2].some(p => String(p?.userId || p?.id) === String(user.id))
-      ).map(match => String(match.id)));
-      const originalById = new Map(existingMatches.map(match => [String(match.id), match]));
-      const submittedById = new Map(inputMatches.map(match => [String(match.id), match]));
-      if (submittedById.size !== existingMatches.length ||
-          inputMatches.length !== existingMatches.length ||
-          existingMatches.some(match => {
-            const next = submittedById.get(String(match.id));
-            if (!next) return true;
-            if (allowedMatchIds.has(String(match.id))) {
-              const { matchState: oldState, winnerId: oldWinner, ...oldRest } = match;
-              const { matchState: newState, winnerId: newWinner, ...newRest } = next;
-              return stable(oldRest) !== stable(newRest);
-            }
-            return stable(match) !== stable(next);
-          })) {
-        return NextResponse.json({ error: '自分の対戦以外の情報は変更できません。' }, { status: 403 });
-      }
       // Prevent changing tournament settings, participants, or other fields via a crafted request.
       const { bracket: ignoredBracket, ...restInput } = input;
       const { bracket: ignoredExistingBracket, ...restExisting } = existing;
