@@ -53,6 +53,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
       )
     )
   );
+  if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
   return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
 }
 
