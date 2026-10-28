@@ -19,10 +19,10 @@ function isFinished(t) { return t.bracket?.complete === true || ['終了','終�
 function finishedAt(t) { const n = Date.parse(t.completedAt || t.date || ''); return Number.isFinite(n) ? n : 0; }
 function TournamentTable({items}) {
  return <div className="home-tournament-table-wrap"><table className="home-tournament-table">
- <thead><tr><th scope="col">大会名</th><th scope="col">開催日時</th><th scope="col">形式</th><th scope="col">参加人数</th></tr></thead>
+ <thead><tr><th scope="col">大会名</th><th scope="col">開催日時</th><th scope="col">参加人数</th></tr></thead>
  <tbody>{items.map(t=><tr key={t.id} className="home-tournament-row" onClick={()=>{window.location.href='/tournaments/'+encodeURIComponent(t.id)}}>
- <td><Link href={'/tournaments/'+encodeURIComponent(t.id)} className="home-tournament-name">{t.name}</Link></td>
- <td className="home-tournament-date">{formatStartDate(t.date)||'—'}</td><td>{t.format||'—'}</td><td>{(t.joinedPlayers||[]).length} / {t.participants||8}</td>
+ <td><span className="home-tournament-name-cell">{['BO3','BO5'].includes(String(t.format||'').toUpperCase())&&<span className={`home-format-badge ${String(t.format).toUpperCase()==='BO5'?'home-format-bo5':'home-format-bo3'}`}>{String(t.format).toUpperCase()}</span>}<Link href={'/tournaments/'+encodeURIComponent(t.id)} className="home-tournament-name">{t.name}</Link></span></td>
+ <td className="home-tournament-date">{formatStartDate(t.date)||'—'}</td><td>{(t.joinedPlayers||[]).length} / {t.participants||8}</td>
  </tr>)}</tbody></table></div>;
 }
 
