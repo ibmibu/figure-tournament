@@ -130,8 +130,13 @@ export default function StatsPage() {
     const players = new Map(archivePlayers.map(p => [canonicalAccountId(p.id), { ...p, id: canonicalAccountId(p.id) }]));
     const records = archiveRecords.map(r => ({ ...r, winnerId: canonicalAccountId(r.winnerId), loserId: canonicalAccountId(r.loserId) }));
     const tournaments = [...archiveTournaments];
+    const occupiedNumbers = new Set(archiveTournaments.map(t => Number(t.number)));
     selectedNew.forEach(t => {
-      const number = maxArchiveNumber + uniqueNew.findIndex(item => String(item.id) === String(t.id)) + 1;
+      const explicitNumber = /^人形劇\s*[#＃]\s*(\d+)\s*$/u.exec(String(t.name || ''));
+      const requestedNumber = explicitNumber ? Number(explicitNumber[1]) : 0;
+      let number = requestedNumber > 0 && !occupiedNumbers.has(requestedNumber) ? requestedNumber : maxArchiveNumber + uniqueNew.findIndex(item => String(item.id) === String(t.id)) + 1;
+      while (occupiedNumbers.has(number)) number++;
+      occupiedNumbers.add(number);
       tournaments.push({ number, name: t.name, players: t.players.length, participantIds: t.players.map(p => canonicalAccountId(p.id)), championId: t.winnerId ? canonicalAccountId(t.winnerId) : null, characterReports: t.characterReports || {}, id: t.id, seriesTags: t.seriesTags });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
