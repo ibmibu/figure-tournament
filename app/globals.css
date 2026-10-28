@@ -1466,3 +1466,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
     margin-right:calc(-1 * clamp(16px,3vw,32px));
   }
 }
+
+/* Root-layout navigation: keep it visible on every route, including My Page. */
+body>.site-header{display:flex;visibility:visible}
+body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
+@media(min-width:768px){body>.bottom-tab-bar{display:flex;position:relative;min-height:48px;align-items:center}}
+@media(max-width:767px){body>.bottom-tab-bar{display:grid;position:fixed;bottom:0;left:0;right:0;grid-template-columns:repeat(3,minmax(0,1fr))}}
