@@ -1,6 +1,5 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
-import SiteHeader from '../../../components/SiteHeader';
 import {getSupabaseBrowserClient} from '../../../lib/supabase/client';
 export default function PlayerLinks(){
  const [links,setLinks]=useState([]),[players,setPlayers]=useState([]),[users,setUsers]=useState([]);
@@ -21,7 +20,7 @@ export default function PlayerLinks(){
   setMessage(selected.name+' の戦績を連携しました。');setLegacyPlayerId('');await refresh();
  }catch(e){setError(e.message)}finally{setBusy(false)}}
  async function remove(id){if(!window.confirm('この連携を解除しますか？過去の戦績は削除されません。'))return;try{await request('DELETE',{legacyPlayerId:id});await refresh();setMessage('連携を解除しました。');}catch(e){setError(e.message)}}
- return <main className="page"><SiteHeader/><section className="my-page">
+ return <main className="page"><section className="my-page">
  <h1>選手戦績の連携（管理者用）</h1>
  <p>過去の戦績から選手を選び、アミコネのUIDに紐付けます。連携済みの選手も一覧に表示されますが、重複して連携することはできません。元の戦績は変更しません。</p>
  {error&&<p className="form-error" role="alert">{error}</p>}{message&&<p role="status">{message}</p>}
