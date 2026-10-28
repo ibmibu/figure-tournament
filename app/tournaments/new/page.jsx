@@ -6,6 +6,8 @@ import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 const STORAGE_KEY = 'figure-tournament-list-v1';
 const LAST_SERIES_TAG_KEY = 'figure-tournament-last-series-tag-v1';
 const LAST_TOURNAMENT_NAME_KEY = 'figure-tournament-last-name-v1';
+const LAST_STREAM_URL_KEY = 'figure-tournament-last-stream-url-v1';
+const LAST_STREAM_FRIEND_CODE_KEY = 'figure-tournament-last-stream-friend-code-v1';
 const STAGES = ['終点', '戦場', '小戦場', 'ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ', '村と街', 'ホロウバスティオン'];
 const DEFAULT_STARTERS = ['終点', '戦場', '小戦場', '村と街', 'ホロウバスティオン'];
 const DEFAULT_COUNTERPICKS = ['ポケモンスタジアム2', 'すま村', 'カロスポケモンリーグ'];
@@ -42,7 +44,7 @@ export default function NewTournamentPage() {
 
   useEffect(() => {
     if (checkingAuth || new URLSearchParams(window.location.search).has('edit')) return;
-    try { const savedTag = window.localStorage.getItem(LAST_SERIES_TAG_KEY); if (savedTag !== null) setSeriesTag(savedTag); const savedName = window.localStorage.getItem(LAST_TOURNAMENT_NAME_KEY); if (savedName) setName(current => current || nextTournamentName(savedName)); } catch {}
+    try { const savedTag = window.localStorage.getItem(LAST_SERIES_TAG_KEY); if (savedTag !== null) setSeriesTag(savedTag); const savedName = window.localStorage.getItem(LAST_TOURNAMENT_NAME_KEY); if (savedName) setName(current => current || nextTournamentName(savedName)); const savedStreamUrl = window.localStorage.getItem(LAST_STREAM_URL_KEY); if (savedStreamUrl !== null) setStreamUrl(savedStreamUrl); const savedFriendCode = window.localStorage.getItem(LAST_STREAM_FRIEND_CODE_KEY); if (savedFriendCode !== null) setStreamFriendCode(savedFriendCode); } catch {}
     let active = true;
     (async () => {
       try {
@@ -58,6 +60,8 @@ export default function NewTournamentPage() {
         if (active && previous) {
           setName(current => current || nextTournamentName(previous.name));
           setSeriesTag(current => current || (previous.seriesTags?.[0] || ''));
+          setStreamUrl(current => current || previous.streamUrl || '');
+          setStreamFriendCode(current => current || previous.streamFriendCode || '');
         }
         if (active) setKnownSeriesTags([...new Set((result.tournaments || []).flatMap(t => Array.isArray(t.seriesTags) ? t.seriesTags : []))].sort((a,b) => a.localeCompare(b, 'ja')));
       } catch { /* Keep the name empty if previous tournaments cannot be loaded. */ }
@@ -213,7 +217,7 @@ export default function NewTournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
-      try { window.localStorage.setItem(LAST_SERIES_TAG_KEY, seriesTag.trim()); if (!editId) window.localStorage.setItem(LAST_TOURNAMENT_NAME_KEY, trimmedName); } catch {}
+      try { window.localStorage.setItem(LAST_SERIES_TAG_KEY, seriesTag.trim()); if (!editId) { window.localStorage.setItem(LAST_TOURNAMENT_NAME_KEY, trimmedName); window.localStorage.setItem(LAST_STREAM_URL_KEY, streamUrl.trim()); window.localStorage.setItem(LAST_STREAM_FRIEND_CODE_KEY, streamFriendCode.trim().toUpperCase()); } } catch {}
       window.location.href = editId ? `/tournaments/${encodeURIComponent(editId)}` : '/';
     } catch (saveError) {
       setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
@@ -329,13 +333,13 @@ export default function NewTournamentPage() {
           <p className="setting-help">ありの場合、参加者のレート上位25%（最低2名）を離して配置します。その他の配置はランダムです。</p>
         </fieldset>
 
-        <label>配信先URL（任意）
+        <label>配信先URL
           <input type="url" value={streamUrl} onChange={event => setStreamUrl(event.target.value)} placeholder="https://www.youtube.com/live/..." />
         </label>
-        <label>配信台のフレンドコード（任意）
+        <label>配信台のフレンドコード
           <input type="text" value={streamFriendCode} onChange={event => setStreamFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" />
         </label>
-        <label>大会説明（任意）
+        <label>大会説明
           <textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="大会について伝えたいことがあれば入力してください。" rows={4} maxLength={2000} />
         </label>
 
