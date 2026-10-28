@@ -3,7 +3,6 @@ import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './stats.css';
-import SiteHeader from '../../components/SiteHeader';
 import { CHARACTER_ALIASES } from './data/characterAliases';
 import { MANUAL_CHARACTER_REPORTS } from './data/manualCharacterReports';
 import { ELO_INITIAL_RATING, calculateElo, calculateTournamentTierScores } from '../../lib/ratings';
@@ -1103,7 +1102,7 @@ export default function StatsPage() {
 
   if (!data) {
     return (
-      <main className="site stats-shell"><SiteHeader />
+      <main className="site stats-shell">
         <div className="content">
           <section className="empty card">
             <div className="spinner" />
@@ -1127,7 +1126,7 @@ export default function StatsPage() {
   }
 
   return (
-    <main className="site stats-shell"><SiteHeader />
+    <main className="site stats-shell">
       <div className="content">
 
         {error && (
