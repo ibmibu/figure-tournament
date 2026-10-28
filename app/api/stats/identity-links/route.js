@@ -28,7 +28,8 @@ export async function GET() {
       const characterReports = [];
       for (const p of t.joinedPlayers || []) {
         if (p.isDemo) continue;
-        const id = linkMap.get(String(p.userId || p.id)) || 'figure:' + String(p.userId || p.id);
+        const accountId = String(p.userId || p.id);
+        const id = linkMap.get(accountId) || linkMap.get(String(p.id)) || 'figure:' + accountId;
         participants.set(String(p.id), { id, name: p.name || p.displayName || String(p.id) });
         const report = t.characterReports?.[String(p.id)];
         if (Array.isArray(report?.characters) && report.characters.length) {
@@ -36,7 +37,7 @@ export async function GET() {
         }
       }
       const matches = (t.bracket?.rounds || []).flatMap(round => round.flatMap(match => {
-        if (!match.player1 || !match.player2 || !match.winnerId) return [];
+        if (!match.player1 || !match.player2 || !match.winnerId || match.resultType === 'forfeit') return [];
         const first = participants.get(String(match.player1.id));
         const second = participants.get(String(match.player2.id));
         if (!first || !second || first.id === second.id) return [];
@@ -54,7 +55,7 @@ export async function GET() {
         const mapped = loser && participants.get(String(loser.id));
         return mapped ? [mapped.id] : [];
       }))];
-      return { id: row.id, characterReports, championId, runnerUpId, thirdPlaceIds, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], demoTierIds, matches };
+      return { id: row.id, characterReports, championId, runnerUpId, thirdPlaceIds, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : (typeof t.seriesTag === 'string' && t.seriesTag ? [t.seriesTag] : []), players: [...participants.values()], demoTierIds, matches };
     });
     return NextResponse.json({ tournaments: results }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
