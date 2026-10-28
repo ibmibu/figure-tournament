@@ -132,7 +132,7 @@ export default function StatsPage() {
     const tournaments = [...archiveTournaments];
     selectedNew.forEach(t => {
       const number = maxArchiveNumber + uniqueNew.findIndex(item => String(item.id) === String(t.id)) + 1;
-      tournaments.push({ number, name: t.name, players: t.players.length, id: t.id, seriesTags: t.seriesTags });
+      tournaments.push({ number, name: t.name, players: t.players.length, id: t.id, seriesTags: t.seriesTags, championId: t.championId, isNewTournament: true });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
         if (!players.has(id)) players.set(id, { id, name: player.name });
@@ -463,6 +463,20 @@ export default function StatsPage() {
         champions.set(number, key);
         wins.set(key, (wins.get(key) || 0) + 1);
       }
+    }
+
+    // A completed tournament's official final result is authoritative.
+    // Inferring an undefeated player from match records is unreliable for byes.
+    for (const tournament of data?.tournaments || []) {
+      if (!tournament.isNewTournament || !tournament.championId) continue;
+      const number = Number(tournament.number);
+      if (!Number.isFinite(number)) continue;
+      const championId = canonicalAccountId(tournament.championId);
+      const previous = champions.get(number);
+      if (previous === championId) continue;
+      if (previous) wins.set(previous, Math.max(0, (wins.get(previous) || 0) - 1));
+      champions.set(number, championId);
+      wins.set(championId, (wins.get(championId) || 0) + 1);
     }
 
     return { appearances, wins, champions, recordsByTournament };
