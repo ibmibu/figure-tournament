@@ -31,9 +31,7 @@ export default function ResultsPage() {
         }
         const cachedTournaments = readTournamentCache();
         if (cachedTournaments) {
-          const cachedProfile = (() => { try { return JSON.parse(localStorage.getItem('figure-profile-' + session.user.id) || '{}'); } catch { return {}; } })();
-          const cachedName = String(cachedProfile.display_name || 'no name').trim().toLowerCase();
-          setTournaments(cachedTournaments.filter(item => item.bracket?.complete && (item.resultPlacements || []).some(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === cachedName; })).map(item => ({ ...item, myPlacement: (item.resultPlacements || []).find(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === cachedName; })?.place })));
+          setTournaments(cachedTournaments.filter(item => item.bracket?.complete && (item.joinedPlayers || []).some(p => !p.isDemo && String(p.userId || p.id) === String(session.user.id))).map(item => ({ ...item, myPlacement: (item.resultPlacements || []).find(result => { const player = (item.joinedPlayers || []).find(p => String(p.id) === String(result.playerId)); return player && !player.isDemo && String(player.userId || player.id) === String(session.user.id); })?.place || '' })));
           setLoading(false);
         }
         const headers = { Authorization: `Bearer ${session.access_token}` };
@@ -47,13 +45,9 @@ export default function ResultsPage() {
         if (!tournamentResponse.ok) throw new Error(tournamentResult.error || '大会情報を読み込めませんでした。');
         writeTournamentCache(tournamentResult.tournaments || []);
         try { localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(profileResult.profile || {})); } catch {}
-        const myName = String(profileResult.profile?.display_name || 'no name').trim().toLowerCase();
         const mine = (tournamentResult.tournaments || []).filter(item =>
-          item.bracket?.complete && (item.resultPlacements || []).some(result => {
-            const player = (item.joinedPlayers || []).find(p => p.id === result.playerId);
-            return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === myName;
-          })
-        ).map(item => ({ ...item, myPlacement: (item.resultPlacements || []).find(result => { const player = (item.joinedPlayers || []).find(p => p.id === result.playerId); return player && !player.isDemo && String(player.name || '').trim().toLowerCase() === myName; })?.place }));
+          item.bracket?.complete && (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(session.user.id))
+        ).map(item => ({ ...item, myPlacement: (item.resultPlacements || []).find(result => { const player = (item.joinedPlayers || []).find(p => String(p.id) === String(result.playerId)); return player && !player.isDemo && String(player.userId || player.id) === String(session.user.id); })?.place || '' }));
         if (active) setTournaments(mine);
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
