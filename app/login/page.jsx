@@ -47,7 +47,7 @@ export default function LoginPage() {
     <section className="intro">
       <a className="back-link" href="/">← 大会一覧に戻る</a>
       <h1>ログイン</h1>
-      <p>GoogleアカウントでFigure Tournamentにログインします。</p>
+      <p>Googleアカウントでアミコネにログインします。</p>
     </section>
     <section className="create-panel">
       <button className="submit" type="button" onClick={signInWithGoogle} disabled={loading}>
@@ -56,6 +56,6 @@ export default function LoginPage() {
       {error && <p className="form-error" role="alert">{error}</p>}
       <p className="setting-help">ログインに必要な情報の確認と認証はSupabase Authを通じて行います。</p>
     </section>
-    <footer>Figure Tournament</footer>
+    <footer>アミコネ</footer>
   </main>;
 }
