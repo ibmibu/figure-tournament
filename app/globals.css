@@ -1431,3 +1431,8 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
   .site-header,.page>.site-header,.stats-shell>.site-header{position:relative;left:50%;transform:translateX(-50%);width:100vw;max-width:none;margin:0;padding-inline:16px}
   .bottom-tab-bar{left:0;transform:none;width:auto;max-width:none;margin:0}
 }
+
+/* One viewport-based coordinate system for shared navigation on every route. */
+.site-header,.page>.site-header,.stats-shell>.site-header{position:relative;left:auto;transform:none;width:100vw;max-width:none;margin-left:calc(50% - 50vw);margin-right:0;padding-inline:max(16px,calc((100vw - 1120px)/2 + 32px))}
+@media(min-width:768px){.bottom-tab-bar,.page>.bottom-tab-bar,.stats-shell>.bottom-tab-bar{position:relative;left:auto;right:auto;bottom:auto;transform:none;width:100vw;max-width:none;margin-left:calc(50% - 50vw);margin-right:0;padding-inline:max(16px,calc((100vw - 1120px)/2 + 32px))}}
+@media(max-width:767px){.site-header,.page>.site-header,.stats-shell>.site-header{width:100vw;max-width:none;margin-left:calc(50% - 50vw);padding-inline:16px}.bottom-tab-bar,.page>.bottom-tab-bar,.stats-shell>.bottom-tab-bar{position:fixed;left:0;right:0;bottom:0;transform:none;width:auto;max-width:none;margin:0}}
