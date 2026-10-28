@@ -605,7 +605,7 @@ export default function TournamentPage() {
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
           const demoMatch = isOwner && Boolean(demoPerspective) && [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective));
-          const viewingPlayerId = demoMatch ? demoPerspective : (isOwner ? String(p1Id) : String(currentUserId));
+          const viewingPlayerId = demoMatch ? String(demoPerspective) : String(currentUserId || '');
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
@@ -646,7 +646,7 @@ export default function TournamentPage() {
               </> : <>
                 
                 <h3 className="match-result-heading">試合結果を入力</h3>
-                {(!isOwner || demoMatch) && [match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
+                {[match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
                   <div className="match-result-buttons stage-striker-results">
                     <button type="button" className={"match-result-win"+(game?.results?.[String(viewingPlayerId)]==="win"?" active":"")} disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'win')}>WIN</button>
                     <button type="button" className={"match-result-lose"+(game?.results?.[String(viewingPlayerId)]==="lose"?" active":"")} disabled={savingBracket} onClick={()=>submitMatchResult(ri,mi,'lose')}>LOSE</button>
