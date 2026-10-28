@@ -649,6 +649,7 @@ export default function TournamentPage() {
                 </> : waitingFor(rejectTurnId))}
               </> : <>
                 
+                <p className="match-stage-decided" role="status">ステージが決まりました：<strong>{game.stage}</strong></p>
                 <h3 className="match-result-heading">試合結果を入力</h3>
                 {[match.player1,match.player2].some(p=>String(p.id)===String(viewingPlayerId)) ? <>
                   <div className="match-result-buttons stage-striker-results">
