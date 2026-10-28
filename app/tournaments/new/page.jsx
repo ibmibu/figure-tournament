@@ -350,6 +350,6 @@ export default function NewTournamentPage() {
         </div>
       </form>}
     </section>
-    <footer>Figure Tournament</footer>
+    <footer>アミコネ</footer>
   </main>;
 }
