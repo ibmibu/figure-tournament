@@ -36,7 +36,12 @@ export async function GET(request) {
       const participants = new Set(matches.flatMap(m => [canonical(m.winnerId), canonical(m.loserId)]));
       const unbeaten = [...participants].filter(id => !losers.has(id));
       const champion = unbeaten.length === 1 ? unbeaten[0] : null;
-      return [{ id: 'legacy-' + number, name: t.name || '人形劇#' + number, number, myPlacement: champion === playerId ? '優勝' : '参加', isLegacy: true }];
+      const participantCount = Number(t.players) || Number(t.participantCount) || participants.size;
+      const myLoss = matches.find(m => canonical(m.loserId) === playerId);
+      const myWins = matches.filter(m => canonical(m.winnerId) === playerId).length;
+      const finalWins = Math.max(1, Math.ceil(Math.log2(participantCount)));
+      const placement = champion === playerId ? '優勝' : myLoss && myWins >= finalWins - 1 ? '準優勝' : myLoss && myWins >= finalWins - 2 ? 'ベスト4' : myLoss && myWins >= finalWins - 3 ? 'ベスト8' : '参加';
+      return [{ id: 'legacy-' + number, name: t.name || '人形劇#' + number, number, date: t.date || '', participantCount, myPlacement: placement, isLegacy: true }];
     });
     return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
