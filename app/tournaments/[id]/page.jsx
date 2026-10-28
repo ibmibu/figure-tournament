@@ -26,6 +26,7 @@ export default function TournamentPage() {
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
+  const [showAdminLog, setShowAdminLog] = useState(false);
   const [rejectSelection, setRejectSelection] = useState([]);
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
@@ -487,6 +488,29 @@ export default function TournamentPage() {
     }
   }
 
+  async function undoAdminAction() {
+    if (!isOwner || savingBracket || !tournament?.adminHistory?.length) return;
+    if (!window.confirm('直前の主催者操作を巻き戻しますか？')) return;
+    setSavingBracket(true);
+    setError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('主催者としてログインしてください。');
+      const response = await fetch('/api/tournaments/admin-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ id, action: 'undo', ownerToken: ownerId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '巻き戻せませんでした。');
+      setTournament(result.tournament);
+      setAdminMatchSelection(null);
+      setActiveMatchId('');
+      setNotice('直前の主催者操作を巻き戻しました。');
+    } catch (e) { setError(e.message || '巻き戻せませんでした。'); }
+    finally { setSavingBracket(false); }
+  }
+
   async function setStreamMatch(matchId) {
     if (!tournament?.isOwner || savingBracket) return;
     setSavingBracket(true);
@@ -690,6 +714,15 @@ export default function TournamentPage() {
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
+        {isOwner && <section className="bracket-admin-history">
+          <div className="bracket-admin-history-actions">
+            <button type="button" onClick={() => setShowAdminLog(value => !value)}>{showAdminLog ? '操作ログを閉じる' : '操作ログを見る'}（{(tournament.adminLog || []).length}）</button>
+            <button type="button" disabled={savingBracket || !tournament.adminHistory?.length} onClick={undoAdminAction}>直前の操作を巻き戻す</button>
+          </div>
+          {showAdminLog && <div className="bracket-admin-history-list">{(tournament.adminLog || []).length
+            ? [...tournament.adminLog].reverse().map((entry, index) => <p key={index}><time>{new Date(entry.at).toLocaleString('ja-JP')}</time>　{entry.label}</p>)
+            : <p>操作履歴はありません。</p>}</div>}
+        </section>}
         {isOwner && selectedAdminMatch && <div className="bracket-admin-modal-backdrop" onClick={() => { if (!savingBracket) { setAdminMatchSelection(null); setShowForfeitChoices(false); } }}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="主催者の対戦管理" onClick={event => event.stopPropagation()}>
           <div className="bracket-admin-heading">
             <strong>選択中：{selectedAdminMatch.player1?.name || '未定'} VS {selectedAdminMatch.player2?.name || '未定'}</strong>
