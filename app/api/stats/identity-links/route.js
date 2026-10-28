@@ -28,6 +28,12 @@ export async function GET() {
         const id = linkMap.get(String(p.userId || p.id)) || 'figure:' + String(p.userId || p.id);
         participants.set(String(p.id), { id, name: p.name || p.displayName || String(p.id) });
       }
+      const final = t.bracket.rounds.at(-1)?.[0];
+      const winner = participants.get(String(final?.winnerId));
+      const characterReports = Object.fromEntries(Object.entries(t.characterReports || {}).flatMap(([playerId, report]) => {
+        const participant = participants.get(String(playerId));
+        return participant ? [[participant.id, [...new Set((report?.characters || []).map(c => typeof c === 'string' ? c : c?.fighter).filter(Boolean))]]] : [];
+      }));
       const matches = (t.bracket?.rounds || []).flatMap(round => round.flatMap(match => {
         if (!match.player1 || !match.player2 || !match.winnerId) return [];
         const first = participants.get(String(match.player1.id));
@@ -36,9 +42,9 @@ export async function GET() {
         const winner = String(match.winnerId) === String(match.player1.id) ? first : String(match.winnerId) === String(match.player2.id) ? second : null;
         return winner ? [{ winnerId: winner.id, loserId: winner.id === first.id ? second.id : first.id }] : [];
       }));
-      return { id: row.id, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], matches };
+      return { id: row.id, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], winnerId: winner?.id || null, characterReports, matches };
     });
-    return NextResponse.json({ tournaments: results }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ tournaments: results.filter(t => t.players.length > 0 && t.winnerId) }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Stats identity links:', error);
     return NextResponse.json({ error: '旧ID連携情報を取得できませんでした。' }, { status: 500 });
