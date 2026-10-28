@@ -61,8 +61,9 @@ export default function ResultsPage() {
           );
           return { ...item, myPlacement: placement || (isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : '参加') };
         });
-        const combined = [...mine, ...(legacyResult.tournaments || [])].sort((a, b) => (b.number || 0) - (a.number || 0));
-        if (active) { setTournaments(combined); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
+        const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => item.isLegacy); } catch { return []; } })();
+        const combined = [...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)].sort((a, b) => (b.number || 0) - (a.number || 0));
+        if (active) { setTournaments(combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
