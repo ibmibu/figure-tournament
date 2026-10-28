@@ -43,7 +43,16 @@ export async function GET() {
       }));
       const final = t.bracket.rounds.at(-1)?.[0];
       const championId = participants.get(String(final.winnerId))?.id || null;
-      return { id: row.id, characterReports, championId, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], matches };
+      const runnerUp = [final.player1, final.player2].find(p => p && String(p.id) !== String(final.winnerId));
+      const runnerUpId = runnerUp ? participants.get(String(runnerUp.id))?.id || null : null;
+      const semifinal = t.bracket.rounds.length > 1 ? t.bracket.rounds.at(-2) : [];
+      const thirdPlaceIds = [...new Set((semifinal || []).flatMap(match => {
+        if (!match.winnerId) return [];
+        const loser = [match.player1, match.player2].find(p => p && String(p.id) !== String(match.winnerId));
+        const mapped = loser && participants.get(String(loser.id));
+        return mapped ? [mapped.id] : [];
+      }))];
+      return { id: row.id, characterReports, championId, runnerUpId, thirdPlaceIds, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], matches };
     });
     return NextResponse.json({ tournaments: results }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
