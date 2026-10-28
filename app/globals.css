@@ -1402,3 +1402,8 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 
 /* Keep user-uploaded profile icons square rather than circular. */
 .profile-avatar,.mypage-layout .mypage-minimal-profile .profile-avatar{border-radius:0!important}
+
+/* Completed tournament report actions: centered, comfortably separated from both cards. */
+.tournament-report-action{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px 20px;margin:28px auto 32px;padding:0 16px;width:100%;box-sizing:border-box}
+.tournament-report-action .button-link{display:inline-flex;align-items:center;justify-content:center;text-align:center;min-height:44px;min-width:0;padding:11px 18px;margin:0}
+@media(max-width:600px){.tournament-report-action{gap:12px;margin:24px auto 30px;padding:0 12px}.tournament-report-action .button-link{flex:1 1 0;max-width:220px;font-size:13px;padding:12px 8px;white-space:nowrap}}
