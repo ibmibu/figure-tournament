@@ -1480,3 +1480,8 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 .page>.tournaments .section-title .button-link:hover{background:#f2ecff;border-color:#f2ecff}
 .page>.tournaments .section-title .home-finished-period{color:#eee6ff}
 @media(max-width:600px){.page>.tournaments .section-title{padding:11px 12px;gap:8px}.page>.tournaments .section-title h2{font-size:17px}.page>.tournaments .section-title .button-link{font-size:12px;padding:8px 10px}}
+
+/* Home section heading alignment: same height with or without action. */
+.page>.tournaments .section-title{min-height:52px;box-sizing:border-box;padding:8px 16px;display:flex;align-items:center}
+.page>.tournaments .section-title .button-link{min-height:36px;box-sizing:border-box;padding:7px 12px;line-height:20px}
+@media(max-width:600px){.page>.tournaments .section-title{min-height:48px;padding:6px 12px}.page>.tournaments .section-title .button-link{min-height:36px;padding:7px 10px;line-height:20px}}
