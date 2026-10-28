@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import SiteHeader from '../components/SiteHeader';
 import Link from 'next/link';
+import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
 
 function formatStartDate(value) {
   if (!value) return '';
@@ -32,16 +33,19 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const cached = readTournamentCache();
+    if (cached) { setTournaments(cached); setLoading(false); }
     fetch('/api/tournaments', { cache: 'no-store' })
       .then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
+        writeTournamentCache(latest);
         if (active) { setTournaments(latest); setLoadError(''); }
       })
       .catch(error => {
         console.error(error);
-        if (active) { setTournaments([]); setLoadError(error.message || '大会データを読み込めませんでした。'); }
+        if (active) { setLoadError(error.message || '大会データを読み込めませんでした。'); }
       }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
