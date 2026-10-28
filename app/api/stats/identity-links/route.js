@@ -23,6 +23,8 @@ export async function GET() {
     }).map(row => {
       const t = row.data || {};
       const participants = new Map();
+      // Demo entrants count as 1500 toward tournament size, but not player stats.
+      const demoTierIds = (t.joinedPlayers || []).filter(p => p.isDemo).map(p => 'demo-tier:' + String(row.id) + ':' + String(p.id));
       const characterReports = [];
       for (const p of t.joinedPlayers || []) {
         if (p.isDemo) continue;
@@ -52,7 +54,7 @@ export async function GET() {
         const mapped = loser && participants.get(String(loser.id));
         return mapped ? [mapped.id] : [];
       }))];
-      return { id: row.id, characterReports, championId, runnerUpId, thirdPlaceIds, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], matches };
+      return { id: row.id, characterReports, championId, runnerUpId, thirdPlaceIds, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], demoTierIds, matches };
     });
     return NextResponse.json({ tournaments: results }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
