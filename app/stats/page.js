@@ -1119,7 +1119,7 @@ export default function StatsPage() {
             >
               <div style={{ width: `${loading ? loadProgress : 0}%`, height: '100%', background: 'var(--accent, #4f8cff)', transition: 'width 160ms ease' }} />
             </div>
-            {error && <p className="error">⚠ {error}</p>)}
+            {error && <p className="error">⚠ {error}</p>}
           </section>
         </div>
       </main>
