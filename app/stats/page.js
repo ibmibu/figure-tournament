@@ -1814,14 +1814,14 @@ export default function StatsPage() {
             <div>
 
               <h2>取得した大会</h2>
-              <p className="tierExplanation">
+              {seriesTag === '人形劇' && (<p className="tierExplanation">
                 Tier区分：
                 <span>S：24,000以上</span>
                 <span>A：20,000以上</span>
                 <span>B：16,000以上</span>
                 <span>C：12,000以上</span>
                 <span>D：12,000未満</span>
-              </p>}
+              </p>)}
             </div>
 
           </div>
@@ -1834,7 +1834,7 @@ export default function StatsPage() {
                 <div className="tournamentRow" key={tournament.number}>
                   <div className="tournamentTitle">
                     <b>{tournament.name || `人形劇#${tournament.number}`}</b>
-                    <small className="tournamentTier">
+                    {seriesTag === '人形劇' && (<small className="tournamentTier">
                       {(() => {
                         const score = Number(tournamentTierScores[Number(tournament.number)] || 0);
                         const tier = score >= 24000 ? 'S' : score >= 20000 ? 'A' : score >= 16000 ? 'B' : score >= 12000 ? 'C' : 'D';
