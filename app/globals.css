@@ -1472,3 +1472,11 @@ body>.site-header{display:flex;visibility:visible}
 body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 @media(min-width:768px){body>.bottom-tab-bar{display:flex;position:relative;min-height:48px;align-items:center}}
 @media(max-width:767px){body>.bottom-tab-bar{display:grid;position:fixed;bottom:0;left:0;right:0;grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Home tournament section headers: flat, square purple title bars. */
+.page>.tournaments .section-title{background:#6045a8;color:#fff;border:0;border-radius:0;box-shadow:none;padding:12px 16px;margin:0}
+.page>.tournaments .section-title h2{color:#fff;margin:0;font-weight:800}
+.page>.tournaments .section-title .button-link{background:#fff;color:#6045a8;border:1px solid #fff;border-radius:3px;padding:9px 12px;font-weight:700}
+.page>.tournaments .section-title .button-link:hover{background:#f2ecff;border-color:#f2ecff}
+.page>.tournaments .section-title .home-finished-period{color:#eee6ff}
+@media(max-width:600px){.page>.tournaments .section-title{padding:11px 12px;gap:8px}.page>.tournaments .section-title h2{font-size:17px}.page>.tournaments .section-title .button-link{font-size:12px;padding:8px 10px}}
