@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   try {
-    const token = (request.headers.get('authorization') || '').match(/^Bearer\\s+(.+)$/i)?.[1];
+    const token = (request.headers.get('authorization') || '').match(/^Bearer +(.+)$/i)?.[1];
     if (!token) return NextResponse.json({ error: 'ログインが必要です。' }, { status: 401 });
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const auth = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
