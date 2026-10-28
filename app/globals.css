@@ -1416,3 +1416,18 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 
 /* Desktop navigation directly beneath the logo/header; mobile keeps bottom tabs. */
 @media(min-width:768px){body{padding-bottom:0}.bottom-tab-bar{position:relative;left:auto;right:auto;bottom:auto;z-index:9;display:flex;justify-content:flex-start;align-items:stretch;gap:30px;width:100%;max-width:1000px;margin:0 auto;padding:0 24px;background:transparent;border-top:0;border-bottom:1px solid #dce5ed;box-shadow:none}.bottom-tab{position:relative;display:flex;flex-direction:row;align-items:center;justify-content:center;min-height:48px;padding:0 6px;gap:0;font-size:14px;font-weight:600;color:#64748b;border-bottom:2px solid transparent}.bottom-tab.active{color:#3170b8;border-bottom-color:#3170b8}.bottom-tab.active .bottom-tab-icon{transform:none}}
+
+/* Unified site chrome: viewport-centered across differently padded pages. */
+.site-header{position:relative;left:50%;transform:translateX(-50%);width:100%;width:min(100vw,1120px);max-width:none;margin:0;padding-inline:clamp(16px,3vw,32px)}
+@media(min-width:768px){
+  .bottom-tab-bar{position:relative;left:50%;right:auto;bottom:auto;transform:translateX(-50%);width:min(100vw,1120px);max-width:none;margin:0;padding:0 clamp(16px,3vw,32px);display:flex;justify-content:flex-start;align-items:center;gap:28px;border:0;border-bottom:1px solid #dce5ed;background:transparent;box-shadow:none}
+  .bottom-tab{flex:none;display:inline-flex;min-height:48px;padding:0 2px;justify-content:center;align-items:center;border:0!important;border-bottom:2px solid transparent!important;color:#68788a;font-size:13px;font-weight:600;background:transparent}
+  .bottom-tab+.bottom-tab{border-left:0!important}
+  .bottom-tab.active{color:#3170b8;border-bottom-color:#3170b8!important}
+  .bottom-tab:hover{color:#3170b8}
+  .site-header{border-bottom:0}
+}
+@media(max-width:767px){
+  .site-header,.page>.site-header,.stats-shell>.site-header{position:relative;left:50%;transform:translateX(-50%);width:100vw;max-width:none;margin:0;padding-inline:16px}
+  .bottom-tab-bar{left:0;transform:none;width:auto;max-width:none;margin:0}
+}
