@@ -62,8 +62,8 @@ export default function ResultsPage() {
           const isSemifinalist = rounds.length >= 2 && (rounds.at(-2) || []).some(match =>
             [match.player1, match.player2].some(p => p && String(p.id) === String(player?.id))
           );
-          const lostRoundIndex = rounds.findIndex(round => round.some(match => [match.player1, match.player2].some(p => p && String(p.id) === String(player?.id)) && match.winnerId && String(match.winnerId) !== String(player?.id)));
-          const inferredPlace = isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : lostRoundIndex >= 0 ? `ベスト${2 ** (rounds.length - lostRoundIndex)}` : '参加';
+          
+          const inferredPlace = isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : '';
           return { ...item, myPlacement: placement || inferredPlace };
         });
         const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => item.isLegacy); } catch { return []; } })();
@@ -92,7 +92,7 @@ export default function ResultsPage() {
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="results-table">
           {tournaments.map(tournament => <div className="results-table-row" key={tournament.id}>
             {tournament.isLegacy ? <span className="results-table-name">{tournament.participantCount ? `参加者${tournament.participantCount}名 ` : ''}{tournament.name}</span> : <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>}
-            <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{tournament.myPlacement || '参加'}</span>
+            <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{['優勝', '準優勝', '3位'].includes(tournament.myPlacement) ? tournament.myPlacement : ''}</span>
           </div>)}
         </div>}
       </section>
