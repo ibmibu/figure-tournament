@@ -27,7 +27,7 @@ export async function GET(request) {
     const result = await getAuthenticatedUser(request);
     if (result.error) return result.error;
     const { user, admin } = result;
-    const { data, error } = await admin.from('profiles').select('display_name,avatar_data,friend_code').eq('user_id', user.id).maybeSingle();
+    const { data, error } = await admin.from('profiles').select('display_name,avatar_data,friend_code,public_uid').eq('user_id', user.id).maybeSingle();
     if (error) throw error;
     return NextResponse.json({ profile: data || { display_name: 'no name', avatar_data: '' } });
   } catch (error) {
@@ -55,7 +55,7 @@ export async function PUT(request) {
       avatar_data: avatarData,
       friend_code: friendCode,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' }).select('display_name,avatar_data,friend_code').single();
+    }, { onConflict: 'user_id' }).select('display_name,avatar_data,friend_code,public_uid').single();
     if (error) throw error;
     return NextResponse.json({ profile: data });
   } catch (error) {
