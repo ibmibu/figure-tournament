@@ -30,12 +30,14 @@ export default function ResultsPage() {
           return;
         }
         const headers = { Authorization: `Bearer ${session.access_token}` };
-        const [profileResponse, tournamentResponse] = await Promise.all([
+        const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
           fetch('/api/tournaments', { headers, cache: 'no-store' }),
+          fetch('/api/results/legacy', { headers, cache: 'no-store' }),
         ]);
         const profileResult = await profileResponse.json();
         const tournamentResult = await tournamentResponse.json();
+        const legacyResult = legacyResponse.ok ? await legacyResponse.json() : { tournaments: [] };
         if (!profileResponse.ok) throw new Error(profileResult.error || 'プロフィールを読み込めませんでした。');
         if (!tournamentResponse.ok) throw new Error(tournamentResult.error || '大会情報を読み込めませんでした。');
         writeTournamentCache(tournamentResult.tournaments || []);
@@ -57,7 +59,7 @@ export default function ResultsPage() {
           );
           return { ...item, myPlacement: placement || (isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : '参加') };
         });
-        if (active) setTournaments(mine);
+        if (active) setTournaments([...mine, ...(legacyResult.tournaments || [])]);
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
@@ -76,7 +78,7 @@ export default function ResultsPage() {
         {error && <p className="form-error" role="alert">{error}</p>}
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="results-table">
           {tournaments.map(tournament => <div className="results-table-row" key={tournament.id}>
-            <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>
+            {tournament.isLegacy ? <span className="results-table-name">{tournament.name}</span> : <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>}
             <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{tournament.myPlacement === 'ベスト4' ? '3位' : tournament.myPlacement || '結果確定'}</span>
           </div>)}
         </div>}
