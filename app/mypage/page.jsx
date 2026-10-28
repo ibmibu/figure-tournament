@@ -5,6 +5,7 @@ import SiteHeader from '../../components/SiteHeader';
 import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
+import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '', friend_code: '', public_uid: null };
 
@@ -39,6 +40,18 @@ export default function MyPage({ colorsOnly = false }) {
         }
         if (!active) return;
         setSession(currentSession);
+        const snapshot = readTabSnapshot('mypage-' + currentSession.user.id);
+        if (snapshot) {
+          setProfile(snapshot.profile);
+          setDraftName(snapshot.profile.display_name || 'no name');
+          setDraftAvatar(snapshot.profile.avatar_data || '');
+          setDraftFriendCode(snapshot.profile.friend_code || '');
+          setTournaments(snapshot.tournaments);
+          setMyColors(snapshot.colors || []);
+          setColorsReady(true);
+          setLoading(false);
+          return;
+        }
         let localColors = [];
         try { localColors = JSON.parse(window.localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]'); } catch {}
         if (!Array.isArray(localColors)) localColors = [];
@@ -97,7 +110,9 @@ export default function MyPage({ colorsOnly = false }) {
         setDraftFriendCode(loadedProfile.friend_code || '');
         const all = tournamentResult.tournaments || [];
         writeTournamentCache(all);
-        setTournaments(all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentSession.user.id))));
+        const myTournaments = all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentSession.user.id)));
+        setTournaments(myTournaments);
+        writeTabSnapshot('mypage-' + currentSession.user.id, { profile: loadedProfile, tournaments: myTournaments, colors: JSON.parse(localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]') });
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
