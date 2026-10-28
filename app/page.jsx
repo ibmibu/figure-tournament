@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import SiteHeader from '../components/SiteHeader';
 import Link from 'next/link';
 import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
+import { readTabSnapshot, writeTabSnapshot } from '../lib/tab-snapshot';
 
 function formatStartDate(value) {
   if (!value) return '';
@@ -33,6 +34,8 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    const snapshot = readTabSnapshot('home');
+    if (snapshot) { setTournaments(snapshot); setLoading(false); return () => { active = false; }; }
     const cached = readTournamentCache();
     if (cached) { setTournaments(cached); setLoading(false); }
     fetch('/api/tournaments', { cache: 'no-store' })
@@ -41,6 +44,7 @@ export default function Home() {
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
         writeTournamentCache(latest);
+        writeTabSnapshot('home', latest);
         if (active) { setTournaments(latest); setLoadError(''); }
       })
       .catch(error => {
