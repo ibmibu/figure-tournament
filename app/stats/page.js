@@ -658,7 +658,7 @@ export default function StatsPage() {
 
   const selectedCharacterStats = useMemo(() => {
     const characterTargetPlayer = data?.players?.find((player) => String(player.id) === String(selected));
-    if (!characterTargetPlayer || !characterComments) return { counts: [], total: 0, tournaments: 0 };
+    if (!characterTargetPlayer) return { counts: [], total: 0, tournaments: 0 };
     const counts = new Map();
     const seenTournaments = new Set();
     const reportedByTournament = new Map();
@@ -705,7 +705,7 @@ export default function StatsPage() {
         if (characters.length > 0) manualReportsByTournament.set(number, characters);
       }
     }
-    for (const tournament of characterComments) {
+    for (const tournament of characterComments || []) {
       // 過去大会を手動登録している場合、その大会のコメントは集計対象から外す。
       if (manualReportsByTournament.has(Number(tournament.number))) continue;
       const usedInTournament = new Set();
@@ -785,7 +785,7 @@ export default function StatsPage() {
       .filter(([number, characters]) => champions.get(number) === playerId && characters.size === 1)
       .map(([number, characters]) => ({ number, character: [...characters][0] }))
       .sort((a, b) => b.number - a.number);
-    return { counts: [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')), total: [...counts.values()].reduce((sum, value) => sum + value, 0), tournaments: seenTournaments.size, soloAchievements, matchedComments, parsedComments, targetId: String(characterTargetPlayer.id), fetchedComments: characterComments.reduce((sum, item) => sum + (item.comments?.length || 0), 0), fetchErrors: characterComments.filter((item) => item.error).length };
+    return { counts: [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')), total: [...counts.values()].reduce((sum, value) => sum + value, 0), tournaments: seenTournaments.size, soloAchievements, matchedComments, parsedComments, targetId: String(characterTargetPlayer.id), fetchedComments: (characterComments || []).reduce((sum, item) => sum + (item.comments?.length || 0), 0), fetchErrors: (characterComments || []).filter((item) => item.error).length };
   }, [data, selected, characterComments, playerTournamentStats]);
 
   const recentResultsByOpponent = useMemo(() => {
