@@ -465,6 +465,21 @@ export default function StatsPage() {
       }
     }
 
+    for (const tournament of data?.tournaments || []) {
+      if (!tournament.championId) continue;
+      const number = Number(tournament.number);
+      const winner = String(tournament.championId);
+      if (champions.get(number) !== winner) {
+        const previous = champions.get(number);
+        if (previous) wins.set(previous, Math.max(0, (wins.get(previous) || 0) - 1));
+        wins.set(winner, (wins.get(winner) || 0) + 1);
+      }
+      champions.set(number, winner);
+      for (const id of tournament.participantIds || []) {
+        if (!appearances.has(id)) appearances.set(id, new Set());
+        appearances.get(id).add(number);
+      }
+    }
     return { appearances, wins, champions, recordsByTournament };
   }, [data]);
 
@@ -555,6 +570,9 @@ export default function StatsPage() {
       }
     }
 
+    for (const tournament of data?.tournaments || []) {
+      if (tournament.championId) champions.set(Number(tournament.number), playerNames.get(String(tournament.championId)) || '');
+    }
     return champions;
   }, [data, playerTournamentStats]);
 
@@ -716,6 +734,18 @@ export default function StatsPage() {
       }
       if (usedInTournament.size) reportedByTournament.set(Number(tournament.number), new Set([...(reportedByTournament.get(Number(tournament.number)) || []), ...usedInTournament]));
     }
+    // Account-linked reports from completed Figure Tournament events.
+    for (const tournament of data.tournaments || []) {
+      if (!tournament.championId || !tournament.characterReports) continue;
+      const reported = tournament.characterReports[targetCanonicalId];
+      if (!Array.isArray(reported) || !reported.length) continue;
+      const number = Number(tournament.number);
+      if (reportedByTournament.has(number) || manualReportsByTournament.has(number)) continue;
+      const unique = new Set(reported);
+      reportedByTournament.set(number, unique);
+      seenTournaments.add(number);
+      for (const character of unique) counts.set(character, (counts.get(character) || 0) + 1);
+    }
     for (const [number, characters] of manualReportsByTournament) {
       const used = new Set();
       for (const character of characters) {
@@ -741,6 +771,9 @@ export default function StatsPage() {
       );
       const unbeaten = [...participants].filter((id) => !losers.has(id));
       if (unbeaten.length === 1) champions.set(number, unbeaten[0]);
+    }
+    for (const tournament of data.tournaments || []) {
+      if (tournament.championId) champions.set(Number(tournament.number), String(tournament.championId));
     }
     const playerId = targetCanonicalId;
     const soloAchievements = [...reportedByTournament.entries()]
