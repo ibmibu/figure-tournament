@@ -91,6 +91,7 @@ export default function NewTournamentPage() {
   }, []);
   const [hour, setHour] = useState('21');
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
+  const [customStageName, setCustomStageName] = useState('');
   const [stageRejects, setStageRejects] = useState(false);
   const [autoSeed, setAutoSeed] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
@@ -139,6 +140,16 @@ export default function NewTournamentPage() {
     })();
     return () => { active = false; };
   }, [editId, checkingAuth]);
+
+  const stageOptions = [...new Set([...STAGES, ...selectedStages])];
+  function addCustomStage() {
+    const name = customStageName.trim();
+    if (!name) return;
+    if (name.length > 40) { setError('追加ステージ名は40文字以内にしてください。'); return; }
+    setSelectedStages(old => old.includes(name) ? old : [...old, name]);
+    setCustomStageName('');
+    setError('');
+  }
 
   function toggleStage(stage, setter) {
     setter(old => old.includes(stage) ? old.filter(item => item !== stage) : [...old, stage]);
@@ -281,11 +292,12 @@ export default function NewTournamentPage() {
         <fieldset className="setup-group">
           <legend>使用ステージ</legend>
           <div className="stage-checkbox-grid">
-            {STAGES.map(stage => <label className="stage-checkbox" key={stage}>
+            {stageOptions.map(stage => <label className="stage-checkbox" key={stage}>
               <input type="checkbox" checked={selectedStages.includes(stage)} onChange={() => toggleStage(stage, setSelectedStages)} />
               <span>{stage}</span>
             </label>)}
           </div>
+          <div className="custom-stage-entry"><label htmlFor="customStageName">追加ステージ（1行につき1つ）</label><div className="custom-stage-input"><input id="customStageName" type="text" maxLength={40} value={customStageName} onChange={e => setCustomStageName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomStage(); } }} /><button type="button" onClick={addCustomStage} disabled={!customStageName.trim()}>追加</button></div></div>
         </fieldset>
 
         <fieldset className="setup-group">
@@ -298,14 +310,14 @@ export default function NewTournamentPage() {
             <p className="setting-help">使用ステージの中から、スターターとカウンターピックを選択してください。</p>
             <h3>スターターステージ</h3>
             <div className="stage-checkbox-grid">
-              {STAGES.filter(stage => selectedStages.includes(stage)).map(stage => <label className="stage-checkbox" key={stage}>
+              {stageOptions.filter(stage => selectedStages.includes(stage)).map(stage => <label className="stage-checkbox" key={stage}>
                 <input type="checkbox" checked={starterStages.includes(stage)} onChange={() => toggleStage(stage, setStarterStages)} />
                 <span>{stage}</span>
               </label>)}
             </div>
             <h3>カウンターピックステージ</h3>
             <div className="stage-checkbox-grid">
-              {STAGES.filter(stage => selectedStages.includes(stage)).map(stage => <label className="stage-checkbox" key={stage}>
+              {stageOptions.filter(stage => selectedStages.includes(stage)).map(stage => <label className="stage-checkbox" key={stage}>
                 <input type="checkbox" checked={counterpickStages.includes(stage)} onChange={() => toggleStage(stage, setCounterpickStages)} />
                 <span>{stage}</span>
               </label>)}
