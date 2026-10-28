@@ -2366,3 +2366,7 @@ footer span {
 .stats-shell .content>section.card .sectionHead{padding-left:0;padding-right:0}
 /* Shared SiteHeader owns its viewport alignment; avoid stats-only overrides. */
 @media(max-width:767px){.stats-shell .statsGrid .stat{padding:12px 10px!important}.stats-shell .statsGrid .stat:first-child{padding-left:0!important}}
+
+/* Match Home/My Page content width while retaining responsive inner padding. */
+.stats-shell .content{width:100%;max-width:1120px;margin-inline:auto;padding-inline:clamp(16px,3vw,32px)}
+@media(max-width:640px){.stats-shell .content{padding-inline:16px}}
