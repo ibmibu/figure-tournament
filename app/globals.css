@@ -1443,3 +1443,14 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .page>.tournaments .section-title{padding:0;margin:0}
 .page>.tournaments .home-tournament-table-wrap{margin-top:18px}
 @media(max-width:640px){.page>.tournaments{padding:22px 0 24px!important}.page>.tournaments+.tournaments{padding-top:24px!important}}
+
+/* Final desktop alignment: identical centered 1120px header/nav boxes on all routes.
+   Avoid 100vw (which includes scrollbar width) and full-bleed negative margins. */
+@media(min-width:768px){
+  .site-header,.page>.site-header,.stats-shell>.site-header,
+  .bottom-tab-bar,.page>.bottom-tab-bar,.stats-shell>.bottom-tab-bar{
+    position:relative;left:auto;right:auto;bottom:auto;transform:none;
+    width:100%;max-width:1120px;margin-left:auto;margin-right:auto;
+    padding-left:clamp(16px,3vw,32px);padding-right:clamp(16px,3vw,32px);
+  }
+}
