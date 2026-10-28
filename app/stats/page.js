@@ -1504,7 +1504,7 @@ export default function StatsPage() {
           )}
         </section>
 
-        {seriesTag === '人形劇' && (
+        {(seriesTag === '人形劇' || seriesTag === 'all') && (
         <section className="card">
           <div className="sectionHead">
             <div>
@@ -1821,7 +1821,7 @@ export default function StatsPage() {
                 <span>B：16,000以上</span>
                 <span>C：12,000以上</span>
                 <span>D：12,000未満</span>
-              </p>
+              </p>}
             </div>
 
           </div>
@@ -1845,7 +1845,7 @@ export default function StatsPage() {
                           </>
                         );
                       })()}
-                    </small>
+                    </small>}
                     {tournamentChampions.get(Number(tournament.number)) && (
                       <small className="tournamentChampion">
                         {tournamentChampions.get(Number(tournament.number))}
