@@ -250,6 +250,6 @@ export default function MyPage({ colorsOnly = false }) {
         </div>
       </section>}
     </section>
-    <footer>Figure Tournament</footer>
+    
   </main>;
 }
