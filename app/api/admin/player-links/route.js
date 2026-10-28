@@ -29,7 +29,7 @@ export async function POST(request){
   const admin=await authorize(request);
   if(!admin)return NextResponse.json({error:'管理者権限が必要です。'},{status:403});
   const {legacyPlayerId,publicUid}=await request.json();
-  if(!/^\\d+$/.test(String(legacyPlayerId))||!Number.isSafeInteger(Number(publicUid))||Number(publicUid)<1)return NextResponse.json({error:'ID形式が正しくありません。'},{status:400});
+  if(!/^[0-9]+$/.test(String(legacyPlayerId))||!Number.isSafeInteger(Number(publicUid))||Number(publicUid)<1)return NextResponse.json({error:'ID形式が正しくありません。'},{status:400});
   const {data:profile,error:profileError}=await admin.from('profiles').select('user_id').eq('public_uid',Number(publicUid)).maybeSingle();
   if(profileError)throw profileError;
   if(!profile)return NextResponse.json({error:'指定されたUIDが見つかりません。'},{status:404});
