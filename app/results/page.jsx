@@ -29,6 +29,7 @@ export default function ResultsPage() {
           window.location.href = '/login?next=/results';
           return;
         }
+        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(saved); setLoading(false); } } catch {}
         const headers = { Authorization: `Bearer ${session.access_token}` };
         const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -38,6 +39,7 @@ export default function ResultsPage() {
         const profileResult = await profileResponse.json();
         const tournamentResult = await tournamentResponse.json();
         const legacyResult = legacyResponse.ok ? await legacyResponse.json() : { tournaments: [] };
+        if (!legacyResponse.ok) console.warn('過去の人形劇の結果を取得できませんでした。');
         if (!profileResponse.ok) throw new Error(profileResult.error || 'プロフィールを読み込めませんでした。');
         if (!tournamentResponse.ok) throw new Error(tournamentResult.error || '大会情報を読み込めませんでした。');
         writeTournamentCache(tournamentResult.tournaments || []);
@@ -59,7 +61,8 @@ export default function ResultsPage() {
           );
           return { ...item, myPlacement: placement || (isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : '参加') };
         });
-        if (active) setTournaments([...mine, ...(legacyResult.tournaments || [])]);
+        const combined = [...mine, ...(legacyResult.tournaments || [])].sort((a, b) => (b.number || 0) - (a.number || 0));
+        if (active) { setTournaments(combined); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
