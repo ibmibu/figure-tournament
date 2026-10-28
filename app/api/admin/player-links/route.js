@@ -19,7 +19,7 @@ export async function GET(request){
   if(!archiveResponse.ok)throw Error('過去の戦績データを取得できませんでした。');
   const archive=await archiveResponse.json();
   const players=new Map();
-  for(const p of archive.players||[]){const id=canonical(p.id);if(!players.has(id))players.set(id,{id,name:p.name||id});}
+  for(const p of archive.data?.players||archive.players||[]){const id=canonical(p.id);if(!players.has(id))players.set(id,{id,name:p.name||id});}
   const used=new Set((links||[]).map(l=>canonical(l.legacy_player_id)));
   return NextResponse.json({links,players:[...players.values()].map(p=>({...p,linked:used.has(p.id)})).sort((a,b)=>a.name.localeCompare(b.name,'ja')),users:profiles||[]});
  }catch(e){return NextResponse.json({error:e.message},{status:500});}
