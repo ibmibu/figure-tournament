@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import SiteHeader from '../../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
 
@@ -591,10 +590,10 @@ export default function TournamentPage() {
     }
   }
 
-  if (loading && !tournament) return <main className="page tournament-detail-page"><SiteHeader /><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
+  if (loading && !tournament) return <main className="page tournament-detail-page"><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
 
   if (!tournament) return <main className="page">
-    <SiteHeader /><section className="intro">
+    <section className="intro">
       <a className="back-link" href="/">← 大会一覧に戻る</a><h1>{error || '大会が見つかりません'}</h1><p>大会情報はサーバーで管理されています。URLや通信状況を確認してください。</p></section></main>;
 
   const joinedPlayers = tournament.joinedPlayers || [];
