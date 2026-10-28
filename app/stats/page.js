@@ -1252,7 +1252,7 @@ export default function StatsPage() {
                       return (
                         <span className="achievementTournament" key={number}>
                           <b className={`achievementTier tier${tier}`}><span className="tierLetter">{tier}</span></b>
-                          <span>人形劇#{number}</span>
+                          <span>{data?.tournaments?.find(t => Number(t.number) === Number(number))?.name || `人形劇#${number}`}</span>
                         </span>
                       );
                     })}
