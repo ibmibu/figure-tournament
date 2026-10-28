@@ -1485,3 +1485,12 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 .page>.tournaments .section-title{min-height:52px;box-sizing:border-box;padding:8px 16px;display:flex;align-items:center}
 .page>.tournaments .section-title .button-link{min-height:36px;box-sizing:border-box;padding:7px 12px;line-height:20px}
 @media(max-width:600px){.page>.tournaments .section-title{min-height:48px;padding:6px 12px}.page>.tournaments .section-title .button-link{min-height:36px;padding:7px 10px;line-height:20px}}
+
+/* Compact BO-format badges alongside tournament names. */
+.home-tournament-name-cell{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap}
+.home-format-badge{display:inline-flex;align-items:center;justify-content:center;flex:none;padding:3px 6px;border-radius:2px;color:#fff;font-size:10px;font-weight:700;line-height:1.2;letter-spacing:0}
+.home-format-bo3{background:#27865b}
+.home-format-bo5{background:#c34d54}
+/* Keep both purple headers aligned while slimming the create action. */
+.page>.tournaments .section-title .button-link{min-height:28px;padding:3px 10px;line-height:20px}
+@media(max-width:600px){.page>.tournaments .section-title .button-link{min-height:28px;padding:3px 9px;line-height:20px}}
