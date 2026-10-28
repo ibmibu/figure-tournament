@@ -2370,3 +2370,10 @@ footer span {
 /* Match Home/My Page content width while retaining responsive inner padding. */
 .stats-shell .content{width:100%;max-width:1120px;margin-inline:auto;padding-inline:clamp(16px,3vw,32px)}
 @media(max-width:640px){.stats-shell .content{padding-inline:16px}}
+
+/* Three square outlined statistics, consistently in one row on mobile and desktop. */
+.stats-shell .statsGrid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;border:0!important;margin-bottom:24px!important}
+.stats-shell .statsGrid .stat,.stats-shell .statsGrid .stat:first-child,.stats-shell .statsGrid .stat+.stat{display:flex!important;flex-direction:column;align-items:center;justify-content:center;min-width:0;min-height:100px;padding:14px 8px!important;margin:0!important;background:transparent!important;border:1px solid #242424!important;border-radius:0!important;box-shadow:none!important;text-align:center}
+.stats-shell .statsGrid .stat span{font-size:13px;white-space:nowrap}
+.stats-shell .statsGrid .stat strong{font-size:clamp(22px,3vw,32px);line-height:1.3;font-variant-numeric:tabular-nums}
+@media(max-width:640px){.stats-shell .statsGrid{gap:7px!important}.stats-shell .statsGrid .stat,.stats-shell .statsGrid .stat:first-child,.stats-shell .statsGrid .stat+.stat{min-height:84px;padding:10px 3px!important}.stats-shell .statsGrid .stat span{font-size:11px}.stats-shell .statsGrid .stat strong{font-size:clamp(19px,5vw,26px)}.stats-shell .statsGrid .stat small{font-size:10px}}
