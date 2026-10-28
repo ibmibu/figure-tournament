@@ -194,8 +194,16 @@ export default function StatsPage() {
 
 
   useEffect(() => {
-    // Always load the shared archive; stale per-browser snapshots must not appear.
+    // Show the saved archive immediately, then refresh from the shared source.
     localStorage.setItem('ningyogeki-offline-mode', 'true');
+    try {
+      const saved = JSON.parse(localStorage.getItem('ningyogeki-archive-cache-v1') || 'null');
+      if (saved?.data?.tournaments && saved?.data?.records) {
+        setData(saved.data);
+      }
+    } catch (e) {
+      console.warn('保存済み大会バックアップを読み込めませんでした', e);
+    }
     loadGitHubArchive(false);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,7 +365,8 @@ export default function StatsPage() {
 
   async function loadGitHubArchive(confirmReplace = true) {
     try {
-      setLoading(true);
+      // Do not hide previously cached stats while refreshing in the background.
+      setLoading(!archiveData);
       setLoadProgress(0);
       setError('');
       const response = await fetch('/api/ningyogeki-archive', { cache: 'no-store' });
@@ -400,6 +409,7 @@ export default function StatsPage() {
       // GitHub archive is authoritative. Never merge local tournaments or matches.
       const mergedData = importedData;
       const mergedRecords = importedData.records || [];
+      try { localStorage.setItem('ningyogeki-archive-cache-v1', JSON.stringify({ data: mergedData })); } catch {}
       localStorage.setItem(STORAGE_KEY, JSON.stringify(mergedData));
 
       // キャラクターコメントもバックアップとブラウザ保存分を統合する。
