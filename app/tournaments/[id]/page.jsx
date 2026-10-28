@@ -148,7 +148,7 @@ export default function TournamentPage() {
     const final = rounds.at(-1)?.[0];
     const podium = new Set([final?.winnerId, ...[final?.player1, final?.player2].filter(Boolean).map(p => p.id)]);
     if (rounds.length >= 2) for (const m of rounds.at(-2)) for (const p of [m.player1, m.player2]) if (p && m.winnerId && String(p.id) !== String(m.winnerId)) podium.add(p.id);
-    const wins = rounds.flat().filter(m => String(m.winnerId) === String(player.id) && m.player1 && m.player2).length;
+    const wins = rounds.flat().filter(m => String(m.winnerId) === String(player.id) && m.player1 && m.player2 && m.resultType !== 'forfeit').length;
     if (wins < 1 || ![...podium].some(v => String(v) === String(player.id))) return;
     const key = 'figure-report-visited-' + id + '-' + currentUserId;
     if (sessionStorage.getItem(key)) return;
