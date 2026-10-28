@@ -62,10 +62,16 @@ export default function ResultsPage() {
           const isSemifinalist = rounds.length >= 2 && (rounds.at(-2) || []).some(match =>
             [match.player1, match.player2].some(p => p && String(p.id) === String(player?.id))
           );
-          return { ...item, myPlacement: placement || (isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : '参加') };
+          const lostRoundIndex = rounds.findIndex(round => round.some(match => [match.player1, match.player2].some(p => p && String(p.id) === String(player?.id)) && match.winnerId && String(match.winnerId) !== String(player?.id)));
+          const inferredPlace = isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? 'ベスト4' : lostRoundIndex >= 0 ? `ベスト${2 ** (rounds.length - lostRoundIndex)}` : '参加';
+          return { ...item, myPlacement: placement || inferredPlace };
         });
         const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => item.isLegacy); } catch { return []; } })();
-        const combined = [...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)].sort((a, b) => (b.number || 0) - (a.number || 0));
+        const combined = [...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)].sort((a, b) => {
+          const dateA = Date.parse(a.date || a.createdAt || '') || 0;
+          const dateB = Date.parse(b.date || b.createdAt || '') || 0;
+          return dateB - dateA || (Number(b.number) || 0) - (Number(a.number) || 0);
+        });
         if (active) { setTournaments(combined); writeTabSnapshot('results-' + session.user.id, combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
@@ -85,8 +91,8 @@ export default function ResultsPage() {
         {error && <p className="form-error" role="alert">{error}</p>}
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="results-table">
           {tournaments.map(tournament => <div className="results-table-row" key={tournament.id}>
-            {tournament.isLegacy ? <span className="results-table-name">{tournament.name}</span> : <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>}
-            <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{tournament.myPlacement === 'ベスト4' ? '3位' : tournament.myPlacement || '結果確定'}</span>
+            {tournament.isLegacy ? <span className="results-table-name">{tournament.participantCount ? `参加者${tournament.participantCount}名 ` : ''}{tournament.name}</span> : <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>}
+            <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{tournament.myPlacement === '3位' ? 'ベスト4' : tournament.myPlacement || '参加'}</span>
           </div>)}
         </div>}
       </section>
