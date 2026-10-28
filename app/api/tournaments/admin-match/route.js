@@ -19,7 +19,7 @@ export async function POST(request) {
     if (authError || !user) return NextResponse.json({ error: 'ログインの有効期限が切れています。' }, { status: 401 });
 
     const { id, matchId, action, winnerId, ownerToken } = await request.json();
-    if (!id || !matchId || !['reset', 'forfeit'].includes(action)) {
+    if (!id || !['reset', 'forfeit', 'undo'].includes(action) || (action !== 'undo' && !matchId)) {
       return NextResponse.json({ error: '操作内容が正しくありません。' }, { status: 400 });
     }
     const admin = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -36,14 +36,45 @@ export async function POST(request) {
 
     let updated;
     try {
-      updated = updateBracketMatch(existing, String(matchId), action, winnerId);
+      const history = Array.isArray(existing.adminHistory) ? existing.adminHistory : [];
+      if (action === 'undo') {
+        const latest = history.at(-1);
+        if (!latest?.before) throw new Error('巻き戻せる主催者操作がありません。');
+        // Never restore a snapshot over bracket progress made by players after the admin action.
+        if (JSON.stringify(existing.bracket) !== JSON.stringify(latest.afterBracket)) {
+          throw new Error('操作後に対戦が進行したため巻き戻せません。対戦結果を確認してください。');
+        }
+        updated = {
+          ...existing,
+          bracket: latest.before.bracket,
+          status: latest.before.status,
+          resultPlacements: latest.before.resultPlacements,
+          completedAt: latest.before.completedAt,
+          adminHistory: history.slice(0, -1),
+          adminLog: [...(existing.adminLog || []), { at: new Date().toISOString(), label: `巻き戻し：${latest.label}` }].slice(-100),
+        };
+      } else {
+        updated = updateBracketMatch(existing, String(matchId), action, winnerId);
+        const match = (existing.bracket?.rounds || []).flat().find(item => String(item.id) === String(matchId));
+        const label = action === 'reset'
+          ? `結果リセット：${match?.player1?.name || '?'} VS ${match?.player2?.name || '?'}`
+          : `不戦勝：${[match?.player1, match?.player2].find(p => String(p?.id) === String(winnerId))?.name || '?'}`;
+        const at = new Date().toISOString();
+        updated.adminHistory = [...history, {
+          at, label,
+          before: { bracket: existing.bracket, status: existing.status, resultPlacements: existing.resultPlacements ?? null, completedAt: existing.completedAt ?? null },
+          afterBracket: updated.bracket,
+        }].slice(-20);
+        updated.adminLog = [...(existing.adminLog || []), { at, label }].slice(-100);
+      }
     } catch (error) {
       return NextResponse.json({ error: error.message || '対戦結果を変更できませんでした。' }, { status: 400 });
     }
 
-    const { error: writeError } = await admin.from('tournaments')
-      .update({ data: updated }).eq('id', String(id));
+    const { data: changed, error: writeError } = await admin.from('tournaments')
+      .update({ data: updated }).eq('id', String(id)).eq('data', JSON.stringify(existing)).select('id');
     if (writeError) throw writeError;
+    if (!changed?.length) return NextResponse.json({ error: '別の操作が先に保存されました。再読み込みしてください。' }, { status: 409 });
     const { ownerUserId, ownerId, ...publicTournament } = updated;
     return NextResponse.json({ ok: true, tournament: { ...publicTournament, isOwner: true } });
   } catch (error) {
