@@ -1454,3 +1454,15 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
     padding-left:clamp(16px,3vw,32px);padding-right:clamp(16px,3vw,32px);
   }
 }
+
+/* Home/My Page place SiteHeader inside .page's padded content box.
+   Expand those two header elements back to the page's outer edge so their
+   1120px width and 32px inner inset match the unpadded Stats root exactly. */
+@media(min-width:768px){
+  .page>.site-header,.page>.bottom-tab-bar{
+    width:calc(100% + 2 * clamp(16px,3vw,32px));
+    max-width:none;
+    margin-left:calc(-1 * clamp(16px,3vw,32px));
+    margin-right:calc(-1 * clamp(16px,3vw,32px));
+  }
+}
