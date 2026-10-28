@@ -644,7 +644,7 @@ export default function TournamentPage() {
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
           const canActFor = id => isOwner && !demoMatch ? true : String(id) === String(viewingPlayerId);
-          const waitingFor = id => <p className="setting-help match-turn-waiting">🟢 {[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
+          const waitingFor = id => <p className="setting-help match-turn-waiting">{[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span>{tournament.streamFriendCode && <span>配信台フレンドコード：<b>{tournament.streamFriendCode}</b></span>}</div>}
 
@@ -714,21 +714,19 @@ export default function TournamentPage() {
         <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
-        {isOwner && <section className="bracket-admin-history">
-          <div className="bracket-admin-history-actions">
-            <button type="button" onClick={() => setShowAdminLog(value => !value)}>{showAdminLog ? '操作ログを閉じる' : '操作ログを見る'}（{(tournament.adminLog || []).length}）</button>
-            <button type="button" disabled={savingBracket || !tournament.adminHistory?.length} onClick={undoAdminAction}>直前の操作を巻き戻す</button>
-          </div>
-          {showAdminLog && <div className="bracket-admin-history-list">{(tournament.adminLog || []).length
-            ? [...tournament.adminLog].reverse().map((entry, index) => <p key={index}><time>{new Date(entry.at).toLocaleString('ja-JP')}</time>　{entry.label}</p>)
-            : <p>操作履歴はありません。</p>}</div>}
-        </section>}
         {isOwner && selectedAdminMatch && <div className="bracket-admin-modal-backdrop" onClick={() => { if (!savingBracket) { setAdminMatchSelection(null); setShowForfeitChoices(false); } }}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="主催者の対戦管理" onClick={event => event.stopPropagation()}>
           <div className="bracket-admin-heading">
             <strong>選択中：{selectedAdminMatch.player1?.name || '未定'} VS {selectedAdminMatch.player2?.name || '未定'}</strong>
             <button type="button" onClick={() => { setAdminMatchSelection(null); setShowForfeitChoices(false); }}>閉じる ×</button>
           </div>
           {!canEditAdminMatch ? <p>両方の対戦相手が決まると操作できます。</p> : <>
+            <div className="bracket-admin-history-actions">
+              <button type="button" onClick={() => setShowAdminLog(value => !value)}>{showAdminLog ? 'ログを閉じる' : 'ログを見る'}</button>
+              <button type="button" disabled={savingBracket || !tournament.adminHistory?.length} onClick={undoAdminAction}>巻き戻し</button>
+            </div>
+            {showAdminLog && <div className="bracket-admin-history-list">{(tournament.adminLog || []).length
+              ? [...tournament.adminLog].reverse().map((entry, index) => <div className="bracket-admin-log-entry" key={index}><span className="bracket-admin-log-dot" /><div><time>{new Date(entry.at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time><p><strong>主催者：</strong>{entry.label}</p></div></div>)
+              : <p>操作履歴はありません。</p>}</div>}
             <div className="bracket-admin-actions">
               {selectedAdminMatch.winnerId || selectedAdminMatch.matchState ? <button type="button" className="bracket-admin-reset" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'reset')}>結果をリセット</button> : null}
               {!selectedAdminMatch.winnerId && <button type="button" disabled={savingBracket} onClick={() => setShowForfeitChoices(value => !value)}>{showForfeitChoices ? '不戦勝設定を閉じる' : '不戦勝にする'}</button>}
