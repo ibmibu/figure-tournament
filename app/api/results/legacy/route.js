@@ -40,7 +40,7 @@ export async function GET(request) {
       const myLoss = matches.find(m => canonical(m.loserId) === playerId);
       const myWins = matches.filter(m => canonical(m.winnerId) === playerId).length;
       const finalWins = Math.max(1, Math.ceil(Math.log2(participantCount)));
-      const placement = champion === playerId ? '優勝' : myLoss && myWins >= finalWins - 1 ? '準優勝' : myLoss && myWins >= finalWins - 2 ? 'ベスト4' : myLoss && myWins >= finalWins - 3 ? 'ベスト8' : '参加';
+      const placement = champion === playerId ? '優勝' : myLoss && myWins >= finalWins - 1 ? '準優勝' : myLoss && myWins >= finalWins - 2 ? '3位' : myLoss && myWins >= finalWins - 3 ? 'ベスト8' : '参加';
       return [{ id: 'legacy-' + number, name: t.name || '人形劇#' + number, number, date: t.date || '', participantCount, myPlacement: placement, isLegacy: true }];
     });
     return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'no-store' } });
