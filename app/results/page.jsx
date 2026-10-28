@@ -5,6 +5,7 @@ import SiteHeader from '../../components/SiteHeader';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import Link from 'next/link';
 import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
+import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 function formatDate(value) {
   if (!value) return '';
@@ -30,6 +31,8 @@ export default function ResultsPage() {
           return;
         }
         try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(saved); setLoading(false); } } catch {}
+        const snapshot = readTabSnapshot('results-' + session.user.id);
+        if (snapshot) { setTournaments(snapshot); setLoading(false); return; }
         const headers = { Authorization: `Bearer ${session.access_token}` };
         const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -63,7 +66,7 @@ export default function ResultsPage() {
         });
         const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => item.isLegacy); } catch { return []; } })();
         const combined = [...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)].sort((a, b) => (b.number || 0) - (a.number || 0));
-        if (active) { setTournaments(combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
+        if (active) { setTournaments(combined); writeTabSnapshot('results-' + session.user.id, combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
