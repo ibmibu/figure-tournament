@@ -49,12 +49,11 @@ export default function LoginPage() {
       <h1>ログイン</h1>
       <p>Googleアカウントでアミコネにログインします。</p>
     </section>
-    <section className="create-panel">
+    <section className="login-actions">
       <button className="submit" type="button" onClick={signInWithGoogle} disabled={loading}>
         {loading ? '接続しています…' : 'Googleでログイン'}
       </button>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <p className="setting-help">ログインに必要な情報の確認と認証はSupabase Authを通じて行います。</p>
     </section>
     <footer>アミコネ</footer>
   </main>;
