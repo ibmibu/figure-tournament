@@ -45,7 +45,15 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     [match.player1, match.player2].some(player => !player.isDemo && String(player.userId || player.id) === String(ownerUserId)));
   const selectedStreamMatch = activeMatches.find(match => String(match.id) === String(data.streamMatchId) && match.player1 && match.player2 && !match.winnerId);
   const effectiveStreamMatchId = data.streamMatchId === undefined ? (organizerMatch?.id || null) : (selectedStreamMatch?.id || null);
-  return { ...publicData, isOwner, effectiveStreamMatchId };
+  const visibleReports = isOwner ? (data.characterReports || {}) : Object.fromEntries(
+    Object.entries(data.characterReports || {}).filter(([playerId]) =>
+      user && (data.joinedPlayers || []).some(player =>
+        String(player.id) === String(playerId) &&
+        !player.isDemo && String(player.userId || player.id) === String(user.id)
+      )
+    )
+  );
+  return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
 }
 
 function errorResponse(error, fallback) {
