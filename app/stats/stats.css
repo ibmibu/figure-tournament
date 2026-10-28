@@ -2364,6 +2364,5 @@ footer span {
 .stats-shell .statsGrid .stat+.stat{border-left:1px solid #dce3eb!important}
 .stats-shell .content>section.card{padding:22px 0!important;margin-top:12px!important;border-bottom:1px solid #dce3eb!important}
 .stats-shell .content>section.card .sectionHead{padding-left:0;padding-right:0}
-/* Stats has a full-width root unlike Home/My Page: align chrome to the viewport, not the root's 1180px content. */
-.stats-shell>.site-header,.stats-shell>.bottom-tab-bar{position:relative!important;left:50%!important;transform:translateX(-50%)!important;width:min(100vw,1120px)!important;max-width:none!important;margin-left:0!important;margin-right:0!important}
-@media(max-width:767px){.stats-shell>.site-header{width:100vw!important;padding-inline:16px!important}.stats-shell>.bottom-tab-bar{position:fixed!important;left:0!important;right:0!important;bottom:0!important;transform:none!important;width:auto!important}.stats-shell .statsGrid .stat{padding:12px 10px!important}.stats-shell .statsGrid .stat:first-child{padding-left:0!important}}
+/* Shared SiteHeader owns its viewport alignment; avoid stats-only overrides. */
+@media(max-width:767px){.stats-shell .statsGrid .stat{padding:12px 10px!important}.stats-shell .statsGrid .stat:first-child{padding-left:0!important}}
