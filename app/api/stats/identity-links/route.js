@@ -23,10 +23,15 @@ export async function GET() {
     }).map(row => {
       const t = row.data || {};
       const participants = new Map();
+      const characterReports = [];
       for (const p of t.joinedPlayers || []) {
         if (p.isDemo) continue;
         const id = linkMap.get(String(p.userId || p.id)) || 'figure:' + String(p.userId || p.id);
         participants.set(String(p.id), { id, name: p.name || p.displayName || String(p.id) });
+        const report = t.characterReports?.[String(p.id)];
+        if (Array.isArray(report?.characters) && report.characters.length) {
+          characterReports.push({ playerId: id, characters: [...new Set(report.characters.map(c => String(c?.fighter || '').trim()).filter(Boolean))] });
+        }
       }
       const matches = (t.bracket?.rounds || []).flatMap(round => round.flatMap(match => {
         if (!match.player1 || !match.player2 || !match.winnerId) return [];
@@ -36,7 +41,9 @@ export async function GET() {
         const winner = String(match.winnerId) === String(match.player1.id) ? first : String(match.winnerId) === String(match.player2.id) ? second : null;
         return winner ? [{ winnerId: winner.id, loserId: winner.id === first.id ? second.id : first.id }] : [];
       }));
-      return { id: row.id, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], matches };
+      const final = t.bracket.rounds.at(-1)?.[0];
+      const championId = participants.get(String(final.winnerId))?.id || null;
+      return { id: row.id, characterReports, championId, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : [], players: [...participants.values()], matches };
     });
     return NextResponse.json({ tournaments: results }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
