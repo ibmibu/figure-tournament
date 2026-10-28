@@ -1399,3 +1399,6 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .my-page .my-results .results-participant-count{white-space:nowrap}
 .my-page .my-results .results-tournament-title{min-width:0;overflow-wrap:anywhere}
 @media(max-width:600px){.my-page .my-results .results-table-name{grid-template-columns:83px minmax(0,1fr);column-gap:6px}}
+
+/* Keep user-uploaded profile icons square rather than circular. */
+.profile-avatar,.mypage-layout .mypage-minimal-profile .profile-avatar{border-radius:0!important}
