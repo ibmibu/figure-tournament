@@ -19,11 +19,11 @@ function isFinished(t) { return t.bracket?.complete === true || ['終了','終�
 function finishedAt(t) { const n = Date.parse(t.completedAt || t.date || ''); return Number.isFinite(n) ? n : 0; }
 function TournamentTable({items}) {
  return <div className="home-tournament-table-wrap"><table className="home-tournament-table">
- <thead><tr><th scope="col">大会名</th><th scope="col">開催日時</th><th scope="col">形式</th><th scope="col">参加人数</th><th scope="col">状態</th></tr></thead>
+ <thead><tr><th scope="col">大会名</th><th scope="col">開催日時</th><th scope="col">形式</th><th scope="col">参加人数</th></tr></thead>
  <tbody>{items.map(t=><tr key={t.id} className="home-tournament-row" onClick={()=>{window.location.href='/tournaments/'+encodeURIComponent(t.id)}}>
  <td><Link href={'/tournaments/'+encodeURIComponent(t.id)} className="home-tournament-name">{t.name}</Link></td>
  <td className="home-tournament-date">{formatStartDate(t.date)||'—'}</td><td>{t.format||'—'}</td><td>{(t.joinedPlayers||[]).length} / {t.participants||8}</td>
- <td><span className="status">{isFinished(t)?'終了':(t.status||'募集中')}</span></td></tr>)}</tbody></table></div>;
+ </tr>)}</tbody></table></div>;
 }
 
 export default function Home() {
@@ -66,7 +66,7 @@ export default function Home() {
       {loading ? <div className="empty"><p>大会を読み込み中…</p></div> : loadError ? <div className="empty"><p role="alert">{loadError}</p></div> : active.length===0?<div className="empty"><p>開催予定・進行中の大会はありません。</p></div>:<TournamentTable items={active}/>}
     </section>
     <section className="tournaments home-finished-tournaments">
-      <div className="section-title"><h2>終了した大会</h2><span className="home-finished-period">過去2週間</span></div>
+      <div className="section-title"><h2>終了した大会</h2></div>
       {loading ? <div className="empty"><p>大会を読み込み中…</p></div> : loadError ? <div className="empty"><p role="alert">{loadError}</p></div> : finished.length===0?<div className="empty"><p>過去2週間に終了した大会はありません。</p></div>:<TournamentTable items={finished}/>}
     </section>
     <footer className="home-legal-footer">
