@@ -1112,15 +1112,8 @@ export default function StatsPage() {
         <section className="card matrixCard">
           <div className="sectionHead">
             <div>
-              <div className="sectionLabel">
-                PLAYER VIEW
-              </div>
 
               <h2>対戦表</h2>
-
-              <p>
-                最初は全員分。名前を選ぶと、その選手視点の戦績に切り替わります。
-              </p>
             </div>
           </div>
 
@@ -1462,9 +1455,6 @@ export default function StatsPage() {
         <section className="card">
           <div className="sectionHead">
             <div>
-              <div className="sectionLabel">
-                RATE RANKING
-              </div>
 
               <h2>
                 レートランキング
@@ -1769,9 +1759,6 @@ export default function StatsPage() {
         <section className="card">
           <div className="sectionHead">
             <div>
-              <div className="sectionLabel">
-                TOURNAMENTS
-              </div>
 
               <h2>取得した大会</h2>
               <p className="tierExplanation">
