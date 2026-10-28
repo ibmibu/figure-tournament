@@ -26,7 +26,7 @@ export async function POST(request) {
   const final=rounds.at(-1)?.[0];
   const podium=new Set([final?.winnerId, ...[final?.player1,final?.player2].filter(Boolean).map(p=>p.id)]);
   if(rounds.length>=2)for(const m of rounds.at(-2))for(const p of [m.player1,m.player2])if(p&&m.winnerId&&String(p.id)!==String(m.winnerId))podium.add(p.id);
-  const wins=rounds.flat().filter(m=>String(m.winnerId)===String(player.id)&&m.player1&&m.player2).length;
+  const wins=rounds.flat().filter(m=>String(m.winnerId)===String(player.id)&&m.player1&&m.player2&&m.resultType!=='forfeit').length;
   if(![...podium].some(v=>String(v)===String(player.id))||wins<1)return NextResponse.json({error:'1勝以上かつ3位以内の選手のみ報告できます。'},{status:403});
   const updated={...t,characterReports:{...(t.characterReports||{}),[String(player.id)]:{characters}}};
   const {error:writeError}=await admin.from('tournaments').update({data:updated}).eq('id',String(id));
