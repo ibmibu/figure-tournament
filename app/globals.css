@@ -1436,3 +1436,10 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 .site-header,.page>.site-header,.stats-shell>.site-header{position:relative;left:auto;transform:none;width:100vw;max-width:none;margin-left:calc(50% - 50vw);margin-right:0;padding-inline:max(16px,calc((100vw - 1120px)/2 + 32px))}
 @media(min-width:768px){.bottom-tab-bar,.page>.bottom-tab-bar,.stats-shell>.bottom-tab-bar{position:relative;left:auto;right:auto;bottom:auto;transform:none;width:100vw;max-width:none;margin-left:calc(50% - 50vw);margin-right:0;padding-inline:max(16px,calc((100vw - 1120px)/2 + 32px))}}
 @media(max-width:767px){.site-header,.page>.site-header,.stats-shell>.site-header{width:100vw;max-width:none;margin-left:calc(50% - 50vw);padding-inline:16px}.bottom-tab-bar,.page>.bottom-tab-bar,.stats-shell>.bottom-tab-bar{position:fixed;left:0;right:0;bottom:0;transform:none;width:auto;max-width:none;margin:0}}
+
+/* Home: flat tournament sections, separated by rules rather than white cards. */
+.page>.tournaments{background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding:28px 0 30px!important;margin:0!important}
+.page>.tournaments+.tournaments{border-top:1px solid #dce3eb!important;padding-top:30px!important}
+.page>.tournaments .section-title{padding:0;margin:0}
+.page>.tournaments .home-tournament-table-wrap{margin-top:18px}
+@media(max-width:640px){.page>.tournaments{padding:22px 0 24px!important}.page>.tournaments+.tournaments{padding-top:24px!important}}
