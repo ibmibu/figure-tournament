@@ -1,4 +1,5 @@
 'use client';
+import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './stats.css';
@@ -109,11 +110,14 @@ export default function StatsPage() {
   const [createdTournaments, setCreatedTournaments] = useState([]);
   const [newDataError, setNewDataError] = useState('');
   useEffect(() => {
+    const snapshot = readTabSnapshot('stats-created');
+    if (snapshot) { setCreatedTournaments(snapshot); return; }
     fetch('/api/stats/identity-links', { cache: 'no-store' })
       .then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会情報を取得できませんでした。');
         setCreatedTournaments(result.tournaments || []);
+        writeTabSnapshot('stats-created', result.tournaments || []);
       }).catch(error => setNewDataError(error.message));
   }, []);
   const availableTags = [...new Set(['人形劇', ...createdTournaments.flatMap(t => t.seriesTags || [])])].sort((a,b) => a.localeCompare(b, 'ja'));
@@ -194,8 +198,10 @@ export default function StatsPage() {
 
 
   useEffect(() => {
-    // Show the saved archive immediately, then refresh from the shared source.
+    // Client-side tab navigation reuses the in-session snapshot.
     localStorage.setItem('ningyogeki-offline-mode', 'true');
+    const snapshot = readTabSnapshot('stats-archive');
+    if (snapshot?.tournaments && snapshot?.records) { setData(snapshot); return; }
     try {
       const saved = JSON.parse(localStorage.getItem('ningyogeki-archive-cache-v1') || 'null');
       if (saved?.data?.tournaments && saved?.data?.records) {
@@ -428,6 +434,7 @@ export default function StatsPage() {
 
       localStorage.setItem('ningyogeki-offline-mode', 'true');
       setData(mergedData);
+      writeTabSnapshot('stats-archive', mergedData);
       // Keep the last selected player when refreshing the archive.
       setSeason('current');
       setMatrixSeason('current');
