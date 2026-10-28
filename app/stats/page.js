@@ -132,7 +132,7 @@ export default function StatsPage() {
     const tournaments = [...archiveTournaments];
     selectedNew.forEach(t => {
       const number = maxArchiveNumber + uniqueNew.findIndex(item => String(item.id) === String(t.id)) + 1;
-      tournaments.push({ number, name: t.name, players: t.players.length, id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], isNewTournament: true });
+      tournaments.push({ number, name: t.name, players: t.players.length, participantIds: [...new Set(t.players.map(p => canonicalAccountId(p.id)))], id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], isNewTournament: true });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
         if (!players.has(id)) players.set(id, { id, name: player.name });
