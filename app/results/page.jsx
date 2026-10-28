@@ -91,7 +91,7 @@ export default function ResultsPage() {
         {error && <p className="form-error" role="alert">{error}</p>}
         {loading ? <p className="setting-help">読み込み中…</p> : tournaments.length === 0 ? <p className="setting-help">大会記録はまだありません。</p> : <div className="results-table">
           {tournaments.map(tournament => <div className="results-table-row" key={tournament.id}>
-            {tournament.isLegacy ? <span className="results-table-name">{tournament.participantCount ? `参加者${tournament.participantCount}名 ` : ''}{tournament.name}</span> : <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name">参加者{(tournament.joinedPlayers || []).length}名 {tournament.name}</Link>}
+            {tournament.isLegacy ? <span className="results-table-name"><span className="results-participant-count">{tournament.participantCount ? `参加者${tournament.participantCount}名` : ''}</span><span className="results-tournament-title">{tournament.name}</span></span> : <Link href={`/tournaments/${encodeURIComponent(tournament.id)}`} className="results-table-name"><span className="results-participant-count">参加者{(tournament.joinedPlayers || []).length}名</span><span className="results-tournament-title">{tournament.name}</span></Link>}
             <span className={`results-table-placement${tournament.myPlacement === "優勝" ? " results-placement-winner" : ""}`}>{['優勝', '準優勝', '3位'].includes(tournament.myPlacement) ? tournament.myPlacement : ''}</span>
           </div>)}
         </div>}
