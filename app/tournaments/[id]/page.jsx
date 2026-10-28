@@ -475,6 +475,8 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '対戦結果を更新できませんでした。');
       setTournament(result.tournament);
+      setAdminMatchSelection(null);
+      setShowForfeitChoices(false);
 
       setActiveMatchId('');
       setNotice(action === 'reset' ? '対戦結果をリセットしました。' : '不戦勝として勝者を確定しました。');
@@ -500,6 +502,8 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '配信台を設定できませんでした。');
       setTournament(result.tournament);
+      setAdminMatchSelection(null);
+      setShowForfeitChoices(false);
 
       setNotice(matchId ? '配信台を変更しました。' : '配信台設定を解除しました。');
     } catch (e) { setError(e.message || '配信台を設定できませんでした。'); }
