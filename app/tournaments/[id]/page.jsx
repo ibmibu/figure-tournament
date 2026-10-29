@@ -45,7 +45,19 @@ export default function TournamentPage() {
   function applyTournamentSnapshot(next) {
     const signature = JSON.stringify(next);
     if (signature === tournamentSnapshotRef.current) return;
+    const previous = tournamentSnapshotRef.current;
     tournamentSnapshotRef.current = signature;
+    // Only auto-open when the bracket first appears while this page is open.
+    // Manual navigation back to the overview remains respected.
+    if (next.bracket && previous) {
+      try {
+        const previousSnapshot = JSON.parse(previous);
+        if (!previousSnapshot.bracket) {
+          setShowTournamentOverview(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      } catch {}
+    }
     setTournament(next);
   }
 
