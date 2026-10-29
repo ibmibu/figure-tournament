@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
 import { readTabSnapshot, writeTabSnapshot } from '../lib/tab-snapshot';
 
@@ -33,30 +34,75 @@ export default function Home() {
 
   useEffect(() => {
     let active = true;
+    let inFlight = false;
+    let queued = false;
+    let lastFetch = 0;
+    let channel = null;
+    let realtimeConnected = false;
+    let receivedSignal = false;
     const snapshot = readTabSnapshot('home');
-    if (snapshot) {
-      setTournaments(snapshot); setLoading(false);
-      try {
-        const last = Number(sessionStorage.getItem('figure-home-summary-updated') || 0);
-        if (Date.now() - last < 60000) return () => { active = false; };
-      } catch {}
+    if (snapshot) { setTournaments(snapshot); setLoading(false); }
+    else {
+      const cached = readTournamentCache();
+      if (cached) { setTournaments(cached); setLoading(false); }
     }
-    const cached = readTournamentCache();
-    if (cached) { setTournaments(cached); setLoading(false); }
-    fetch('/api/tournaments?view=summary', { cache: 'no-store' })
-      .then(async response => {
+
+    const refresh = async () => {
+      if (!active || document.visibilityState === 'hidden') return;
+      if (inFlight) { queued = true; return; }
+      inFlight = true;
+      try {
+        const response = await fetch('/api/tournaments?view=summary', { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
         writeTabSnapshot('home', latest);
         try { sessionStorage.setItem('figure-home-summary-updated', String(Date.now())); } catch {}
-        if (active) { setTournaments(latest); setLoadError(''); }
-      })
-      .catch(error => {
+        if (active) {
+          setTournaments(previous => JSON.stringify(previous) === JSON.stringify(latest) ? previous : latest);
+          setLoadError('');
+        }
+      } catch (error) {
         console.error(error);
-        if (active) { setLoadError(error.message || '大会データを読み込めませんでした。'); }
-      }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+        if (active) setLoadError(error.message || '大会データを読み込めませんでした。');
+      } finally {
+        lastFetch = Date.now();
+        inFlight = false;
+        if (active) setLoading(false);
+        if (queued && active) { queued = false; void refresh(); }
+      }
+    };
+
+    // Only the dedicated signal table is exposed to Realtime, never tournament JSON.
+    if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
+      try {
+        const client = getSupabaseBrowserClient();
+        channel = client.channel('home-tournament-signals');
+        channel.on('postgres_changes', {
+          event: '*', schema: 'public', table: 'tournament_change_signals',
+        }, () => { receivedSignal = true; void refresh(); });
+        channel.subscribe(status => {
+          realtimeConnected = status === 'SUBSCRIBED';
+          if (realtimeConnected) void refresh();
+        });
+      } catch {}
+    }
+    void refresh();
+    // Reconnect/fallback: retain polling even when Realtime is unavailable.
+    const timer = setInterval(() => {
+      const intervalMs = realtimeConnected && receivedSignal ? 30000 : 10000;
+      if (Date.now() - lastFetch >= intervalMs) void refresh();
+    }, 5000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+    };
   }, []);
 
   const active = tournaments.filter(t=>!isFinished(t));
