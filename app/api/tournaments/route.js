@@ -53,6 +53,14 @@ function publicTournament(row, user, legacyOwnerToken = '') {
       )
     )
   );
+  // Keep declarations hidden until the organizer publishes them.
+  if (data.characterDeclaration && data.declarationPhase === 'collecting' && !isOwner) {
+    const ownPlayer = (data.joinedPlayers || []).find(p => !p.isDemo && user && String(p.userId || p.id) === String(user.id));
+    publicData.characterDeclarations = ownPlayer && data.characterDeclarations?.[String(ownPlayer.id)]
+      ? { [String(ownPlayer.id)]: data.characterDeclarations[String(ownPlayer.id)] }
+      : {};
+    publicData.declarationSubmittedCount = Object.keys(data.characterDeclarations || {}).length;
+  }
   if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
   return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
 }
