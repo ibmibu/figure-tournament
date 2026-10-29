@@ -1548,4 +1548,4 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 body :not(button):not([role="button"]){border-radius:0!important}
 
 /* Only these non-button badges retain subtle rounding. */
-body .tierBadge,body .match b,body .characterSoloCount{border-radius:4px!important}
+body :is(.tierBadge,.recentResult,.characterSoloCount){border-radius:4px!important}
