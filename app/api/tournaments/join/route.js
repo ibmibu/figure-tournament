@@ -55,7 +55,7 @@ export async function POST(request) {
       .select('id');
     if (updateError) throw updateError;
     if (!updated?.length) return NextResponse.json({ error: '他の参加登録が先に保存されました。更新して再試行してください。' }, { status: 409 });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, joinedPlayers });
   } catch (error) {
     console.error('POST /api/tournaments/join failed:', error);
     return NextResponse.json({ error: '参加登録を保存できませんでした。' }, { status: 500 });
