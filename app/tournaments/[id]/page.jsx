@@ -646,6 +646,31 @@ export default function TournamentPage() {
   const canEditAdminMatch = Boolean(selectedAdminMatch?.player1 && selectedAdminMatch?.player2);
   const streamMatchId = tournament.effectiveStreamMatchId ?? null;
 
+  // Declaration is its own phase, not a section hidden below the overview.
+  if (tournament.characterDeclaration && tournament.declarationPhase === 'collecting') {
+    const me = joinedPlayers.find(p => !p.isDemo && String(p.userId || p.id) === String(currentUserId));
+    const submitted = Boolean(me && tournament.characterDeclarations?.[String(me.id)]);
+    const count = tournament.declarationSubmittedCount ?? joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length;
+    return <main className="page tournament-detail-page">
+      <section className="intro"><h1>{tournament.name}</h1><h2>キャラ宣言</h2>
+        <p>宣言済み：{count} / {joinedPlayers.length}人</p>
+        <p className="setting-help">参加者全員が送信したあと、主催者が公開します。宣言したキャラクターとカラーは公開まで他の参加者には表示されません。</p>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {me && !submitted && <div className="declaration-entry">
+          <label>使用キャラクター<input value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)} maxLength={60} placeholder="キャラクター名" /></label>
+          <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
+          <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
+        </div>}
+        {submitted && <p>宣言済みです。公開をお待ちください。</p>}
+        {isOwner && <><h3>参加者の宣言状況</h3>
+          <ul className="joined-player-list">{joinedPlayers.map(p => <li key={p.id}><span>{p.name}</span><strong>{tournament.characterDeclarations?.[String(p.id)] ? '入力済み' : '未入力'}</strong></li>)}</ul>
+          <button className="submit" type="button" disabled={declarationBusy || !joinedPlayers.length || joinedPlayers.some(p => !tournament.characterDeclarations?.[String(p.id)])} onClick={() => declarationAction('publish')}>宣言を公開</button>
+        </>}
+        {!me && !isOwner && <p>大会参加者のみキャラ宣言を送信できます。</p>}
+      </section>
+    </main>;
+  }
+
   return <main className="page tournament-detail-page">
     <section className="intro tournament-heading">
       {tournament.bracket && !showTournamentOverview ? <button type="button" className="back-link tournament-back-button" onClick={() => { setShowTournamentOverview(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>← 大会概要に戻る</button> : <a className="back-link" href="/">← ホームに戻る</a>}
