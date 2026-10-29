@@ -218,6 +218,21 @@ export async function PUT(request) {
       return NextResponse.json({ error: '更新する権限がありません。' }, { status: 403 });
     }
 
+    // Reject changes to the bracket's structural metadata from participants.
+    // The server must never accept a forged completion flag or reordered rounds.
+    if (!isCurrentOwner) {
+      const oldBracket = existing.bracket || {};
+      const newBracket = input.bracket || {};
+      const { rounds: oldRounds, ...oldMetadata } = oldBracket;
+      const { rounds: newRounds, ...newMetadata } = newBracket;
+      if (JSON.stringify(oldMetadata) !== JSON.stringify(newMetadata) ||
+          !Array.isArray(newRounds) ||
+          newRounds.length !== (oldRounds || []).length ||
+          newRounds.some((round, index) => !Array.isArray(round) || round.length !== oldRounds[index]?.length)) {
+        return NextResponse.json({ error: 'トーナメントの構成は変更できません。' }, { status: 403 });
+      }
+    }
+
     // Stage selection is the only bracket mutation allowed through this endpoint.
     // Winners, scores, games and result votes are committed exclusively by match-result.
     if (!isCurrentOwner) {
