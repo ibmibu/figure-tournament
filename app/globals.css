@@ -1560,3 +1560,11 @@ body .tournament-detail-page .overview-edit-link{border-radius:6px!important}
 
 /* BO3/BO5 format badges keep the same subtle rounded corners as other badges. */
 body .home-format-badge{border-radius:4px!important}
+
+/* Main navigation: icon over label, three equal tabs on mobile. */
+.bottom-tab-bar .bottom-tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:65px;padding:6px 10px;border-bottom:3px solid transparent!important;text-decoration:none}
+.bottom-tab-bar .bottom-tab-icon{display:block;width:24px;height:24px;line-height:0}
+.bottom-tab-bar .bottom-tab-icon svg{display:block;width:100%;height:100%}
+.bottom-tab-bar .bottom-tab-label{font-size:12px;line-height:16px;font-weight:700}
+.bottom-tab-bar .bottom-tab.active{color:#1955a0;border-bottom-color:#1955a0!important}
+@media(max-width:767px){body>.bottom-tab-bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0;background:#fff}body>.bottom-tab-bar .bottom-tab{width:100%;min-width:0}}
