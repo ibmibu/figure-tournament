@@ -231,7 +231,7 @@ export default function NewTournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
       try { window.localStorage.setItem(LAST_SERIES_TAG_KEY, seriesTag.trim()); if (!editId) { window.localStorage.setItem(LAST_TOURNAMENT_NAME_KEY, trimmedName); window.localStorage.setItem(LAST_STREAM_URL_KEY, streamUrl.trim()); window.localStorage.setItem(LAST_STREAM_FRIEND_CODE_KEY, streamFriendCode.trim().toUpperCase()); } } catch {}
-      window.location.href = editId ? `/tournaments/${encodeURIComponent(editId)}` : '/';
+      window.location.href = `/tournaments/${encodeURIComponent(editId || result.id || tournament.id)}`;
     } catch (saveError) {
       setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
     }
