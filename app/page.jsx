@@ -72,6 +72,7 @@ export default function Home() {
     <footer className="home-legal-footer">
       <p>本サイトは非公式の大会管理サービスです。任天堂株式会社および『大乱闘スマッシュブラザーズ』公式とは関係ありません。</p>
       <nav className="home-legal-links" aria-label="サイト情報">
+        <Link href="/help">使い方ガイド</Link>
         <Link href="/terms">利用規約</Link>
         <Link href="/privacy">プライバシーポリシー</Link>
         <Link href="/disclaimer">免責事項</Link>
