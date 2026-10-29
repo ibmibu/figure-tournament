@@ -149,8 +149,8 @@ export async function POST(request) {
     const name = String(input?.name || '').trim();
     if (!input || !id || !name) return NextResponse.json({ error: '大会情報が不足しています。' }, { status: 400 });
 
-    const { ownerId, ownerUserId, characterReports, ...safeTournament } = input;
-    const tournament = { ...safeTournament, name, ownerUserId: user.id };
+    const { ownerId, ownerUserId, characterReports, joinedPlayers, bracket, adminHistory, adminLog, characterDeclarations, resultPlacements, completedAt, streamMatchId, ...safeTournament } = input;
+    const tournament = { ...safeTournament, name, ownerUserId: user.id, joinedPlayers: [] };
     const supabase = getAdminClient();
     const { error } = await supabase.from('tournaments').insert({
       id,
