@@ -2445,6 +2445,6 @@ footer span {
 @media(max-width:600px){.stats-shell .content>section.matrixCard .sectionHead{margin-bottom:8px!important}}
 
 /* Center tag control evenly between the metric row and purple section header. */
-.stats-shell .seriesTagSelector{box-sizing:border-box;min-height:0!important;margin:0!important;padding:12px 0!important;align-items:center}
+.stats-shell .seriesTagSelector{min-height:0!important;margin:0!important;padding:12px 0!important}
 .stats-shell .content>section.matrixCard{margin:0!important;padding-top:0!important}
 @media(max-width:600px){.stats-shell .seriesTagSelector{min-height:0!important;margin:0!important;padding:10px 0!important}.stats-shell .content>section.matrixCard{margin-top:0!important}}
