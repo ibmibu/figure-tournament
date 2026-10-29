@@ -108,6 +108,22 @@ function errorResponse(error, fallback) {
   );
 }
 
+// Coalesce concurrent reads for the same tournament within one server instance.
+// No TTL: subsequent polls always reach the database, preserving match freshness.
+const tournamentReads = new Map();
+async function readTournamentRow(supabase, id) {
+  let pending = tournamentReads.get(id);
+  if (!pending) {
+    pending = supabase.from('tournaments')
+      .select('id,data,owner_token,created_at').eq('id', id).maybeSingle();
+    tournamentReads.set(id, pending);
+    Promise.resolve(pending).finally(() => {
+      if (tournamentReads.get(id) === pending) tournamentReads.delete(id);
+    }).catch(() => {});
+  }
+  return pending;
+}
+
 export async function GET(request) {
   try {
     const user = await getUser(request, false);
@@ -116,7 +132,7 @@ export async function GET(request) {
     const id = searchParams.get('id');
     const legacyOwnerToken = searchParams.get('ownerToken') || '';
     if (id) {
-      const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').eq('id', id).maybeSingle();
+      const { data, error } = await readTournamentRow(supabase, id);
       if (error) throw error;
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
       const tournament = publicTournament(data, user, legacyOwnerToken);
