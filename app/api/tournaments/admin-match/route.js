@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { updateBracketMatch } from '../../../../lib/tournament-bracket-admin';
+import { appendMatchLog } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export async function POST(request) {
     if (authError || !user) return NextResponse.json({ error: 'ログインの有効期限が切れています。' }, { status: 401 });
 
     const { id, matchId, action, winnerId, ownerToken } = await request.json();
-    if (!id || !['reset', 'forfeit', 'undo'].includes(action) || (action !== 'undo' && !matchId)) {
+    if (!id || !['reset', 'forfeit', 'undo', 'rewind-match'].includes(action) || (!['undo'].includes(action) && !matchId)) {
       return NextResponse.json({ error: '操作内容が正しくありません。' }, { status: 400 });
     }
     const admin = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -37,7 +38,17 @@ export async function POST(request) {
     let updated;
     try {
       const history = Array.isArray(existing.adminHistory) ? existing.adminHistory : [];
-      if (action === 'undo') {
+      if (action === 'rewind-match') {
+        const logId = winnerId;
+        const log = (existing.matchLogs || []).find(item => item.id === logId && String(item.matchId) === String(matchId));
+        if (!log?.before?.bracket) throw new Error('巻き戻す履歴が見つかりません。');
+        const entries = existing.matchLogs || [];
+        const index = entries.findIndex(item => item.id === log.id);
+        if (index < 0 || index !== entries.length - 1) throw new Error('安全のため、最新の操作から順に巻き戻してください。');
+        if (JSON.stringify(existing.bracket) !== JSON.stringify(log.afterBracket)) throw new Error('対戦状態が変わりました。再読み込みしてください。');
+        updated = { ...existing, ...log.before, matchLogs: entries.slice(0, -1) };
+        updated.adminLog = [...(existing.adminLog || []), { at: new Date().toISOString(), label: `巻き戻し：${log.actor} ${log.action}` }].slice(-100);
+      } else if (action === 'undo') {
         const latest = history.at(-1);
         if (!latest?.before) throw new Error('巻き戻せる主催者操作がありません。');
         // Never restore a snapshot over bracket progress made by players after the admin action.
@@ -66,6 +77,7 @@ export async function POST(request) {
           afterBracket: updated.bracket,
         }].slice(-20);
         updated.adminLog = [...(existing.adminLog || []), { at, label }].slice(-100);
+        appendMatchLog(updated, existing, matchId, '主催者', label);
       }
     } catch (error) {
       return NextResponse.json({ error: error.message || '対戦結果を変更できませんでした。' }, { status: 400 });
