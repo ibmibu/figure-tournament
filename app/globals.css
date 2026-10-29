@@ -1661,3 +1661,22 @@ body .home-format-badge{border-radius:4px!important}
 .tournament-create-page .create-switch-control input:checked+.create-switch-track:before{transform:translateX(20px)}
 .tournament-create-page .create-switch-control input:focus-visible+.create-switch-track{outline:3px solid #a89bdb;outline-offset:3px}
 .tournament-create-page .setup-group:has(.create-switch-heading) .reject-settings{margin-top:16px}
+
+
+/* Override global form label/span styles for the compact switches. */
+.tournament-create-page .create-panel .create-switch-control{
+  display:inline-flex!important;flex-direction:row!important;align-items:center!important;
+  width:auto!important;margin:0!important;padding:0!important;
+  gap:10px!important;border:0!important;background:transparent!important;
+}
+.tournament-create-page .create-panel .create-switch-control .create-switch-status{
+  display:inline!important;width:auto!important;margin:0!important;
+}
+.tournament-create-page .create-panel .create-switch-control .create-switch-track{
+  display:block!important;flex:none!important;width:46px!important;height:26px!important;
+  min-height:26px!important;border-radius:999px!important;
+  padding:0!important;margin:0!important;
+}
+.tournament-create-page .create-panel .create-switch-control .create-switch-track:before{
+  border-radius:50%!important;
+}
