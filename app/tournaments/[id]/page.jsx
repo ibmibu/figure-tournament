@@ -722,8 +722,10 @@ export default function TournamentPage() {
               <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b></div>
             </div>
             {(() => {
+              const isStreaming = String(streamMatchId) === String(match.id);
               const opponent = [match.player1, match.player2].find(player => String(player.id) !== String(viewingPlayerId));
-              return opponent?.friendCode ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{opponent.friendCode}</strong></div> : null;
+              const code = isStreaming ? tournament.streamFriendCode : opponent?.friendCode;
+              return code ? <div className="match-opponent-friend-code"><span>{isStreaming ? '配信台のフレンドコード' : '対戦相手のフレンドコード'}</span><strong>{code}</strong></div> : null;
             })()}
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               {!game?.stage ? <>
@@ -861,11 +863,12 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2></div>
       {isOwner && <div className="overview-actions">
-        {!tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメントを開始する' : '大会を開始する'}</button>}
-        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)))}`} target="_blank" rel="noopener noreferrer">Xに投稿</a>
+        {!tournament.bracket && tournament.declarationPhase !== 'collecting'
+          ? <button className="submit overview-start-button" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメントを開始する' : '大会を開始する'}</button>
+          : tournament.bracket && <button className="overview-bracket-button" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
         {!tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
-        {tournament.bracket && <button className="submit" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
-      </div>}
+        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
+      </div>
 
       <div className="detail-grid">
         <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
