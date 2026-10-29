@@ -207,31 +207,29 @@ export default function TournamentPage() {
         inFlight = false;
       }
     };
-    // A Realtime notification is only an invalidation signal: never trust the
-    // broadcast payload for match results or private tournament information.
-    // The authenticated API remains the source of truth.
-    try {
-      const client = getSupabaseBrowserClient();
-      if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
-      channel = client.channel(`tournament-updates:${id}`);
-      // Postgres Changes requires the tournaments table in the Supabase
-      // Realtime publication. If it is not enabled, the 4s fallback remains.
-      if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') channel.on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'tournaments',
-        filter: `id=eq.${id}`,
-      }, () => { void refresh(); });
-      channel.subscribe(status => {
-        realtimeConnected = status === 'SUBSCRIBED';
-        if (status === 'SUBSCRIBED') void refresh();
-      });
+    // Subscribe only to a dedicated, non-sensitive change signal table.
+    // Never subscribe to public.tournaments: its JSON contains private data.
+    // The authenticated GET API remains the source of truth.
+    if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
+      try {
+        const client = getSupabaseBrowserClient();
+        channel = client.channel(`tournament-signals:${id}`);
+        channel.on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'tournament_change_signals',
+          filter: `tournament_id=eq.${id}`,
+        }, () => { void refresh(); });
+        channel.subscribe(status => {
+          realtimeConnected = status === 'SUBSCRIBED';
+          if (status === 'SUBSCRIBED') void refresh();
+        });
+      } catch {
+        realtimeConnected = false;
       }
-    } catch {
-      realtimeConnected = false;
     }
-    // Keep the existing 4-second polling as a fail-safe. Only reduce it to a
-    // 30-second consistency check while the notification channel is connected.
+    // Preserve the 4-second fallback if the signal channel is unavailable.
+    // While connected, a periodic 30-second refresh catches missed signals.
     const interval = setInterval(() => {
       // Do not slow polling until every write path publishes notifications.
       const intervalMs = realtimeConnected && process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true' ? 30000 : 4000;
