@@ -95,6 +95,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     [match.player1, match.player2].some(p => p && String(p.userId || p.id) === String(user.id))
   ));
   if (!isOwner && !isStreamPlayer) delete publicData.streamFriendCode;
+  publicData.matchLogs = (data.matchLogs || []).map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
   if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
   return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
 }
