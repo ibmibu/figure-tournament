@@ -31,8 +31,10 @@ export async function POST(request) {
       }
       if (!found?.player1 || !found?.player2 || found.winnerId) return fail('この対戦は報告できません。', 409);
       const p1 = String(found.player1.id), p2 = String(found.player2.id);
-      if (![p1, p2].includes(actorId)) return fail('対戦選手ではありません。', 403);
-      if (!owner && ![found.player1, found.player2].some(p => !p.isDemo && String(p.userId || p.id) === user.id)) return fail('報告権限がありません。', 403);
+      if (![p1, p2].includes(String(actorId))) return fail('対戦選手ではありません。', 403);
+      const actorPlayer = [found.player1, found.player2].find(p => String(p.id) === String(actorId));
+      if (demoPerspective && (!owner || !actorPlayer?.isDemo)) return fail('デモ選手の操作権限がありません。', 403);
+      if (!demoPerspective && (actorPlayer?.isDemo || String(actorPlayer?.userId || actorPlayer?.id) !== String(user.id))) return fail('報告権限がありません。', 403);
       const state = found.matchState;
       if (!state || state.complete || Number(state.gameNumber) !== Number(gameNumber) || !state.currentGame?.stage) return fail('ゲームが更新されています。', 409);
       const votes = { ...(state.currentGame.results || {}), [actorId]: result };
