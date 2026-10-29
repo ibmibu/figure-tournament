@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { randomUUID } from 'crypto';
+import { randomUUID, createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,7 +119,14 @@ export async function GET(request) {
       const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').eq('id', id).maybeSingle();
       if (error) throw error;
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
-      return NextResponse.json({ tournament: publicTournament(data, user, legacyOwnerToken) });
+      const tournament = publicTournament(data, user, legacyOwnerToken);
+      const payload = JSON.stringify({ tournament });
+      // ETag is derived from the caller-specific, redacted response.
+      const etag = '"' + createHash('sha256').update(payload).digest('hex') + '"';
+      if (request.headers.get('if-none-match') === etag) {
+        return new NextResponse(null, { status: 304, headers: { ETag: etag, 'Cache-Control': 'private, no-cache' } });
+      }
+      return new NextResponse(payload, { headers: { 'Content-Type': 'application/json; charset=utf-8', ETag: etag, 'Cache-Control': 'private, no-cache' } });
     }
     const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').order('created_at', { ascending: false });
     if (error) throw error;
