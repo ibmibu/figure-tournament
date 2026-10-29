@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { appendMatchLog } from '../../../../lib/tournament-match-log';
 export const dynamic = 'force-dynamic';
 const client = key => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const fail = (error, status = 400) => NextResponse.json({ error }, { status });
@@ -83,6 +84,10 @@ export async function POST(request) {
           game.stage = stage;
         }
       }
+      const label = action === 'start' ? '対戦開始' : action === 'reject'
+        ? `第${match.matchState.gameNumber}ゲーム 拒否：${stages.join('、')}`
+        : `第${match.matchState.gameNumber}ゲーム ステージ決定：${stage}`;
+      appendMatchLog(next, original, matchId, actor?.name || (owner ? '主催者' : ''), label);
       const { data: saved, error: writeError } = await db.from('tournaments').update({ data: next })
         .eq('id', id).eq('data', JSON.stringify(original)).select('id');
       if (writeError) throw writeError;
