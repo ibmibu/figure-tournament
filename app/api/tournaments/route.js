@@ -150,8 +150,11 @@ export async function POST(request) {
     if (!input || !id || !name) return NextResponse.json({ error: '大会情報が不足しています。' }, { status: 400 });
     if (id.length > 128 || name.length > 120 || !/^[a-zA-Z0-9_-]+$/.test(id)) return NextResponse.json({ error: '大会IDまたは大会名が正しくありません。' }, { status: 400 });
 
-    const { ownerId, ownerUserId, characterReports, bracket, adminHistory, adminLog, characterDeclarations, resultPlacements, completedAt, streamMatchId, ...safeTournament } = input;
-    const tournament = { ...safeTournament, name, ownerUserId: user.id };
+    const allowed = ['id', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags', 'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed', 'characterDeclaration', 'stageSettings', 'createdAt'];
+    const tournament = Object.fromEntries(allowed.filter(key => Object.prototype.hasOwnProperty.call(input, key)).map(key => [key, input[key]]));
+    tournament.name = name;
+    tournament.status = '募集中';
+    tournament.ownerUserId = user.id;
     const supabase = getAdminClient();
     const { error } = await supabase.from('tournaments').insert({
       id,
