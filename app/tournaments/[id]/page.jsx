@@ -633,7 +633,7 @@ export default function TournamentPage() {
   const isOwner = Boolean(tournament.isOwner);
   const currentRoundNumber = Math.max(1, (tournament.bracket?.rounds || []).findIndex(round => round.some(match => match.player1 && match.player2 && !match.winnerId)) + 1 || tournament.bracket?.rounds?.length || 1);
   const roundCount = tournament.bracket?.rounds?.length || 0;
-  const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝' : roundCount > 2 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
+  const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝' : roundCount > 1 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
   const selectedAdminMatch = isOwner && adminMatchSelection
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
