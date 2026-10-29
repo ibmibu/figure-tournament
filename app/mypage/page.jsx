@@ -158,7 +158,7 @@ export default function MyPage({ colorsOnly = false }) {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { setError('画像ファイルを選択してください。'); return; }
-    if (file.size > 1024 * 1024) { setError('画像は1MB以下にしてください。'); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('画像は5MB以下にしてください。'); return; }
     try {
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
