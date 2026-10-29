@@ -2421,3 +2421,9 @@ footer span {
 .stats-shell .seriesTagSelector label{font-size:12px}
 .stats-shell .seriesTagSelector select{flex:0 1 230px;width:auto;max-width:100%;padding:6px 9px;font-size:13px}
 @media(max-width:600px){.stats-shell .statsGrid .stat{padding-top:11px!important;padding-bottom:11px!important}.stats-shell .seriesTagSelector{gap:8px;margin-bottom:10px!important;padding:7px 0!important}.stats-shell .seriesTagSelector select{flex:1;min-width:0;padding:6px 8px}}
+
+/* Desktop: main-fighter tiles match solo-achievement tile widths. */
+@media(min-width:701px){
+ .stats-shell .characterUsageSection .characterTopList{grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
+ .stats-shell .characterSoloSection .characterSoloList{grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
+}
