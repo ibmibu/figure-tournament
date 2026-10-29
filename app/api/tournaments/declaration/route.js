@@ -39,6 +39,7 @@ export async function POST(request) {
     if (!updated?.length) return NextResponse.json({ error: '他の操作が先に保存されました。再試行してください。' }, { status: 409 });
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message || '宣言を保存できませんでした。' }, { status: 500 });
+    console.error('Tournament declaration failed:', error);
+    return NextResponse.json({ error: '宣言を保存できませんでした。' }, { status: 500 });
   }
 }
