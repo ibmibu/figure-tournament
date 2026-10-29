@@ -1578,3 +1578,9 @@ body .home-format-badge{border-radius:4px!important}
 .tournament-detail-page #tournament-overview>.overview-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px}
 .tournament-detail-page #tournament-overview .overview-share-x{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 14px;border:1px solid #c9dcef;border-radius:6px!important;background:#fff;color:#24232b;font-weight:700;text-decoration:none}
 @media(max-width:600px){.tournament-detail-page #tournament-overview>.tournament-card-top{min-height:48px;padding:6px 12px}.tournament-detail-page #tournament-overview>.overview-actions{gap:8px}}
+
+/* Overview actions directly below title: start grows, X share stays right. */
+.tournament-detail-page #tournament-overview>.overview-actions{display:flex;flex-wrap:nowrap;align-items:stretch;gap:10px;width:100%;margin:12px 0 16px}
+.tournament-detail-page #tournament-overview>.overview-actions>.submit{flex:1 1 auto;min-width:0;width:auto;margin:0;display:flex;align-items:center;justify-content:center}
+.tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{flex:0 0 auto;margin-left:auto;white-space:nowrap}
+@media(max-width:600px){.tournament-detail-page #tournament-overview>.overview-actions{gap:8px}.tournament-detail-page #tournament-overview>.overview-actions>.submit{font-size:13px;padding-inline:8px}.tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{font-size:12px;padding-inline:10px}}
