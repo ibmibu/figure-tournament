@@ -19,8 +19,6 @@ export default function TournamentPage() {
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [demoName, setDemoName] = useState('');
-  const [demoPerspective, setDemoPerspective] = useState('');
   const [savingBracket, setSavingBracket] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
@@ -176,7 +174,7 @@ export default function TournamentPage() {
 
   // 大会ページを開いたら自分の未完了対戦を自動表示し、管理者なら対戦状態も開始する。
   useEffect(() => {
-    const perspectiveId = tournament?.isOwner && demoPerspective ? demoPerspective : currentUserId;
+    const perspectiveId = currentUserId;
     if (!tournament?.bracket || !perspectiveId || tournament.bracket.complete) return;
     for (let ri = 0; ri < (tournament.bracket.rounds || []).length; ri++) {
       const round = tournament.bracket.rounds[ri];
@@ -192,7 +190,7 @@ export default function TournamentPage() {
       }
     }
     setActiveMatchId('');
-  }, [tournament, currentUserId, demoPerspective]);
+  }, [tournament, currentUserId]);
 
   async function updateTournament(next) {
     const { data } = await getSupabaseBrowserClient().auth.getSession();
@@ -207,10 +205,6 @@ export default function TournamentPage() {
     if (!response.ok) throw new Error(result.error || '大会情報を保存できませんでした。');
     setTournament(next);
 
-  }
-
-  function demoPlayersFor(current) {
-    return (current.joinedPlayers || []).filter(player => player.isDemo);
   }
 
   function makeBracket(players) {
@@ -307,25 +301,11 @@ export default function TournamentPage() {
     }
   }
 
-  async function addDemoPlayer() {
-    const name = demoName.trim();
-    if (!name) { setError('デモプレイヤー名を入力してください。'); return; }
-    if (!isOwner) return;
-    if (tournament.bracket) { setError('トーナメント開始後は参加者を追加できません。'); return; }
-    const players = tournament.joinedPlayers || [];
-    if (players.length >= Number(tournament.participants || 8)) { setError('定員に達しています。'); return; }
-    if (players.some(p => p.name.trim().toLowerCase() === name.toLowerCase())) { setError('同じ名前の参加者がいます。'); return; }
-    const next = { ...tournament, joinedPlayers: [...players, { id: `demo-${Date.now()}`, name, isDemo: true }] };
-    setDemoName('');
-    await saveBracket(next);
-  }
-
   async function startBracket() {
     if (!isOwner) return;
     const players = tournament.joinedPlayers || [];
     if (players.length < 2) { setError('トーナメント開始には参加者が2人以上必要です。'); return; }
     if (tournament.characterDeclaration && tournament.declarationPhase !== 'published') {
-      if (players.some(player => player.isDemo)) { setError('キャラ宣言ありの大会ではデモ参加者を利用できません。'); return; }
       await saveBracket({ ...tournament, status: 'キャラ宣言中', declarationPhase: 'collecting', characterDeclarations: {} });
       return;
     }
@@ -436,7 +416,7 @@ export default function TournamentPage() {
       const response = await fetch('/api/tournaments/match-result', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result, demoPerspective: isOwner ? demoPerspective : '' }),
+        body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
@@ -681,7 +661,6 @@ export default function TournamentPage() {
       {!showTournamentOverview && error && <p className="form-error" role="alert">{error}</p>}
       {!showTournamentOverview && notice && <p className="form-success" role="status">{notice}</p>}
       {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
-        {isOwner && joinedPlayers.some(p => p.isDemo) && <div className="bracket-panel demo-perspective-control"><label htmlFor="demoPerspective">現在の操作視点</label><select id="demoPerspective" value={demoPerspective} onChange={e => { setDemoPerspective(e.target.value); setActiveMatchId(''); setRejectSelection([]); setStageSelection(''); }}><option value="">主催者（通常操作）</option>{joinedPlayers.filter(p=>p.isDemo).map(p=><option key={p.id} value={p.id}>{p.name} として操作</option>)}</select><p className="setting-help">{demoPerspective ? '選択したデモ選手の視点で対戦を操作します。' : 'デモ選手を選ぶと、その選手の対戦画面が表示されます。'}</p></div>}
         {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
@@ -697,8 +676,7 @@ export default function TournamentPage() {
           const settings = tournament.stageSettings || {};
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
-          const demoMatch = isOwner && Boolean(demoPerspective) && [match.player1, match.player2].some(p => String(p.id) === String(demoPerspective));
-          const viewingPlayerId = demoMatch ? String(demoPerspective) : String(currentUserId || '');
+          const viewingPlayerId = String(currentUserId || '');
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
             ? (!game?.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0 ? firstId : (match.player1.id === firstId ? match.player2.id : match.player1.id))
@@ -906,13 +884,6 @@ export default function TournamentPage() {
       </>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
-
-      {isOwner && !tournament.bracket && <section className="bracket-panel" id="tournament-bracket">
-        <h3>デモモード</h3>
-        <p className="setting-help">テスト用の架空プレイヤーを追加できます。デモ参加者は実際のログイン参加者とは区別されます。</p>
-        <div className="demo-player-form"><input value={demoName} onChange={e => setDemoName(e.target.value)} placeholder="例：テストプレイヤー1" aria-label="デモプレイヤー名" /><button type="button" onClick={addDemoPlayer}>デモ参加者を追加</button></div>
-        <p className="setting-help">大会概要の「大会を開始する」から開始してください。</p>
-      </section>}
 
     </section>
     <section className="create-panel tournament-detail participant-side-panel">
