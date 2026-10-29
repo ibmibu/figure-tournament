@@ -1527,3 +1527,19 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
  .page>.tournaments .home-tournament-table .home-tournament-row td:nth-child(4){grid-column:2;grid-row:2;justify-self:end;align-self:center;font-size:11px;white-space:nowrap}
  .page>.tournaments .home-tournament-table .home-tournament-row td:nth-child(4)::before{content:"主催者："!important}
 }
+
+/* Home list: uniform row rhythm and no detached full-width divider after last row. */
+.page>.tournaments+.tournaments{border-top:0!important;padding-top:12px!important}
+.page>.tournaments .home-tournament-table tbody tr:last-child td{border-bottom:0}
+@media(min-width:768px){
+ .page>.tournaments .home-tournament-table tbody tr{height:49px}
+ .page>.tournaments .home-tournament-table td{padding-top:12px;padding-bottom:12px;vertical-align:middle}
+ .page>.tournaments .home-tournament-table tbody tr:last-child td{border-bottom:1px solid #dfe3e8}
+ .page>.tournaments{padding-bottom:12px!important}
+ .page>.tournaments+.tournaments{padding-top:12px!important}
+}
+@media(max-width:767px){
+ .page>.tournaments .home-tournament-table .home-tournament-row:last-child{border-bottom:1px solid #dfe3e8}
+ .page>.tournaments{padding-bottom:12px!important}
+ .page>.tournaments+.tournaments{padding-top:12px!important}
+}
