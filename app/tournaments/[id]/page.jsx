@@ -5,6 +5,7 @@ import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
+const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
 
 export default function TournamentPage() {
   const params = useParams();
@@ -28,7 +29,7 @@ export default function TournamentPage() {
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
 
-  const [declarationCharacter, setDeclarationCharacter] = useState('');
+  const [declarationCharacter, setDeclarationCharacter] = useState('マリオ');
   const [declarationColor, setDeclarationColor] = useState('1P');
   const [declarationBusy, setDeclarationBusy] = useState(false);
   const [boardMessages, setBoardMessages] = useState([]);
@@ -682,7 +683,7 @@ export default function TournamentPage() {
         <p className="setting-help">参加者全員が送信したあと、主催者が公開します。宣言したキャラクターとカラーは公開まで他の参加者には表示されません。</p>
         {error && <p className="form-error" role="alert">{error}</p>}
         {me && !submitted && <div className="declaration-entry">
-          <label>使用キャラクター<input value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)} maxLength={60} placeholder="キャラクター名" /></label>
+          <label>使用キャラクター<select value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
           <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
           <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
         </div>}
@@ -731,7 +732,8 @@ export default function TournamentPage() {
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
-          const canActFor = id => isOwner && !demoMatch ? true : String(id) === String(viewingPlayerId);
+          const demoMatch = Boolean(match.player1?.isDemo || match.player2?.isDemo);
+          const canActFor = id => isOwner && demoMatch ? true : String(id) === String(viewingPlayerId);
           const waitingFor = id => <p className="setting-help match-turn-waiting">{[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span>{tournament.streamFriendCode && <span>配信台フレンドコード：<b>{tournament.streamFriendCode}</b></span>}</div>}
@@ -904,7 +906,7 @@ export default function TournamentPage() {
         <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
         <p>宣言済み：{(tournament.declarationSubmittedCount ?? joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length)} / {joinedPlayers.length}人</p>
         {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry">
-          <label>使用キャラクター<input value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)} maxLength={60} placeholder="キャラクター名" /></label>
+          <label>使用キャラクター<select value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
           <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
           <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
         </div>}
