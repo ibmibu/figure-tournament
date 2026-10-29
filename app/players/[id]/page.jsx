@@ -28,17 +28,19 @@ export default function PlayerResultsPage() {
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    fetch('/api/tournaments', { cache: 'no-store' }).then(async response => {
+    Promise.all([fetch('/api/tournaments', { cache: 'no-store' }), fetch(`/api/players/legacy?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })]).then(async ([response, legacyResponse]) => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || '大会を読み込めませんでした。');
       const matches = (data.tournaments || []).flatMap(t => {
         const player = (t.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === userId);
         return player ? [{ tournament: t, player }] : [];
       });
+      const legacy = legacyResponse.ok ? (await legacyResponse.json()).tournaments || [] : [];
+      matches.push(...legacy.map(tournament => ({ tournament, player: { id: userId, name: '' } })));
       matches.sort((a, b) => (Date.parse(b.tournament.date || b.tournament.createdAt || '') || 0) - (Date.parse(a.tournament.date || a.tournament.createdAt || '') || 0));
       if (active) {
         setItems(matches);
-        setName(matches[0]?.player.name || searchParams.get('name') || '選手');
+        setName(matches.find(item => !item.tournament.isLegacy)?.player.name || searchParams.get('name') || '選手');
       }
     }).catch(e => { if (active) setError(e.message || '読み込みに失敗しました。'); })
       .finally(() => { if (active) setLoading(false); });
@@ -50,11 +52,11 @@ export default function PlayerResultsPage() {
     <section className="my-results">
       {loading ? <p className="setting-help">読み込み中…</p> : error ? <p className="form-error" role="alert">{error}</p> : items.length === 0 ? <p className="setting-help">参加大会はまだありません。</p> : <div className="results-table">
         {items.map(({ tournament: t, player }) => <div className="results-table-row" key={t.id}>
-          <Link href={`/tournaments/${encodeURIComponent(t.id)}`} className="results-table-name">
-            <span className="results-participant-count">{formatDate(t.date)} ・ 参加者{(t.joinedPlayers || []).length}名</span>
+          {t.isLegacy ? <span className="results-table-name"> : <Link href={`/tournaments/${encodeURIComponent(t.id)}`} className="results-table-name">
+            <span className="results-participant-count">{formatDate(t.date)} ・ 参加者{t.isLegacy ? t.participantCount : (t.joinedPlayers || []).length}名</span>
             <span className="results-tournament-title">{t.name}</span>
-          </Link>
-          <span className={`results-table-placement${placement(t, player) === '優勝' ? ' results-placement-winner' : ''}`}>{t.bracket?.complete ? placement(t, player) : '進行中・開催予定'}</span>
+          {t.isLegacy ? </span> : </Link>}
+          <span className={`results-table-placement${(t.isLegacy ? t.myPlacement : placement(t, player)) === '優勝' ? ' results-placement-winner' : ''}`}>{t.isLegacy ? (['優勝', '準優勝', '3位'].includes(t.myPlacement) ? t.myPlacement : '') : t.bracket?.complete ? placement(t, player) : '進行中・開催予定'}</span>
         </div>)}
       </div>}
     </section>
