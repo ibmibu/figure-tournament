@@ -1135,7 +1135,6 @@ export default function StatsPage() {
           </div>
         )}
 
-        <section className="seriesTagSelector"><label htmlFor="seriesTagSelect">大会タグ</label><select id="seriesTagSelect" value={seriesTag} onChange={e => {setSeriesTag(e.target.value);setSeason('current');setMatrixSeason('current');}}><option value="all">すべて</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></section>
         {newDataError && <p className="error">新しい大会の取得に失敗しました：{newDataError}</p>}
         <section className="statsGrid">
           <div className="stat card">
@@ -1160,6 +1159,8 @@ export default function StatsPage() {
             <small>matches</small>
           </div>
         </section>
+
+        <section className="seriesTagSelector"><label htmlFor="seriesTagSelect">大会タグ</label><select id="seriesTagSelect" value={seriesTag} onChange={e => {setSeriesTag(e.target.value);setSeason('current');setMatrixSeason('current');}}><option value="all">すべて</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></section>
 
         <section className="card matrixCard">
           <div className="sectionHead">
