@@ -90,7 +90,11 @@ function publicTournament(row, user, legacyOwnerToken = '') {
       }))),
     };
   }
-  if (!isOwner && !user) delete publicData.streamFriendCode;
+  const isStreamPlayer = Boolean(user && activeMatches.some(match =>
+    String(match.id) === String(effectiveStreamMatchId) && !match.winnerId &&
+    [match.player1, match.player2].some(p => p && String(p.userId || p.id) === String(user.id))
+  ));
+  if (!isOwner && !isStreamPlayer) delete publicData.streamFriendCode;
   if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
   return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
 }
