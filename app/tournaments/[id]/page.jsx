@@ -137,6 +137,29 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // Keep the overview synchronized as well: tournament start and declaration
+  // changes must appear on other participants' screens without a reload.
+  useEffect(() => {
+    if (!id || !tournament || !showTournamentOverview || tournament.bracket?.complete || savingBracket || tournament.declarationPhase === 'collecting') return;
+    let cancelled = false;
+    let inFlight = false;
+    const refresh = async () => {
+      if (cancelled || inFlight || document.visibilityState !== 'visible') return;
+      inFlight = true;
+      try {
+        const owner = localStorage.getItem(OWNER_KEY) || '';
+        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+        if (!response.ok || cancelled) return;
+        const result = await response.json();
+        if (!cancelled && result.tournament) applyTournamentSnapshot(result.tournament);
+      } catch {} finally { inFlight = false; }
+    };
+    const timer = setInterval(refresh, 4000);
+    const onVisible = () => { void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
+  }, [id, Boolean(tournament), showTournamentOverview, tournament?.bracket?.complete, tournament?.declarationPhase, savingBracket, accessToken]);
+
   // Character declaration is live even before the bracket exists.
   useEffect(() => {
     if (tournament?.declarationPhase !== 'collecting' || !id) return;
@@ -267,7 +290,7 @@ export default function TournamentPage() {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || '大会情報を保存できませんでした。');
-    setTournament(next);
+    applyTournamentSnapshot(next);
 
   }
 
@@ -375,6 +398,7 @@ export default function TournamentPage() {
     }
     const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), streamMatchId: undefined, resultPlacements: null };
     await saveBracket(next);
+    setShowTournamentOverview(false);
     setTimeout(() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
@@ -682,9 +706,9 @@ export default function TournamentPage() {
         <p>宣言済み：{count} / {joinedPlayers.length}人</p>
         <p className="setting-help">参加者全員が送信したあと、主催者が公開します。宣言したキャラクターとカラーは公開まで他の参加者には表示されません。</p>
         {error && <p className="form-error" role="alert">{error}</p>}
-        {me && !submitted && <div className="declaration-entry">
-          <label>使用キャラクター<select value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
-          <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
+        {me && !submitted && <div className="declaration-entry my-color-form">
+          <label>使用キャラクター<select className="my-color-fighter-select" value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
+          <label>カラー<select className="my-color-variant-select" value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
           <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
         </div>}
         {submitted && <p>宣言済みです。公開をお待ちください。</p>}
@@ -905,9 +929,9 @@ export default function TournamentPage() {
         <h3>キャラ宣言</h3>
         <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
         <p>宣言済み：{(tournament.declarationSubmittedCount ?? joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length)} / {joinedPlayers.length}人</p>
-        {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry">
-          <label>使用キャラクター<select value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
-          <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
+        {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry my-color-form">
+          <label>使用キャラクター<select className="my-color-fighter-select" value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
+          <label>カラー<select className="my-color-variant-select" value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
           <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
         </div>}
         {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <p>宣言を受け付けました。公開をお待ちください。</p>}
