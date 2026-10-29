@@ -868,7 +868,7 @@ export default function TournamentPage() {
       </div>
       {isOwner && <div className="overview-actions">
         {!tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメントを開始する' : '大会を開始する'}</button>}
-        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + ' ' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)))}`} target="_blank" rel="noopener noreferrer">Xに投稿</a>
+        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)))}`} target="_blank" rel="noopener noreferrer">Xに投稿</a>
         {tournament.bracket && <button className="submit" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
       </div>}
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
