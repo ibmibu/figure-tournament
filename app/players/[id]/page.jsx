@@ -36,7 +36,7 @@ export default function PlayerResultsPage() {
         return player && t.bracket?.complete && t.resultPlacements?.length ? [{ tournament: t, player }] : [];
       });
       const legacy = legacyResponse.ok ? (await legacyResponse.json()).tournaments || [] : [];
-      matches.push(...legacy.filter(t => ['優勝', '準優勝', '3位'].includes(t.myPlacement)).map(tournament => ({ tournament, player: { id: userId, name: '' } })));
+      matches.push(...legacy.map(tournament => ({ tournament, player: { id: userId, name: '' } })));
       matches.sort((a, b) => (Date.parse(b.tournament.date || b.tournament.createdAt || '') || 0) - (Date.parse(a.tournament.date || a.tournament.createdAt || '') || 0));
       if (active) {
         setItems(matches);
