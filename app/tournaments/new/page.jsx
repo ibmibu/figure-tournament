@@ -270,14 +270,7 @@ export default function NewTournamentPage() {
           </div>
         </fieldset>
 
-        <fieldset className="setup-group">
-          <legend>キャラ宣言</legend>
-          <div className="format-options">
-            <button type="button" className={!characterDeclaration ? 'format-option selected' : 'format-option'} aria-pressed={!characterDeclaration} onClick={() => setCharacterDeclaration(false)}>なし</button>
-            <button type="button" className={characterDeclaration ? 'format-option selected' : 'format-option'} aria-pressed={characterDeclaration} onClick={() => setCharacterDeclaration(true)}>あり</button>
-          </div>
-          {characterDeclaration && <small className="setting-help">参加者が使用キャラクターと1P〜8Pカラーを宣言します。送信後は変更できません。</small>}
-        </fieldset>
+
 
         <label>参加人数
           <select value={participants} onChange={event => setParticipants(Number(event.target.value))}>
@@ -354,6 +347,15 @@ export default function NewTournamentPage() {
             <button type="button" className={autoSeed ? 'toggle-option selected' : 'toggle-option'} aria-pressed={autoSeed} onClick={() => setAutoSeed(true)}>あり</button>
           </div>
           <p className="setting-help">ありの場合、参加者のレート上位25%（最低2名）を離して配置します。その他の配置はランダムです。</p>
+        </fieldset>
+
+        <fieldset className="setup-group">
+          <legend>キャラ宣言</legend>
+          <div className="format-options">
+            <button type="button" className={!characterDeclaration ? 'format-option selected' : 'format-option'} aria-pressed={!characterDeclaration} onClick={() => setCharacterDeclaration(false)}>なし</button>
+            <button type="button" className={characterDeclaration ? 'format-option selected' : 'format-option'} aria-pressed={characterDeclaration} onClick={() => setCharacterDeclaration(true)}>あり</button>
+          </div>
+          {characterDeclaration && <small className="setting-help">参加者が使用キャラクターと1P〜8Pカラーを宣言します。送信後は変更できません。</small>}
         </fieldset>
 
         <label>配信先URL
