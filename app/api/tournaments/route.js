@@ -148,6 +148,7 @@ export async function POST(request) {
     const id = String(input?.id || '');
     const name = String(input?.name || '').trim();
     if (!input || !id || !name) return NextResponse.json({ error: '大会情報が不足しています。' }, { status: 400 });
+    if (id.length > 128 || name.length > 120 || !/^[a-zA-Z0-9_-]+$/.test(id)) return NextResponse.json({ error: '大会IDまたは大会名が正しくありません。' }, { status: 400 });
 
     const { ownerId, ownerUserId, characterReports, bracket, adminHistory, adminLog, characterDeclarations, resultPlacements, completedAt, streamMatchId, ...safeTournament } = input;
     const tournament = { ...safeTournament, name, ownerUserId: user.id };
