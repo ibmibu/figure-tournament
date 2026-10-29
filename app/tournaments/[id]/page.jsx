@@ -120,6 +120,15 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // Character declaration is live even before the bracket exists.
+  useEffect(() => {
+    if (tournament?.declarationPhase !== 'collecting' || !id) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible' && !declarationBusy && !savingBracket) loadTournament();
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [id, tournament?.declarationPhase, declarationBusy, savingBracket]);
+
   // Keep both players in sync while a bracket is active, without flashing the loading screen.
   useEffect(() => {
     if (!tournament?.bracket || tournament.bracket.complete || showTournamentOverview || savingBracket) return;
@@ -845,7 +854,6 @@ export default function TournamentPage() {
       {tournament.characterDeclaration && tournament.declarationPhase === 'published' && <section className="tournament-declaration">
         <h3>キャラ宣言一覧</h3>
         <ul className="joined-player-list">{joinedPlayers.map(p => <li key={p.id}>{p.name}：{tournament.characterDeclarations?.[String(p.id)]?.character} {tournament.characterDeclarations?.[String(p.id)]?.color}</li>)}</ul>
-        {isOwner && !tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket}>トーナメントを開始する</button>}
       </section>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
