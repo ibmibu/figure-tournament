@@ -47,16 +47,16 @@ export default function TournamentPage() {
     if (signature === tournamentSnapshotRef.current) return;
     const previous = tournamentSnapshotRef.current;
     tournamentSnapshotRef.current = signature;
-    // Only auto-open when the bracket first appears while this page is open.
-    // Manual navigation back to the overview remains respected.
-    if (next.bracket && previous) {
-      try {
-        const previousSnapshot = JSON.parse(previous);
-        if (!previousSnapshot.bracket) {
-          setShowTournamentOverview(false);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      } catch {}
+    // Open the bracket when it first becomes available, including when a
+    // participant opens the page just after the organizer started the event.
+    // Subsequent snapshots do not override manual navigation to the overview.
+    let previouslyHadBracket = false;
+    if (previous) {
+      try { previouslyHadBracket = Boolean(JSON.parse(previous).bracket); } catch {}
+    }
+    if (next.bracket && !next.bracket.complete && !previouslyHadBracket) {
+      setShowTournamentOverview(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setTournament(next);
   }
@@ -712,7 +712,7 @@ export default function TournamentPage() {
   const pendingRoundIndex = bracketRounds.findIndex(round => round.some(match => !match.winnerId && (match.player1 || match.player2)));
   const currentRoundNumber = (activeRoundIndex >= 0 ? activeRoundIndex : pendingRoundIndex >= 0 ? pendingRoundIndex : Math.max(0, bracketRounds.length - 1)) + 1;
   const roundCount = tournament.bracket?.rounds?.length || 0;
-  const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝戦' : roundCount > 1 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
+  const roundAnnouncement = roundCount > 0 && currentRoundNumber === roundCount ? '決勝戦' : roundCount > 2 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
   const selectedAdminMatch = isOwner && adminMatchSelection
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
