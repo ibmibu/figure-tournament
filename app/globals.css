@@ -1620,3 +1620,15 @@ body .home-format-badge{border-radius:4px!important}
 }
 .tournament-board-form{margin-top:12px}
 .tournament-board-form textarea{border-radius:8px;min-height:76px}
+
+
+/* All comment history entries use the same unboxed style as the latest entry. */
+.tournament-board-messages .tournament-board-entry .tournament-board-message{
+  border:0;
+  border-left:3px solid #cbc3e3;
+  border-radius:0;
+  background:transparent;
+  padding:8px 12px;
+  max-height:none;
+  overflow:visible;
+}
