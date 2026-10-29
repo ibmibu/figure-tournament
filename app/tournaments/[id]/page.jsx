@@ -380,70 +380,52 @@ export default function TournamentPage() {
     return { selected, starter: starter.length ? starter : selected, counter };
   }
 
+  async function performStageAction(roundIndex, matchIndex, action, extra = {}) {
+    if (savingBracket) return;
+    const match = tournament?.bracket?.rounds?.[roundIndex]?.[matchIndex];
+    if (!match) return;
+    setSavingBracket(true);
+    setError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('ログインが必要です。');
+      const response = await fetch('/api/tournaments/stage-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id, matchId: match.id, action, ...extra }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '対戦操作に失敗しました。');
+      const owner = localStorage.getItem(OWNER_KEY) || '';
+      const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
+        cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
+      });
+      if (latest.ok) {
+        const data = await latest.json();
+        if (data.tournament) setTournament(data.tournament);
+      }
+      if (action === 'start') setActiveMatchId(match.id);
+      setRejectSelection([]);
+      setStageSelection('');
+    } catch (e) {
+      setError(e.message || '対戦操作に失敗しました。');
+    } finally {
+      setSavingBracket(false);
+    }
+  }
+
   function startMatch(roundIndex, matchIndex) {
-    if (!tournament?.bracket) return;
-    const bracket = JSON.parse(JSON.stringify(tournament.bracket));
-    const match = bracket.rounds[roundIndex][matchIndex];
-    if (!match.player1 || !match.player2 || match.winnerId) return;
-    const isOwnMatch = [match.player1, match.player2].some(player => String(player?.id) === String(currentUserId));
-    if (!isOwner && !isOwnMatch) return;
-    if (!match.matchState) {
-      const firstPlayerId = Math.random() < 0.5 ? match.player1.id : match.player2.id;
-      match.matchState = {
-        gameNumber: 1,
-        score: { [match.player1.id]: 0, [match.player2.id]: 0 },
-        games: [],
-        currentGame: { firstPlayerId, rejects: [], rejectVotes: {}, stage: tournament.stageRejects ? null : 'なし', chooserId: tournament.stageRejects ? null : firstPlayerId, results: {} },
-        complete: false,
-      };
-    }
-    setActiveMatchId(match.id);
-    setRejectSelection([]);
-    setStageSelection('');
-    saveBracket({ ...tournament, bracket });
+    return performStageAction(roundIndex, matchIndex, 'start');
   }
 
-  async function rejectMatchStages(roundIndex, matchIndex, playerId, chosenStages) {
-    const bracket = JSON.parse(JSON.stringify(tournament.bracket));
-    const match = bracket.rounds[roundIndex][matchIndex];
-    const state = match.matchState;
-    if (!state || state.complete || state.currentGame.stage) return;
-    const game = state.currentGame;
-    const settings = tournament.stageSettings || {};
-    if (!tournament.stageRejects) return;
-    const { starter, selected } = getMatchStageLists();
-    const available = (state.gameNumber === 1 ? starter : selected).filter(stage => !game.rejects.includes(stage));
-    const isFirst = state.gameNumber === 1;
-    const firstId = game.firstPlayerId;
-    const otherId = match.player1.id === firstId ? match.player2.id : match.player1.id;
-    const required = isFirst
-      ? Number(playerId === firstId ? (settings.firstPlayerRejects ?? 1) : (settings.secondPlayerRejects ?? 2))
-      : Math.max(0, Number(settings.laterRejects ?? 3) - game.rejects.length);
-    if (chosenStages.length !== required || chosenStages.some(stage => !available.includes(stage))) return;
-    const votes = { ...(game.rejectVotes || {}), [playerId]: chosenStages };
-    const rejects = [...game.rejects, ...chosenStages];
-    const nextGame = { ...game, rejectVotes: votes, rejects };
-    const firstDone = Number(settings.firstPlayerRejects ?? 1) === 0 || Boolean(votes[firstId]);
-    const secondDone = Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(votes[otherId]);
-    const laterDone = rejects.length >= Number(settings.laterRejects ?? 3);
-    if ((isFirst && firstDone && secondDone) || (!isFirst && laterDone)) {
-      nextGame.chooserId = isFirst ? firstId : (game.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
-    }
-    state.currentGame = nextGame;
-    bracket.rounds[roundIndex][matchIndex] = match;
-    setRejectSelection([]);
-    await saveBracket({ ...tournament, bracket });
+  function rejectMatchStages(roundIndex, matchIndex, playerId, chosenStages) {
+    return performStageAction(roundIndex, matchIndex, 'reject', { actorId: playerId, stages: chosenStages });
   }
 
-  async function chooseMatchStage(roundIndex, matchIndex, stage) {
-    const bracket = JSON.parse(JSON.stringify(tournament.bracket));
-    const match = bracket.rounds[roundIndex][matchIndex];
-    if (!match.matchState || match.matchState.complete) return;
-    const current = match.matchState.currentGame;
-    if (current.rejects.includes(stage)) return;
-    current.stage = stage;
-    match.matchState.currentGame = current;
-    await saveBracket({ ...tournament, bracket });
+  function chooseMatchStage(roundIndex, matchIndex, stage) {
+    const match = tournament?.bracket?.rounds?.[roundIndex]?.[matchIndex];
+    return performStageAction(roundIndex, matchIndex, 'choose', { actorId: match?.matchState?.currentGame?.chooserId, stage });
   }
 
   async function submitMatchResult(roundIndex, matchIndex, result) {
