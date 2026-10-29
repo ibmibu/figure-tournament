@@ -40,6 +40,7 @@ export async function POST(request) {
     if (tournament.bracket || tournament.status === "対戦中" || tournament.status === "終了") return NextResponse.json({ error: "大会開始後は参加登録できません。" }, { status: 409 });
     const players = Array.isArray(tournament.joinedPlayers) ? tournament.joinedPlayers : [];
     if (players.length >= Number(tournament.participants || 8)) return NextResponse.json({ error: 'この大会は定員に達しています。' }, { status: 409 });
+    if (players.some(player => String(player.userId || player.id) === String(authData.user.id))) return NextResponse.json({ error: 'すでに参加登録しています。' }, { status: 409 });
     if (players.some(player => String(player.name || '').trim().toLowerCase() === name.toLowerCase())) {
       return NextResponse.json({ error: '同じ名前の参加者がすでに登録されています。' }, { status: 409 });
     }
@@ -47,9 +48,9 @@ export async function POST(request) {
     const joinedPlayers = [...players, { id: authData.user.id, userId: authData.user.id, name, friendCode, joinedAt: new Date().toISOString() }];
     const { error: updateError } = await supabase.from('tournaments').update({ data: { ...tournament, joinedPlayers } }).eq('id', String(id));
     if (updateError) throw updateError;
-    return NextResponse.json({ ok: true, joinedPlayers });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('POST /api/tournaments/join failed:', error);
-    return NextResponse.json({ error: error?.message || '参加登録を保存できませんでした。' }, { status: 500 });
+    return NextResponse.json({ error: '参加登録を保存できませんでした。' }, { status: 500 });
   }
 }
