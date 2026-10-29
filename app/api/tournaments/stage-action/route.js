@@ -24,7 +24,7 @@ export async function POST(request) {
       const players = [match.player1, match.player2];
       const owner = original.ownerUserId === user.id;
       const actor = requestedActorId ? players.find(p => String(p.id) === String(requestedActorId)) : players.find(p => String(p.userId || p.id) === String(user.id));
-      if (!actor || (actor.isDemo ? !owner : String(actor.userId || actor.id) !== String(user.id))) return fail('操作権限がありません。', 403);
+      if (!(action === 'start' && owner) && (!actor || (actor.isDemo ? !owner : String(actor.userId || actor.id) !== String(user.id)))) return fail('操作権限がありません。', 403);
       if (action === 'start') {
         if (!match.matchState) {
           const firstPlayerId = Math.random() < 0.5 ? match.player1.id : match.player2.id;
