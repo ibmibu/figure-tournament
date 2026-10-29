@@ -1552,3 +1552,8 @@ body :is(.tierBadge,.recentResult,.characterSoloCount){border-radius:4px!importa
 
 /* Historical tournament Tier icons and Tier totals. */
 body .achievementTier{border-radius:4px!important}
+
+/* Tournament overview: round the edit link, align stage chips consistently. */
+body .tournament-detail-page .overview-edit-link{border-radius:6px!important}
+.tournament-detail-page .detail-stage-list{display:flex;flex-wrap:wrap;align-items:stretch;gap:7px;margin-bottom:14px}
+.tournament-detail-page .detail-stage-list>span{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:32px;height:auto;padding:5px 10px;line-height:1.4;vertical-align:middle;text-align:center}
