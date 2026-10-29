@@ -189,6 +189,7 @@ export default function TournamentPage() {
     let inFlight = false;
     let lastSync = 0;
     let realtimeConnected = false;
+    let receivedSignal = false;
     let channel = null;
     const refresh = async () => {
       if (cancelled || inFlight || document.visibilityState === 'hidden') return;
@@ -219,7 +220,7 @@ export default function TournamentPage() {
           schema: 'public',
           table: 'tournament_change_signals',
           filter: `tournament_id=eq.${id}`,
-        }, () => { void refresh(); });
+        }, () => { receivedSignal = true; void refresh(); });
         channel.subscribe(status => {
           realtimeConnected = status === 'SUBSCRIBED';
           if (status === 'SUBSCRIBED') void refresh();
@@ -232,7 +233,7 @@ export default function TournamentPage() {
     // While connected, a periodic 30-second refresh catches missed signals.
     const interval = setInterval(() => {
       // Do not slow polling until every write path publishes notifications.
-      const intervalMs = realtimeConnected && process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true' ? 30000 : 4000;
+      const intervalMs = realtimeConnected && receivedSignal ? 30000 : 4000;
       if (Date.now() - lastSync >= intervalMs) void refresh();
     }, 4000);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
