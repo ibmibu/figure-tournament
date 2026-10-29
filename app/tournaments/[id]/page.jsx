@@ -175,7 +175,7 @@ export default function TournamentPage() {
     // Keep the existing 4-second polling as a fail-safe. Only reduce it to a
     // 30-second consistency check while the notification channel is connected.
     const interval = setInterval(() => {
-      const intervalMs = realtimeConnected ? 30000 : 4000;
+      // Do not slow polling until every write path publishes notifications.\n      const intervalMs = realtimeConnected && process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true' ? 30000 : 4000;
       if (Date.now() - lastSync >= intervalMs) void refresh();
     }, 4000);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
