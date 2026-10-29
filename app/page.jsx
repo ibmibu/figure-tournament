@@ -34,7 +34,13 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     const snapshot = readTabSnapshot('home');
-    if (snapshot) { setTournaments(snapshot); setLoading(false); return () => { active = false; }; }
+    if (snapshot) {
+      setTournaments(snapshot); setLoading(false);
+      try {
+        const last = Number(sessionStorage.getItem('figure-home-summary-updated') || 0);
+        if (Date.now() - last < 60000) return () => { active = false; };
+      } catch {}
+    }
     const cached = readTournamentCache();
     if (cached) { setTournaments(cached); setLoading(false); }
     fetch('/api/tournaments?view=summary', { cache: 'no-store' })
@@ -43,6 +49,7 @@ export default function Home() {
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
         writeTabSnapshot('home', latest);
+        try { sessionStorage.setItem('figure-home-summary-updated', String(Date.now())); } catch {}
         if (active) { setTournaments(latest); setLoadError(''); }
       })
       .catch(error => {
