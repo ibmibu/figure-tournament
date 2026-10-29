@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
@@ -36,16 +36,33 @@ export default function TournamentPage() {
   const [boardBusy, setBoardBusy] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [boardError, setBoardError] = useState('');
+  const tournamentSnapshotRef = useRef('');
+  const boardSnapshotRef = useRef('');
+  const boardInFlightRef = useRef(false);
+
+  function applyTournamentSnapshot(next) {
+    const signature = JSON.stringify(next);
+    if (signature === tournamentSnapshotRef.current) return;
+    tournamentSnapshotRef.current = signature;
+    setTournament(next);
+  }
 
   async function refreshBoard() {
-    if (!id) return;
+    if (!id || boardInFlightRef.current) return;
+    boardInFlightRef.current = true;
     try {
       const response = await fetch(`/api/tournaments/board?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'コメントを読み込めませんでした。');
-      setBoardMessages(data.messages || []);
+      const messages = data.messages || [];
+      const signature = JSON.stringify(messages);
+      if (signature !== boardSnapshotRef.current) {
+        boardSnapshotRef.current = signature;
+        setBoardMessages(messages);
+      }
       setBoardError('');
     } catch (error) { setBoardError(error.message || 'コメントを読み込めませんでした。'); }
+    finally { boardInFlightRef.current = false; }
   }
 
   useEffect(() => {
@@ -103,8 +120,9 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '大会を読み込めませんでした。');
       if (result.tournament) {
-        setTournament(result.tournament);
+        applyTournamentSnapshot(result.tournament);
       } else {
+        tournamentSnapshotRef.current = '';
         setTournament(null);
       }
     } catch (loadError) {
@@ -127,7 +145,7 @@ export default function TournamentPage() {
         .then(async response => {
           if (!response.ok) return;
           const result = await response.json();
-          if (result.tournament) setTournament(result.tournament);
+          if (result.tournament) applyTournamentSnapshot(result.tournament);
         }).catch(() => {});
     }, 4000);
     return () => clearInterval(timer);
@@ -151,7 +169,7 @@ export default function TournamentPage() {
         if (!response.ok || cancelled) return;
         const result = await response.json();
         if (!cancelled && result.tournament) {
-          setTournament(result.tournament);
+          applyTournamentSnapshot(result.tournament);
           lastSync = Date.now();
         }
       } catch {} finally {
