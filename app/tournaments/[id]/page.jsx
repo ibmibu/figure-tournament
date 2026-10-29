@@ -859,10 +859,11 @@ export default function TournamentPage() {
     {(!tournament.bracket || showTournamentOverview) && tournament.bracket?.complete && <><section className="create-panel tournament-results-card"><h2>大会結果</h2><div className="tournament-results-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).filter(row => ['優勝','準優勝','3位','ベスト4'].includes(row.place)).map(row => { const player = joinedPlayers.find(p => String(p.id) === String(row.playerId)); return player ? <div className="tournament-result-item" key={String(row.playerId)}><strong>{row.place === 'ベスト4' ? '3位' : row.place}</strong><span>{player.name}</span></div> : null; })}</div></section><div className="tournament-report-action">{joinedPlayers.some(p => !p.isDemo && String(p.userId || p.id) === String(currentUserId)) && <a className="button-link" href={`/tournaments/${encodeURIComponent(id)}/report`}>キャラ報告を編集</a>}{isOwner && <a className="button-link" href={`/tournaments/${encodeURIComponent(id)}/reports`}>キャラ報告を見る</a>}</div></>}
     {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
-      <div className="tournament-card-top"><h2>大会概要</h2>{isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}</div>
+      <div className="tournament-card-top"><h2>大会概要</h2></div>
       {isOwner && <div className="overview-actions">
         {!tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメントを開始する' : '大会を開始する'}</button>}
         <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)))}`} target="_blank" rel="noopener noreferrer">Xに投稿</a>
+        {!tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
         {tournament.bracket && <button className="submit" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
       </div>}
 
