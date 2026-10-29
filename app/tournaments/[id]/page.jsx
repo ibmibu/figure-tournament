@@ -563,7 +563,7 @@ export default function TournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '対戦結果を更新できませんでした。');
-      setTournament(result.tournament);
+      applyTournamentSnapshot(result.tournament);
       setAdminMatchSelection(null);
       setShowForfeitChoices(false);
 
@@ -687,14 +687,14 @@ export default function TournamentPage() {
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
-  const currentRoundNumber = Math.max(1, (tournament.bracket?.rounds || []).findIndex(round => round.some(match => match.player1 && match.player2 && !match.winnerId)) + 1 || tournament.bracket?.rounds?.length || 1);
+  const currentRoundNumber = Math.max(1, (tournament.bracket?.rounds || []).findIndex(round => round.some(match => !match.winnerId && (match.player1 || match.player2) && (match.player1 && match.player2 || round === tournament.bracket.rounds[0]))) + 1 || tournament.bracket?.rounds?.length || 1);
   const roundCount = tournament.bracket?.rounds?.length || 0;
-  const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝' : roundCount > 1 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
+  const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝戦' : roundCount > 1 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
   const selectedAdminMatch = isOwner && adminMatchSelection
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
   const canEditAdminMatch = Boolean(selectedAdminMatch?.player1 && selectedAdminMatch?.player2);
-  const streamMatchId = tournament.effectiveStreamMatchId ?? null;
+  const streamMatchId = tournament.effectiveStreamMatchId ?? tournament.streamMatchId ?? null;
 
   // Declaration is its own phase, not a section hidden below the overview.
   if (tournament.characterDeclaration && tournament.declarationPhase === 'collecting') {
@@ -760,7 +760,7 @@ export default function TournamentPage() {
           const canActFor = id => isOwner && demoMatch ? true : String(id) === String(viewingPlayerId);
           const waitingFor = id => <p className="setting-help match-turn-waiting">{[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
-            {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span>{tournament.streamFriendCode && <span>配信台フレンドコード：<b>{tournament.streamFriendCode}</b></span>}</div>}
+            {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span></div>}
 
             <div className="game-top">
               <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
