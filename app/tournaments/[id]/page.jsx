@@ -892,6 +892,5 @@ export default function TournamentPage() {
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
-    <footer>アミコネ</footer>
   </main>;
 }
