@@ -876,6 +876,7 @@ export default function TournamentPage() {
         <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
       </div>
+      {/^https?:\/\//i.test(tournament.streamUrl || '') && <div className="overview-stream-link"><span>配信先</span><a href={tournament.streamUrl} target="_blank" rel="noopener noreferrer">{tournament.streamUrl}</a></div>}
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
         <h3>キャラ宣言</h3>
         <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
