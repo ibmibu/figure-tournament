@@ -2414,3 +2414,10 @@ footer span {
 .stats-shell .characterSoloSection .characterSoloCard{border-radius:0}
 .stats-shell .characterSoloSection .characterSoloEntryHead{position:relative;overflow:visible}
 .stats-shell .characterSoloSection .characterSoloCount{position:absolute;right:-5px;top:-10px;z-index:2;display:inline-flex;align-items:center;justify-content:center;min-width:0;min-height:0;box-sizing:border-box;padding:2px 3px;border:1px solid #d9ad4c;border-radius:0;background:#fff;color:#202020;font-size:12px;font-weight:800;line-height:1;letter-spacing:.02em;white-space:nowrap;box-shadow:none;pointer-events:none}
+
+/* Compact tag filter immediately below the summary metrics. */
+.stats-shell .statsGrid{margin-bottom:0!important}
+.stats-shell .seriesTagSelector{display:flex;align-items:center;gap:10px;margin:0 0 14px!important;padding:8px 0!important;border:0!important;border-bottom:1px solid #dce3eb!important;background:transparent!important}
+.stats-shell .seriesTagSelector label{font-size:12px}
+.stats-shell .seriesTagSelector select{flex:0 1 230px;width:auto;max-width:100%;padding:6px 9px;font-size:13px}
+@media(max-width:600px){.stats-shell .statsGrid .stat{padding-top:11px!important;padding-bottom:11px!important}.stats-shell .seriesTagSelector{gap:8px;margin-bottom:10px!important;padding:7px 0!important}.stats-shell .seriesTagSelector select{flex:1;min-width:0;padding:6px 8px}}
