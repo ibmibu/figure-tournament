@@ -773,8 +773,8 @@ export default function TournamentPage() {
             {(() => {
               const isStreaming = String(streamMatchId) === String(match.id);
               const opponent = [match.player1, match.player2].find(player => String(player.id) !== String(viewingPlayerId));
-              const code = isStreaming ? tournament.streamFriendCode : opponent?.friendCode;
-              return code ? <div className="match-opponent-friend-code"><span>{isStreaming ? '配信台のフレンドコード' : '対戦相手のフレンドコード'}</span><strong>{code}</strong></div> : null;
+              const code = isStreaming ? '' : opponent?.friendCode;
+              return code ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{code}</strong></div> : null;
             })()}
             {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
               {!game?.stage ? <>
