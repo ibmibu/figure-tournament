@@ -1568,3 +1568,13 @@ body .home-format-badge{border-radius:4px!important}
 .bottom-tab-bar .bottom-tab-label{font-size:12px;line-height:16px;font-weight:700}
 .bottom-tab-bar .bottom-tab.active{color:#1955a0;border-bottom-color:#1955a0!important}
 @media(max-width:767px){body>.bottom-tab-bar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0;background:#fff}body>.bottom-tab-bar .bottom-tab{width:100%;min-width:0}}
+
+/* Tournament overview: unboxed layout with the same purple heading as Home. */
+.tournament-detail-page #tournament-overview.create-panel{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0!important;margin:0!important;color:inherit!important;max-width:none!important}
+.tournament-detail-page #tournament-overview>.tournament-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:8px 16px;background:#6045a8;color:#fff;border:0}
+.tournament-detail-page #tournament-overview>.tournament-card-top h2{margin:0!important;color:#fff!important;font-size:17px;font-weight:800}
+.tournament-detail-page #tournament-overview>.tournament-card-top .overview-edit-link{background:#fff;color:#6045a8;border:1px solid #fff;border-radius:6px!important}
+.tournament-detail-page #tournament-overview>.detail-grid,.tournament-detail-page #tournament-overview>.overview-actions,.tournament-detail-page #tournament-overview>h3,.tournament-detail-page #tournament-overview>h4,.tournament-detail-page #tournament-overview>.generated-description,.tournament-detail-page #tournament-overview>.detail-stage-list{margin-left:0;margin-right:0}
+.tournament-detail-page #tournament-overview>.overview-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px}
+.tournament-detail-page #tournament-overview .overview-share-x{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 14px;border:1px solid #c9dcef;border-radius:6px!important;background:#fff;color:#24232b;font-weight:700;text-decoration:none}
+@media(max-width:600px){.tournament-detail-page #tournament-overview>.tournament-card-top{min-height:48px;padding:6px 12px}.tournament-detail-page #tournament-overview>.overview-actions{gap:8px}}
