@@ -150,8 +150,14 @@ export async function POST(request) {
     if (!input || !id || !name) return NextResponse.json({ error: '大会情報が不足しています。' }, { status: 400 });
     if (id.length > 128 || name.length > 120 || !/^[a-zA-Z0-9_-]+$/.test(id)) return NextResponse.json({ error: '大会IDまたは大会名が正しくありません。' }, { status: 400 });
 
-    const { ownerId, ownerUserId, characterReports, bracket, adminHistory, adminLog, characterDeclarations, resultPlacements, completedAt, streamMatchId, ...safeTournament } = input;
-    const tournament = { ...safeTournament, name, ownerUserId: user.id };
+    // Explicit allowlist: client input must never initialize privileged or match-result fields.
+    const allowed = ['id', 'description', 'streamUrl', 'streamFriendCode', 'name', 'seriesTags',
+      'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed',
+      'characterDeclaration', 'stageSettings'];
+    const safeTournament = Object.fromEntries(allowed.filter(key =>
+      Object.prototype.hasOwnProperty.call(input, key)).map(key => [key, input[key]]));
+    const tournament = { ...safeTournament, name, status: '募集中',
+      createdAt: new Date().toISOString(), ownerUserId: user.id };
     const supabase = getAdminClient();
     const { error } = await supabase.from('tournaments').insert({
       id,
@@ -196,6 +202,25 @@ export async function PUT(request) {
     );
     if (!isCurrentOwner && !(isParticipant && isInActiveMatch && existing.bracket && input.bracket)) {
       return NextResponse.json({ error: '更新する権限がありません。' }, { status: 403 });
+    }
+
+    // Stage selection is the only bracket mutation allowed through this endpoint.
+    // Winners, scores, games and result votes are committed exclusively by match-result.
+    if (!isCurrentOwner) {
+      const byId = new Map(existingMatches.map(match => [String(match.id), match]));
+      for (const next of inputMatches) {
+        const before = byId.get(String(next.id));
+        if (!before) return NextResponse.json({ error: '対戦カードが不正です。' }, { status: 403 });
+        if (JSON.stringify(next.winnerId ?? null) !== JSON.stringify(before.winnerId ?? null) ||
+            JSON.stringify(next.matchState?.score ?? null) !== JSON.stringify(before.matchState?.score ?? null) ||
+            JSON.stringify(next.matchState?.games ?? null) !== JSON.stringify(before.matchState?.games ?? null) ||
+            JSON.stringify(next.matchState?.currentGame?.results ?? null) !== JSON.stringify(before.matchState?.currentGame?.results ?? null) ||
+            Boolean(next.matchState?.complete) !== Boolean(before.matchState?.complete) ||
+            JSON.stringify(next.matchState?.winnerId ?? null) !== JSON.stringify(before.matchState?.winnerId ?? null) ||
+            JSON.stringify(next.matchState?.gameNumber ?? null) !== JSON.stringify(before.matchState?.gameNumber ?? null)) {
+          return NextResponse.json({ error: '勝敗は専用の報告APIから確定してください。' }, { status: 403 });
+        }
+      }
     }
 
     // Ordinary participants may update their own in-progress match, but must not
@@ -275,9 +300,9 @@ export async function PUT(request) {
       : {
           ...existing,
           bracket: safeInput.bracket,
-          status: safeInput.status || existing.status,
-          resultPlacements: safeInput.resultPlacements ?? existing.resultPlacements,
-          completedAt: safeInput.completedAt ?? existing.completedAt,
+          status: existing.status,
+          resultPlacements: existing.resultPlacements,
+          completedAt: existing.completedAt,
         };
     const { data: changed, error } = await supabase.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(existing)).select('id');
     if (error) throw error;
