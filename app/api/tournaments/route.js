@@ -203,6 +203,37 @@ export async function PUT(request) {
         )
       ).map(match => String(match.id)));
       const nextById = new Map(inputMatches.map(match => [String(match.id), match]));
+      // A participant may not modify another match's score, winner, stage state,
+      // or administrator flags, even when submitting their own result.
+      const unchanged = value => JSON.stringify(value ?? null);
+      if (existingMatches.some(match => {
+        if (activeIds.has(String(match.id))) return false;
+        const next = inputMatches.find(candidate => String(candidate.id) === String(match.id));
+        if (!next) return true;
+        const { player1: beforeP1, player2: beforeP2, ...before } = match;
+        const { player1: afterP1, player2: afterP2, ...after } = next;
+        if (unchanged(before) !== unchanged(after)) return true;
+        // Advancement may populate an empty downstream slot, but never replace
+        // an existing player or edit their details.
+        for (const [oldPlayer, newPlayer] of [[beforeP1, afterP1], [beforeP2, afterP2]]) {
+          if (oldPlayer && unchanged(oldPlayer) !== unchanged(newPlayer)) return true;
+          if (!oldPlayer && newPlayer && !existingMatches.some(source =>
+            activeIds.has(String(source.id)) && String(source.player1?.id) === String(newPlayer.id) ||
+            activeIds.has(String(source.id)) && String(source.player2?.id) === String(newPlayer.id)
+          )) return true;
+        }
+        return false;
+      })) return NextResponse.json({ error: '自分の対戦以外は変更できません。' }, { status: 403 });
+      if (existingMatches.some(match => activeIds.has(String(match.id)) && (() => {
+        const next = inputMatches.find(candidate => String(candidate.id) === String(match.id));
+        if (!next) return true;
+        const { matchState: previousState, winnerId: previousWinner, ...previousRest } = match;
+        const { matchState: nextState, winnerId: nextWinner, ...nextRest } = next;
+        if (unchanged(previousRest) !== unchanged(nextRest)) return true;
+        if (nextWinner && ![match.player1?.id, match.player2?.id].some(id => String(id) === String(nextWinner))) return true;
+        return false;
+      })())) return NextResponse.json({ error: '対戦データの変更内容が不正です。' }, { status: 403 });
+
       if (existingMatches.length !== inputMatches.length || existingMatches.some(match => {
         const next = nextById.get(String(match.id));
         if (!next) return true;
