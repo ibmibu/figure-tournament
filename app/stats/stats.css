@@ -2427,3 +2427,8 @@ footer span {
  .stats-shell .characterUsageSection .characterTopList{grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
  .stats-shell .characterSoloSection .characterSoloList{grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
 }
+
+/* Tag selector: content-sized control without the extra horizontal rule. */
+.stats-shell .seriesTagSelector{border:0!important;border-bottom:0!important;gap:10px;margin-bottom:12px!important;padding:5px 0!important;justify-content:flex-start}
+.stats-shell .seriesTagSelector select{flex:0 0 auto!important;width:auto!important;min-width:140px;max-width:min(240px,65vw);padding:6px 30px 6px 10px!important}
+@media(max-width:600px){.stats-shell .seriesTagSelector{gap:8px}.stats-shell .seriesTagSelector select{flex:0 0 auto!important;width:auto!important;min-width:130px;max-width:65vw}}
