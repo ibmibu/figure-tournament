@@ -30,6 +30,9 @@ export default function TournamentPage() {
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
 
+  const [declarationCharacter, setDeclarationCharacter] = useState('');
+  const [declarationColor, setDeclarationColor] = useState('1P');
+  const [declarationBusy, setDeclarationBusy] = useState(false);
   const [boardMessages, setBoardMessages] = useState([]);
   const [boardText, setBoardText] = useState('');
   const [boardBusy, setBoardBusy] = useState(false);
@@ -306,9 +309,30 @@ export default function TournamentPage() {
     if (!isOwner) return;
     const players = tournament.joinedPlayers || [];
     if (players.length < 2) { setError('トーナメント開始には参加者が2人以上必要です。'); return; }
+    if (tournament.characterDeclaration && tournament.declarationPhase !== 'published') {
+      if (players.some(player => player.isDemo)) { setError('キャラ宣言ありの大会ではデモ参加者を利用できません。'); return; }
+      await saveBracket({ ...tournament, status: 'キャラ宣言中', declarationPhase: 'collecting', characterDeclarations: {} });
+      return;
+    }
     const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), streamMatchId: undefined, resultPlacements: null };
     await saveBracket(next);
     setTimeout(() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
+
+  async function declarationAction(action) {
+    setDeclarationBusy(true);
+    setError('');
+    try {
+      const response = await fetch('/api/tournaments/declaration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ id, action, character: declarationCharacter, color: declarationColor }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'キャラ宣言を保存できませんでした。');
+      await loadTournament();
+    } catch (e) { setError(e.message || 'キャラ宣言を保存できませんでした。'); }
+    finally { setDeclarationBusy(false); }
   }
 
   function getMatchStageLists() {
@@ -803,9 +827,26 @@ export default function TournamentPage() {
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
       </div>
       {isOwner && <div className="overview-actions">
-        {!tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>大会を開始する</button>}
+        {!tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメントを開始する' : '大会を開始する'}</button>}
         {tournament.bracket && <button className="submit" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
       </div>}
+      {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
+        <h3>キャラ宣言</h3>
+        <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
+        <p>宣言済み：{joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length} / {joinedPlayers.length}人</p>
+        {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry">
+          <label>使用キャラクター<input value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)} maxLength={60} placeholder="キャラクター名" /></label>
+          <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
+          <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
+        </div>}
+        {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <p>宣言を受け付けました。公開をお待ちください。</p>}
+        {isOwner && <button className="submit" type="button" disabled={declarationBusy || !joinedPlayers.length || joinedPlayers.some(p => !tournament.characterDeclarations?.[String(p.id)])} onClick={() => declarationAction('publish')}>宣言を公開</button>}
+      </section>}
+      {tournament.characterDeclaration && tournament.declarationPhase === 'published' && <section className="tournament-declaration">
+        <h3>キャラ宣言一覧</h3>
+        <ul className="joined-player-list">{joinedPlayers.map(p => <li key={p.id}>{p.name}：{tournament.characterDeclarations?.[String(p.id)]?.character} {tournament.characterDeclarations?.[String(p.id)]?.color}</li>)}</ul>
+        {isOwner && !tournament.bracket && <button className="submit" type="button" onClick={startBracket} disabled={savingBracket}>トーナメントを開始する</button>}
+      </section>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
       {!tournament.stageRejects ? <>
