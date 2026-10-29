@@ -61,6 +61,36 @@ function publicTournament(row, user, legacyOwnerToken = '') {
       : {};
     publicData.declarationSubmittedCount = Object.keys(data.characterDeclarations || {}).length;
   }
+  // Never expose stored contact codes to anonymous visitors or unrelated users.
+  // Only the organizer and the two players in a live match need the relevant code.
+  const visibleCodeIds = new Set();
+  if (user) {
+    for (const match of activeMatches) {
+      if (match.winnerId || !match.player1 || !match.player2) continue;
+      const pair = [match.player1, match.player2];
+      if (pair.some(p => String(p.userId || p.id) === String(user.id))) {
+        pair.forEach(p => visibleCodeIds.add(String(p.userId || p.id)));
+      }
+    }
+  }
+  const canSeeCode = p => isOwner || (user && (String(p.userId || p.id) === String(user.id) || visibleCodeIds.has(String(p.userId || p.id))));
+  const redactPlayer = p => {
+    if (!p || typeof p !== 'object') return p;
+    const { friendCode, email, avatar_data, ...safe } = p;
+    return canSeeCode(p) ? { ...safe, ...(friendCode ? { friendCode } : {}) } : safe;
+  };
+  publicData.joinedPlayers = (data.joinedPlayers || []).map(redactPlayer);
+  if (data.bracket?.rounds) {
+    publicData.bracket = {
+      ...data.bracket,
+      rounds: data.bracket.rounds.map(round => round.map(match => ({
+        ...match,
+        player1: redactPlayer(match.player1),
+        player2: redactPlayer(match.player2),
+      }))),
+    };
+  }
+  if (!isOwner && !user) delete publicData.streamFriendCode;
   if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
   return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
 }
