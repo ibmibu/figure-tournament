@@ -181,6 +181,7 @@ export default function TournamentPage() {
     // The authenticated API remains the source of truth.
     try {
       const client = getSupabaseBrowserClient();
+      if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
       channel = client.channel(`tournament-updates:${id}`);
       // Postgres Changes requires the tournaments table in the Supabase
       // Realtime publication. If it is not enabled, the 4s fallback remains.
@@ -194,6 +195,7 @@ export default function TournamentPage() {
         realtimeConnected = status === 'SUBSCRIBED';
         if (status === 'SUBSCRIBED') void refresh();
       });
+      }
     } catch {
       realtimeConnected = false;
     }
