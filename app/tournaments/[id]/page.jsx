@@ -687,7 +687,12 @@ export default function TournamentPage() {
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
-  const currentRoundNumber = Math.max(1, (tournament.bracket?.rounds || []).findIndex(round => round.some(match => !match.winnerId && (match.player1 || match.player2) && (match.player1 && match.player2 || round === tournament.bracket.rounds[0]))) + 1 || tournament.bracket?.rounds?.length || 1);
+  // Prefer the deepest round with a playable unresolved match. Earlier rounds may
+  // retain incomplete/bye cards even after the final has become playable.
+  const bracketRounds = tournament.bracket?.rounds || [];
+  const activeRoundIndex = bracketRounds.findLastIndex(round => round.some(match => !match.winnerId && match.player1 && match.player2));
+  const pendingRoundIndex = bracketRounds.findIndex(round => round.some(match => !match.winnerId && (match.player1 || match.player2)));
+  const currentRoundNumber = (activeRoundIndex >= 0 ? activeRoundIndex : pendingRoundIndex >= 0 ? pendingRoundIndex : Math.max(0, bracketRounds.length - 1)) + 1;
   const roundCount = tournament.bracket?.rounds?.length || 0;
   const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝戦' : roundCount > 1 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
   const selectedAdminMatch = isOwner && adminMatchSelection
