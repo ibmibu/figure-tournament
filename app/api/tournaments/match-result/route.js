@@ -6,6 +6,52 @@ const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.e
 const auth = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 const fail = (error, status = 400) => NextResponse.json({ error }, { status });
 
+function safeTournament(data, user) {
+  const { ownerId, ownerUserId, adminHistory, adminLog, ...publicData } = data;
+  const isOwner = ownerUserId === user.id;
+  const visible = new Set([String(user.id)]);
+  for (const match of (data.bracket?.rounds || []).flat()) {
+    if (match.winnerId || !match.player1 || !match.player2) continue;
+    if ([match.player1, match.player2].some(p => String(p.userId || p.id) === String(user.id))) {
+      visible.add(String(match.player1.userId || match.player1.id));
+      visible.add(String(match.player2.userId || match.player2.id));
+    }
+  }
+  const player = p => {
+    if (!p) return p;
+    const { friendCode, email, avatar_data, ...rest } = p;
+    return (isOwner || visible.has(String(p.userId || p.id))) && friendCode
+      ? { ...rest, friendCode } : rest;
+  };
+  publicData.joinedPlayers = (data.joinedPlayers || []).map(player);
+  if (data.bracket?.rounds) publicData.bracket = {
+    ...data.bracket,
+    rounds: data.bracket.rounds.map(round => round.map(match => ({
+      ...match, player1: player(match.player1), player2: player(match.player2),
+    }))),
+  };
+  if (!isOwner) {
+    publicData.characterReports = Object.fromEntries(
+      Object.entries(data.characterReports || {}).filter(([playerId]) =>
+        (data.joinedPlayers || []).some(p => String(p.id) === playerId && String(p.userId || p.id) === String(user.id))
+      )
+    );
+    if (data.declarationPhase === 'collecting') {
+      publicData.characterDeclarations = Object.fromEntries(
+        Object.entries(data.characterDeclarations || {}).filter(([playerId]) =>
+          (data.joinedPlayers || []).some(p => String(p.id) === playerId && String(p.userId || p.id) === String(user.id))
+        )
+      );
+    }
+    const streamMatch = (data.bracket?.rounds || []).flat().find(m => String(m.id) === String(data.streamMatchId));
+    if (!streamMatch || ![streamMatch.player1, streamMatch.player2].some(p => p && String(p.userId || p.id) === String(user.id))) delete publicData.streamFriendCode;
+  } else {
+    publicData.adminHistory = adminHistory;
+    publicData.adminLog = adminLog;
+  }
+  return { ...publicData, isOwner };
+}
+
 export async function POST(request) {
   try {
     const token = request.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1];
@@ -38,7 +84,7 @@ export async function POST(request) {
       const state = found.matchState;
       if (!state || state.complete || Number(state.gameNumber) !== Number(gameNumber) || !state.currentGame?.stage) return fail('ゲームが更新されています。', 409);
       const votes = { ...(state.currentGame.results || {}), [actorId]: result };
-      if (votes[actorId] === state.currentGame.results?.[actorId]) return NextResponse.json({ ok: true, tournament: current });
+      if (votes[actorId] === state.currentGame.results?.[actorId]) return NextResponse.json({ ok: true, tournament: safeTournament(current, user) });
       state.currentGame.results = votes;
       if (votes[p1] && votes[p2] && votes[p1] !== votes[p2]) {
         const winnerId = votes[p1] === 'win' ? found.player1.id : found.player2.id;
@@ -64,7 +110,7 @@ export async function POST(request) {
       const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, completedAt: bracket.complete ? new Date().toISOString() : current.completedAt };
       const { data: changed, error: writeError } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
       if (writeError) throw writeError;
-      if (changed?.length) return NextResponse.json({ ok: true, tournament: updated });
+      if (changed?.length) return NextResponse.json({ ok: true, tournament: safeTournament(updated, user) });
       // Another player committed first. Reload, merge this vote and retry.
     }
     return fail('同時操作が集中しています。もう一度お試しください。', 409);
