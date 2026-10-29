@@ -599,6 +599,8 @@ export default function TournamentPage() {
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
   const currentRoundNumber = Math.max(1, (tournament.bracket?.rounds || []).findIndex(round => round.some(match => match.player1 && match.player2 && !match.winnerId)) + 1 || tournament.bracket?.rounds?.length || 1);
+  const roundCount = tournament.bracket?.rounds?.length || 0;
+  const roundAnnouncement = roundCount > 1 && currentRoundNumber === roundCount ? '決勝' : roundCount > 2 && currentRoundNumber === roundCount - 1 ? '準決勝' : `${currentRoundNumber}回戦`;
   const selectedAdminMatch = isOwner && adminMatchSelection
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
@@ -703,7 +705,7 @@ export default function TournamentPage() {
         {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
           <textarea aria-label="コメント入力" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="コメントを入力（1000文字以内）" rows={3} />
           <div className="tournament-board-actions">
-            {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${currentRoundNumber}回戦を開始してください。配信台の方は入室お願いします。`)}>試合開始アナウンス</button>}
+            {isOwner && <button type="button" className="tournament-board-quick-message" onClick={() => setBoardText(`${roundAnnouncement}を開始してください。配信台の方は入室お願いします。`)}>試合開始アナウンス</button>}
             <button className="submit" type="submit" disabled={boardBusy || !boardText.trim()}>{boardBusy ? '投稿中…' : '投稿する'}</button>
           </div>
         </form> : <p className="setting-help">コメントできるのは主催者と大会参加者のみです。</p>}
