@@ -2408,3 +2408,9 @@ footer span {
  .stats-shell .characterSoloSection .characterSoloCard{min-height:26px;padding:4px 4px}
  .stats-shell .characterSoloSection .characterSoloCard strong{font-size:12px}
 }
+
+/* Square fighter tiles and high-contrast white solo-count badges. */
+.stats-shell .characterUsageSection .characterTopList .characterTopCard,
+.stats-shell .characterSoloSection .characterSoloCard{border-radius:0}
+.stats-shell .characterSoloSection .characterSoloEntryHead{position:relative;overflow:visible}
+.stats-shell .characterSoloSection .characterSoloCount{position:absolute;right:-5px;top:-10px;z-index:2;display:inline-flex;align-items:center;justify-content:center;min-width:29px;min-height:21px;box-sizing:border-box;padding:2px 5px;border:1px solid #d9ad4c;border-radius:999px;background:#fff;color:#202020;font-size:12px;font-weight:800;line-height:1;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.15);pointer-events:none}
