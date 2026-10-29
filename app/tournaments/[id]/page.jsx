@@ -124,10 +124,16 @@ export default function TournamentPage() {
   useEffect(() => {
     if (tournament?.declarationPhase !== 'collecting' || !id) return;
     const timer = setInterval(() => {
-      if (document.visibilityState === 'visible' && !declarationBusy && !savingBracket) loadTournament();
+      if (document.visibilityState !== 'visible' || declarationBusy || savingBracket) return;
+      fetch(`/api/tournaments?id=${encodeURIComponent(id)}`, { cache: 'no-store', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} })
+        .then(async response => {
+          if (!response.ok) return;
+          const result = await response.json();
+          if (result.tournament) setTournament(result.tournament);
+        }).catch(() => {});
     }, 4000);
     return () => clearInterval(timer);
-  }, [id, tournament?.declarationPhase, declarationBusy, savingBracket]);
+  }, [id, tournament?.declarationPhase, declarationBusy, savingBracket, accessToken]);
 
   // Keep both players in sync while a bracket is active, without flashing the loading screen.
   useEffect(() => {
