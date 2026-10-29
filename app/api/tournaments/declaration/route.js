@@ -32,7 +32,12 @@ export async function POST(request) {
     } else if (action === 'publish') {
       if (t.ownerUserId !== auth.user.id) return NextResponse.json({ error: '主催者のみ公開できます。' }, { status: 403 });
       if (!players.length || players.some(p => !declarations[String(p.id)])) return NextResponse.json({ error: '全員の宣言がそろっていません。' }, { status: 409 });
-      next = { ...t, declarationPhase: 'published' };
+      const reports = { ...(t.characterReports || {}) };
+      for (const player of players) {
+        const declaration = declarations[String(player.id)];
+        reports[String(player.id)] = { characters: [{ fighter: declaration.character, color: declaration.color }] };
+      }
+      next = { ...t, declarationPhase: 'published', characterReports: reports };
     } else return NextResponse.json({ error: '操作が不正です。' }, { status: 400 });
     const { data: updated, error: updateError } = await db.from('tournaments').update({ data: next }).eq('id', String(id)).eq('data', JSON.stringify(t)).select('id');
     if (updateError) throw updateError;
