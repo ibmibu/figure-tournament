@@ -2447,3 +2447,11 @@ footer span {
 .stats-shell .seriesTagSelector label{font-size:13px;line-height:1.4;font-weight:700;white-space:nowrap}
 .stats-shell .seriesTagSelector select{display:block;box-sizing:border-box;flex:none!important;width:100%!important;min-width:0!important;max-width:none!important;height:42px;padding:8px 36px 8px 12px!important;font-size:14px;line-height:1.4}
 @media(max-width:600px){.stats-shell .seriesTagSelector{grid-template-columns:80px minmax(0,1fr);gap:8px;padding:10px!important;margin-bottom:8px!important}.stats-shell .seriesTagSelector label{font-size:12px}.stats-shell .seriesTagSelector select{height:40px;font-size:13px}}
+
+/* Stats summary → tag filter → matrix: compact, balanced vertical rhythm. */
+.stats-shell .statsGrid{margin-bottom:0!important}
+.stats-shell .seriesTagSelector{background:transparent!important;border:0!important;box-shadow:none!important;padding:8px 0!important;margin:0 0 8px!important;min-height:58px;align-items:center}
+.stats-shell .content>section.matrixCard{margin-top:0!important;padding-top:0!important}
+.stats-shell .content>section.matrixCard .sectionHead{margin-top:0!important;margin-bottom:10px!important}
+.stats-shell .content>section.matrixCard .playerSelectWrap{margin-top:0!important;margin-bottom:12px!important}
+@media(max-width:600px){.stats-shell .seriesTagSelector{min-height:52px;padding:6px 0!important;margin-bottom:6px!important}.stats-shell .content>section.matrixCard .sectionHead{margin-bottom:8px!important}}
