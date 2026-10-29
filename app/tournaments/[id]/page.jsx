@@ -25,6 +25,7 @@ export default function TournamentPage() {
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
   const [showAdminLog, setShowAdminLog] = useState(false);
+  const [logMatchId, setLogMatchId] = useState('');
   const [rejectSelection, setRejectSelection] = useState([]);
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
@@ -594,6 +595,25 @@ export default function TournamentPage() {
     }
   }
 
+  async function rewindMatchLog(matchId, logId) {
+    if (!isOwner || savingBracket || !window.confirm('この操作の直前に戻しますか？他の試合が進行している場合は安全のため実行できません。')) return;
+    setSavingBracket(true);
+    setError('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('主催者としてログインしてください。');
+      const response = await fetch('/api/tournaments/admin-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
+        body: JSON.stringify({ id, matchId, action: 'rewind-match', winnerId: logId, ownerToken: ownerId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '巻き戻せませんでした。');
+      applyTournamentSnapshot(result.tournament);
+    } catch (e) { setError(e.message || '巻き戻せませんでした。'); }
+    finally { setSavingBracket(false); }
+  }
+
   async function undoAdminAction() {
     if (!isOwner || savingBracket || !tournament?.adminHistory?.length) return;
     if (!window.confirm('直前の主催者操作を巻き戻しますか？')) return;
@@ -862,9 +882,7 @@ export default function TournamentPage() {
               <button type="button" onClick={() => setShowAdminLog(value => !value)}>{showAdminLog ? 'ログを閉じる' : 'ログを見る'}</button>
               <button type="button" disabled={savingBracket || !tournament.adminHistory?.length} onClick={undoAdminAction}>巻き戻し</button>
             </div>
-            {showAdminLog && <div className="bracket-admin-history-list">{(tournament.adminLog || tournament.adminHistory || []).length
-              ? [...(tournament.adminLog || tournament.adminHistory || [])].reverse().map((entry, index) => <div className="bracket-admin-log-entry" key={index}><span className="bracket-admin-log-dot" /><div><time>{new Date(entry.at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time><p><strong>主催者：</strong>{entry.label}</p></div></div>)
-              : <p>操作履歴はありません。</p>}</div>}
+            {showAdminLog && <div className="bracket-admin-history-list">{(tournament.matchLogs || []).filter(entry => String(entry.matchId) === String(selectedAdminMatch.id)).slice().reverse().map(entry => <div className="bracket-admin-log-entry" key={entry.id}><span className="bracket-admin-log-dot" /><div><time>{new Date(entry.at).toLocaleString('ja-JP')}</time><p><strong>{entry.actor}：</strong>{entry.action}</p>{isOwner && <button type="button" disabled={savingBracket || tournament.matchLogs?.at(-1)?.id !== entry.id} onClick={() => rewindMatchLog(selectedAdminMatch.id, entry.id)}>この操作の直前に戻す</button>}</div></div>)}{!(tournament.matchLogs || []).some(entry => String(entry.matchId) === String(selectedAdminMatch.id)) && <p>この対戦の操作ログはまだありません。</p>}</div>}
             <div className="bracket-admin-actions">
               {selectedAdminMatch.winnerId || selectedAdminMatch.matchState ? <button type="button" className="bracket-admin-reset" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'reset')}>結果をリセット</button> : null}
               {!selectedAdminMatch.winnerId && <button type="button" disabled={savingBracket} onClick={() => setShowForfeitChoices(value => !value)}>{showForfeitChoices ? '不戦勝設定を閉じる' : '不戦勝にする'}</button>}
@@ -909,6 +927,7 @@ export default function TournamentPage() {
           if (ri === 0 && Boolean(match.player1) !== Boolean(match.player2)) return <div key={match.id} className="bracket-bye-spacer" style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} aria-hidden="true" />;
           return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}${isStreamMatch ? ' match-streaming' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
             
+            <button type="button" className="bracket-match-log-button" onClick={e => { e.stopPropagation(); setLogMatchId(String(match.id)); }}>ログ</button>
             {isStreamMatch && <span className="bracket-stream-badge">● 配信台</span>}
             <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) ? (player?.name || "") : ""}{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) && player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? (state?.score?.[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
 
@@ -925,6 +944,7 @@ export default function TournamentPage() {
         })}</div>)}</div>
 
 
+        {logMatchId && <div className="bracket-admin-modal-backdrop" onClick={() => setLogMatchId('')}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="対戦操作ログ" onClick={e => e.stopPropagation()}><div className="bracket-admin-heading"><strong>対戦操作ログ</strong><button type="button" onClick={() => setLogMatchId('')}>閉じる ×</button></div><div className="bracket-admin-history-list">{(tournament.matchLogs || []).filter(entry => String(entry.matchId) === logMatchId).slice().reverse().map(entry => <div className="bracket-admin-log-entry" key={entry.id}><span className="bracket-admin-log-dot" /><div><time>{new Date(entry.at).toLocaleString('ja-JP')}</time><p><strong>{entry.actor}：</strong>{entry.action}</p>{isOwner && <button type="button" disabled={savingBracket || tournament.matchLogs?.at(-1)?.id !== entry.id} onClick={() => rewindMatchLog(logMatchId, entry.id)}>この操作の直前に戻す</button>}</div></div>)}{!(tournament.matchLogs || []).some(entry => String(entry.matchId) === logMatchId) && <p>この対戦の操作ログはまだありません。</p>}</div></section></div>}
         {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
