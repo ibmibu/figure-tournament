@@ -29,8 +29,9 @@ export async function POST(request) {
   const wins=rounds.flat().filter(m=>String(m.winnerId)===String(player.id)&&m.player1&&m.player2&&m.resultType!=='forfeit').length;
   if(![...podium].some(v=>String(v)===String(player.id))||wins<1)return NextResponse.json({error:'1勝以上かつ3位以内の選手のみ報告できます。'},{status:403});
   const updated={...t,characterReports:{...(t.characterReports||{}),[String(player.id)]:{characters}}};
-  const {error:writeError}=await admin.from('tournaments').update({data:updated}).eq('id',String(id));
+  const {data:changed,error:writeError}=await admin.from('tournaments').update({data:updated}).eq('id',String(id)).eq('data',JSON.stringify(t)).select('id');
   if(writeError)throw writeError;
+  if(!changed?.length)return NextResponse.json({error:'他の更新が先に保存されました。再試行してください。'},{status:409});
   return NextResponse.json({ok:true});
- }catch(e){return NextResponse.json({error:e.message||'保存できませんでした。'},{status:500});}
+ }catch(e){console.error('Character report save failed:',e);return NextResponse.json({error:'キャラクター報告を保存できませんでした。'},{status:500});}
 }
