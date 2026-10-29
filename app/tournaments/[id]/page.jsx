@@ -119,7 +119,7 @@ export default function TournamentPage() {
       } catch {}
       const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
       const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: { ...headers, ...(tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
-        if (response.status === 304) { lastSync = Date.now(); return; }
+        if (response.status === 304) return;
         const newEtag = response.headers.get('etag');
         if (newEtag) tournamentEtagRef.current = newEtag;
       const result = await response.json();
@@ -184,7 +184,7 @@ export default function TournamentPage() {
 
   // Keep both players in sync while a bracket is active, without flashing the loading screen.
   useEffect(() => {
-    if (!tournament?.bracket || tournament.bracket.complete || showTournamentOverview || savingBracket) return;
+    if (!tournament || tournament.bracket?.complete || savingBracket) return;
     let cancelled = false;
     let inFlight = false;
     let lastSync = 0;
@@ -246,7 +246,7 @@ export default function TournamentPage() {
       window.removeEventListener('focus', onVisible);
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
     };
-  }, [id, Boolean(tournament?.bracket), tournament?.bracket?.complete, showTournamentOverview, savingBracket, accessToken]);
+  }, [id, Boolean(tournament), tournament?.bracket?.complete, savingBracket, accessToken]);
 
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
   useEffect(() => {
