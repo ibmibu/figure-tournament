@@ -121,6 +121,7 @@ export async function GET(request) {
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
       return NextResponse.json({ tournament: publicTournament(data, user, legacyOwnerToken) });
     }
+    const summaryOnly = searchParams.get('view') === 'summary';
     const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').order('created_at', { ascending: false });
     if (error) throw error;
     const rows = data || [];
@@ -131,10 +132,19 @@ export async function GET(request) {
       if (profileError) console.error('Tournament organizer names could not be loaded:', profileError);
       else ownerNames = new Map((profiles || []).map(profile => [profile.user_id, profile.display_name]));
     }
-    return NextResponse.json({ tournaments: rows.map(row => ({
-      ...publicTournament(row, user),
-      organizerName: ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || ''
-    })) });
+    return NextResponse.json({ tournaments: rows.map(row => {
+      const tournament = publicTournament(row, user);
+      const organizerName = ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || '';
+      if (!summaryOnly) return { ...tournament, organizerName };
+      return {
+        id: row.id, name: tournament.name, format: tournament.format,
+        date: tournament.date, participants: tournament.participants,
+        status: tournament.status, completedAt: tournament.completedAt,
+        bracket: { complete: tournament.bracket?.complete === true },
+        joinedPlayers: Array.from({ length: tournament.joinedPlayers?.length || 0 }, () => ({})),
+        organizerName,
+      };
+    }) });
   } catch (error) {
     return errorResponse(error, '大会データを読み込めませんでした。Supabaseの設定を確認してください。');
   }
@@ -150,8 +160,11 @@ export async function POST(request) {
     if (!input || !id || !name) return NextResponse.json({ error: '大会情報が不足しています。' }, { status: 400 });
     if (id.length > 128 || name.length > 120 || !/^[a-zA-Z0-9_-]+$/.test(id)) return NextResponse.json({ error: '大会IDまたは大会名が正しくありません。' }, { status: 400 });
 
-    const { ownerId, ownerUserId, characterReports, bracket, adminHistory, adminLog, characterDeclarations, resultPlacements, completedAt, streamMatchId, ...safeTournament } = input;
-    const tournament = { ...safeTournament, name, ownerUserId: user.id };
+    const allowed = ['id', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags', 'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed', 'characterDeclaration', 'stageSettings', 'createdAt'];
+    const tournament = Object.fromEntries(allowed.filter(key => Object.prototype.hasOwnProperty.call(input, key)).map(key => [key, input[key]]));
+    tournament.name = name;
+    tournament.status = '募集中';
+    tournament.ownerUserId = user.id;
     const supabase = getAdminClient();
     const { error } = await supabase.from('tournaments').insert({
       id,
@@ -239,6 +252,28 @@ export async function PUT(request) {
         return false;
       })())) return NextResponse.json({ error: '対戦データの変更内容が不正です。' }, { status: 403 });
 
+      // Players may only prepare stages. Match scores and winners are finalized
+      // by the authenticated, two-sided match-result endpoint.
+      if (existingMatches.some(match => activeIds.has(String(match.id)) && (() => {
+        const next = nextById.get(String(match.id));
+        if (!next || JSON.stringify(match.winnerId ?? null) !== JSON.stringify(next.winnerId ?? null)) return true;
+        const before = match.matchState;
+        const after = next.matchState;
+        if (!before && after) {
+          if (after.complete || after.winnerId != null || (after.games || []).length ||
+              Object.values(after.score || {}).some(score => Number(score) !== 0) ||
+              Object.keys(after.currentGame?.results || {}).length) return true;
+          return false;
+        }
+        if (!before || !after) return Boolean(before !== after);
+        if (before.complete !== after.complete || before.winnerId !== after.winnerId ||
+            before.gameNumber !== after.gameNumber ||
+            JSON.stringify(before.score) !== JSON.stringify(after.score) ||
+            JSON.stringify(before.games) !== JSON.stringify(after.games) ||
+            JSON.stringify(before.currentGame?.results || {}) !== JSON.stringify(after.currentGame?.results || {})) return true;
+        return false;
+      })())) return NextResponse.json({ error: '勝敗の確定は専用の報告画面から行ってください。' }, { status: 403 });
+
       if (existingMatches.length !== inputMatches.length || existingMatches.some(match => {
         const next = nextById.get(String(match.id));
         if (!next) return true;
@@ -260,7 +295,7 @@ export async function PUT(request) {
       const { bracket: ignoredBracket, ...restInput } = input;
       const { bracket: ignoredExistingBracket, ...restExisting } = existing;
       // UI may send stale top-level derived status/placements while completing a match.
-      const allowedDerived = new Set(['status', 'resultPlacements', 'completedAt']);
+      const allowedDerived = new Set();
       for (const key of new Set([...Object.keys(restInput), ...Object.keys(restExisting)])) {
         if (allowedDerived.has(key) || key === 'ownerId' || key === 'ownerUserId') continue;
         if (stable(restInput[key]) !== stable(restExisting[key])) {
@@ -275,9 +310,9 @@ export async function PUT(request) {
       : {
           ...existing,
           bracket: safeInput.bracket,
-          status: safeInput.status || existing.status,
-          resultPlacements: safeInput.resultPlacements ?? existing.resultPlacements,
-          completedAt: safeInput.completedAt ?? existing.completedAt,
+          status: existing.status,
+          resultPlacements: existing.resultPlacements,
+          completedAt: existing.completedAt,
         };
     const { data: changed, error } = await supabase.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(existing)).select('id');
     if (error) throw error;

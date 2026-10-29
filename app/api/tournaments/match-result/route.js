@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getBracketPlacements } from '../../../../lib/tournament-bracket-admin';
 
 export const dynamic = 'force-dynamic';
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -107,7 +108,7 @@ export async function POST(request) {
         }
       }
       bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
-      const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, completedAt: bracket.complete ? new Date().toISOString() : current.completedAt };
+      const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : current.completedAt, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : current.resultPlacements };
       const { data: changed, error: writeError } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
       if (writeError) throw writeError;
       if (changed?.length) return NextResponse.json({ ok: true, tournament: safeTournament(updated, user) });
