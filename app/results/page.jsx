@@ -29,9 +29,9 @@ export default function ResultsPage() {
           window.location.href = '/login?next=/results';
           return;
         }
-        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(saved); setLoading(false); } } catch {}
+        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(saved.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length))); setLoading(false); } } catch {}
         const snapshot = readTabSnapshot('results-' + session.user.id);
-        if (snapshot) { setTournaments(snapshot); setLoading(false); return; }
+        if (snapshot) { setTournaments(snapshot.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length))); setLoading(false); return; }
         const headers = { Authorization: `Bearer ${session.access_token}` };
         const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -48,7 +48,7 @@ export default function ResultsPage() {
         try { localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(profileResult.profile || {})); } catch {}
         const myId = String(session.user.id);
         const mine = (tournamentResult.tournaments || []).filter(item =>
-          item.bracket?.complete && (item.joinedPlayers || []).some(player =>
+          item.bracket?.complete && item.resultPlacements?.length && (item.joinedPlayers || []).some(player =>
             !player.isDemo && String(player.userId || player.id) === myId
           )
         ).map(item => {
