@@ -2422,11 +2422,6 @@ footer span {
 .stats-shell .seriesTagSelector select{flex:0 1 230px;width:auto;max-width:100%;padding:6px 9px;font-size:13px}
 @media(max-width:600px){.stats-shell .statsGrid .stat{padding-top:11px!important;padding-bottom:11px!important}.stats-shell .seriesTagSelector{gap:8px;margin-bottom:10px!important;padding:7px 0!important}.stats-shell .seriesTagSelector select{flex:1;min-width:0;padding:6px 8px}}
 
-/* Tag selector: content-sized control without the extra horizontal rule. */
-.stats-shell .seriesTagSelector{border:0!important;border-bottom:0!important;gap:10px;margin-bottom:12px!important;padding:5px 0!important;justify-content:flex-start}
-.stats-shell .seriesTagSelector select{flex:0 0 auto!important;width:auto!important;min-width:140px;max-width:min(240px,65vw);padding:6px 30px 6px 10px!important}
-@media(max-width:600px){.stats-shell .seriesTagSelector{gap:8px}.stats-shell .seriesTagSelector select{flex:0 0 auto!important;width:auto!important;min-width:130px;max-width:65vw}}
-
 /* Desktop fighter grid: make both sections span the full available row. */
 @media(min-width:701px){
  .stats-shell .characterUsageGrid{width:100%;align-items:stretch}
