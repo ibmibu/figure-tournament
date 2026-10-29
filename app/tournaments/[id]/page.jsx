@@ -137,8 +137,13 @@ export default function TournamentPage() {
   useEffect(() => {
     if (!tournament?.bracket || tournament.bracket.complete || showTournamentOverview || savingBracket) return;
     let cancelled = false;
+    let inFlight = false;
+    let lastSync = 0;
+    let realtimeConnected = false;
+    let channel = null;
     const refresh = async () => {
-      if (document.visibilityState === 'hidden') return;
+      if (cancelled || inFlight || document.visibilityState === 'hidden') return;
+      inFlight = true;
       try {
         const owner = localStorage.getItem(OWNER_KEY) || '';
         const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
@@ -147,12 +152,42 @@ export default function TournamentPage() {
         const result = await response.json();
         if (!cancelled && result.tournament) {
           setTournament(result.tournament);
-
+          lastSync = Date.now();
         }
-      } catch {}
+      } catch {} finally {
+        inFlight = false;
+      }
     };
-    const interval = setInterval(refresh, 4000);
-    return () => { cancelled = true; clearInterval(interval); };
+    // A Realtime notification is only an invalidation signal: never trust the
+    // broadcast payload for match results or private tournament information.
+    // The authenticated API remains the source of truth.
+    try {
+      const client = getSupabaseBrowserClient();
+      channel = client.channel(`tournament-updates:${id}`);
+      channel.on('broadcast', { event: 'changed' }, () => { void refresh(); });
+      channel.subscribe(status => {
+        realtimeConnected = status === 'SUBSCRIBED';
+        if (status === 'SUBSCRIBED') void refresh();
+      });
+    } catch {
+      realtimeConnected = false;
+    }
+    // Keep the existing 4-second polling as a fail-safe. Only reduce it to a
+    // 30-second consistency check while the notification channel is connected.
+    const interval = setInterval(() => {
+      const intervalMs = realtimeConnected ? 30000 : 4000;
+      if (Date.now() - lastSync >= intervalMs) void refresh();
+    }, 4000);
+    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+      if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+    };
   }, [id, Boolean(tournament?.bracket), tournament?.bracket?.complete, showTournamentOverview, savingBracket, accessToken]);
 
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
