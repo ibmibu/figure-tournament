@@ -218,6 +218,12 @@ export async function PUT(request) {
       return NextResponse.json({ error: '更新する権限がありません。' }, { status: 403 });
     }
 
+    // All participant match mutations now use dedicated, server-validated APIs.
+    // Never accept a complete client-supplied bracket through this generic route.
+    if (!isCurrentOwner) {
+      return NextResponse.json({ error: '対戦操作は専用APIから行ってください。' }, { status: 403 });
+    }
+
     // Reject changes to the bracket's structural metadata from participants.
     // The server must never accept a forged completion flag or reordered rounds.
     if (!isCurrentOwner) {
