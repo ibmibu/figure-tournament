@@ -848,7 +848,7 @@ export default function TournamentPage() {
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
         <h3>キャラ宣言</h3>
         <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
-        <p>宣言済み：{joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length} / {joinedPlayers.length}人</p>
+        <p>宣言済み：{(tournament.declarationSubmittedCount ?? joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length)} / {joinedPlayers.length}人</p>
         {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry">
           <label>使用キャラクター<input value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)} maxLength={60} placeholder="キャラクター名" /></label>
           <label>カラー<select value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
