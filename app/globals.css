@@ -1545,7 +1545,10 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 }
 
 /* Global square-corner design: retain rounding only on actual buttons. */
-body :not(button):not([role="button"]):not(.tierBadge):not(.recentResult):not(.characterSoloCount){border-radius:0!important}
+body :not(button):not([role="button"]):not(.tierBadge):not(.achievementTier):not(.recentResult):not(.characterSoloCount){border-radius:0!important}
 
 /* Only these non-button badges retain subtle rounding. */
 body :is(.tierBadge,.recentResult,.characterSoloCount){border-radius:4px!important}
+
+/* Historical tournament Tier icons and Tier totals. */
+body .achievementTier{border-radius:4px!important}
