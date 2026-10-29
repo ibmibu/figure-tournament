@@ -752,7 +752,6 @@ export default function TournamentPage() {
       </div>
     </section>
       {!showTournamentOverview && error && <p className="form-error" role="alert">{error}</p>}
-      {!showTournamentOverview && notice && <p className="form-success" role="status">{notice}</p>}
       {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
         {activeMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
