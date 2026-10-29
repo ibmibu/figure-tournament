@@ -38,6 +38,7 @@ export default function TournamentPage() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [boardError, setBoardError] = useState('');
   const tournamentSnapshotRef = useRef('');
+  const tournamentEtagRef = useRef('');
   const boardSnapshotRef = useRef('');
   const boardInFlightRef = useRef(false);
 
@@ -117,7 +118,10 @@ export default function TournamentPage() {
         }
       } catch {}
       const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
+      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: { ...headers, ...(tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
+        if (response.status === 304) { lastSync = Date.now(); return; }
+        const newEtag = response.headers.get('etag');
+        if (newEtag) tournamentEtagRef.current = newEtag;
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '大会を読み込めませんでした。');
       if (result.tournament) {
@@ -148,7 +152,10 @@ export default function TournamentPage() {
       inFlight = true;
       try {
         const owner = localStorage.getItem(OWNER_KEY) || '';
-        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} });
+        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
+        if (response.status === 304) return;
+        const newEtag = response.headers.get('etag');
+        if (newEtag) tournamentEtagRef.current = newEtag;
         if (!response.ok || cancelled) return;
         const result = await response.json();
         if (!cancelled && result.tournament) applyTournamentSnapshot(result.tournament);
