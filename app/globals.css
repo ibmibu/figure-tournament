@@ -1545,4 +1545,4 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 }
 
 /* Global square-corner design: retain rounding only on actual buttons. */
-:where(body *) :not(button):not([role="button"]){border-radius:0!important}
+body :not(button):not([role="button"]){border-radius:0!important}
