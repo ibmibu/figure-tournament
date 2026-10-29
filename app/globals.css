@@ -1240,9 +1240,9 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
   display:flex;
   flex-direction:column;
   align-items:flex-start;
-  gap:5px;
-  margin:0 0 16px;
-  padding:12px 15px;
+  gap:3px;
+  margin:0 0 12px;
+  padding:8px 12px;
   border-left:4px solid #d94b2b;
   border-radius:7px;
   background:#fff1e9;
