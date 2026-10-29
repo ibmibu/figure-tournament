@@ -18,8 +18,7 @@ async function getAuthenticatedUser(request) {
 
 function reportError(error, operation) {
   console.error(operation, error);
-  const detail = [error?.message, error?.code ? `code: ${error.code}` : ''].filter(Boolean).join(' / ');
-  return NextResponse.json({ error: detail || '不明なエラーが発生しました。' }, { status: 500 });
+  return NextResponse.json({ error: 'プロフィールの処理に失敗しました。しばらくしてから再試行してください。' }, { status: 500 });
 }
 
 export async function GET(request) {
