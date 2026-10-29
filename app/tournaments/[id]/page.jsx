@@ -164,7 +164,14 @@ export default function TournamentPage() {
     try {
       const client = getSupabaseBrowserClient();
       channel = client.channel(`tournament-updates:${id}`);
-      channel.on('broadcast', { event: 'changed' }, () => { void refresh(); });
+      // Postgres Changes requires the tournaments table in the Supabase
+      // Realtime publication. If it is not enabled, the 4s fallback remains.
+      channel.on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'tournaments',
+        filter: `id=eq.${id}`,
+      }, () => { void refresh(); });
       channel.subscribe(status => {
         realtimeConnected = status === 'SUBSCRIBED';
         if (status === 'SUBSCRIBED') void refresh();
