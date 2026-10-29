@@ -37,12 +37,11 @@ export default function Home() {
     if (snapshot) { setTournaments(snapshot); setLoading(false); return () => { active = false; }; }
     const cached = readTournamentCache();
     if (cached) { setTournaments(cached); setLoading(false); }
-    fetch('/api/tournaments', { cache: 'no-store' })
+    fetch('/api/tournaments?view=summary', { cache: 'no-store' })
       .then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
-        writeTournamentCache(latest);
         writeTabSnapshot('home', latest);
         if (active) { setTournaments(latest); setLoadError(''); }
       })
