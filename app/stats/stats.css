@@ -2388,7 +2388,7 @@ footer span {
 .stats-shell .characterUsageSection .characterTopList{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;width:100%;max-width:100%}
 .stats-shell .characterUsageSection .characterTopList .characterTopCard{display:flex;width:100%;min-width:0;min-height:48px;padding:6px 4px;box-sizing:border-box;align-items:center;justify-content:center;align-self:stretch;text-align:center;font-size:13px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;word-break:normal}
 @media(max-width:700px){
- .stats-shell .characterUsageSection .characterTopList{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .stats-shell .characterUsageSection .characterTopList{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
  .stats-shell .characterUsageSection .characterTopList .characterTopCard{display:flex;width:100%;max-width:none;min-height:48px;padding:6px 3px;font-size:12px;justify-content:center;align-self:stretch}
  .stats-shell .characterUsageSection .characterTopList .characterTopCard:nth-child(n + 4){display:flex}
 }
