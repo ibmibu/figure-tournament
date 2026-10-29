@@ -2436,7 +2436,7 @@ footer span {
 /* Desktop fighter grid: make both sections span the full available row. */
 @media(min-width:701px){
  .stats-shell .characterUsageGrid{width:100%;align-items:stretch}
- .stats-shell .characterUsageGrid>.characterUsageSection{flex:0 0 100%;width:100%;max-width:100%;align-items:stretch;box-sizing:border-box}
+ .stats-shell .characterUsageGrid>.characterUsageSection{flex:0 0 auto;width:100%;max-width:100%;align-items:stretch;box-sizing:border-box}
  .stats-shell .characterUsageGrid>.characterUsageSection .characterTopList,
  .stats-shell .characterUsageGrid>.characterUsageSection .characterSoloList{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;max-width:100%;gap:8px}
  .stats-shell .characterUsageGrid .characterTopCard{width:100%;min-width:0}
