@@ -93,6 +93,7 @@ export default function NewTournamentPage() {
   const [customStageName, setCustomStageName] = useState('');
   const [stageRejects, setStageRejects] = useState(false);
   const [autoSeed, setAutoSeed] = useState(false);
+  const [characterDeclaration, setCharacterDeclaration] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
   const [counterpickStages, setCounterpickStages] = useState([...DEFAULT_COUNTERPICKS]);
   const [firstPlayerRejects, setFirstPlayerRejects] = useState(1);
@@ -128,6 +129,7 @@ export default function NewTournamentPage() {
         setSelectedStages(Array.isArray(t.stages) ? t.stages : [...STAGES]);
         setStageRejects(Boolean(t.stageRejects));
         setAutoSeed(Boolean(t.autoSeed));
+        setCharacterDeclaration(Boolean(t.characterDeclaration));
         setStarterStages(t.stageSettings?.starterStages || [...DEFAULT_STARTERS]);
         setCounterpickStages(t.stageSettings?.counterpickStages || [...DEFAULT_COUNTERPICKS]);
         setFirstPlayerRejects(Number(t.stageSettings?.firstPlayerRejects) || 1);
@@ -208,6 +210,7 @@ export default function NewTournamentPage() {
       stages: selectedStages,
       stageRejects,
       autoSeed,
+      characterDeclaration,
       stageSettings: stageRejects ? {
         starterStages: effectiveStarters,
         counterpickStages: effectiveCounterpicks,
@@ -265,6 +268,15 @@ export default function NewTournamentPage() {
             <button type="button" className={format === 3 ? 'format-option selected' : 'format-option'} aria-pressed={format === 3} onClick={() => setFormat(3)}><strong>BO3</strong><small>2本先取</small></button>
             <button type="button" className={format === 5 ? 'format-option selected' : 'format-option'} aria-pressed={format === 5} onClick={() => setFormat(5)}><strong>BO5</strong><small>3本先取</small></button>
           </div>
+        </fieldset>
+
+        <fieldset className="setup-group">
+          <legend>キャラ宣言</legend>
+          <div className="format-options">
+            <button type="button" className={!characterDeclaration ? 'format-option selected' : 'format-option'} aria-pressed={!characterDeclaration} onClick={() => setCharacterDeclaration(false)}>なし</button>
+            <button type="button" className={characterDeclaration ? 'format-option selected' : 'format-option'} aria-pressed={characterDeclaration} onClick={() => setCharacterDeclaration(true)}>あり</button>
+          </div>
+          {characterDeclaration && <small className="setting-help">参加者が使用キャラクターと1P〜8Pカラーを宣言します。送信後は変更できません。</small>}
         </fieldset>
 
         <label>参加人数
