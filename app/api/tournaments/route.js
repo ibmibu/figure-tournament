@@ -123,7 +123,15 @@ export async function GET(request) {
     }
     const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').order('created_at', { ascending: false });
     if (error) throw error;
-    const rows = data || [];
+    const allRows = data || [];
+    const summaryMode = searchParams.get('view') === 'summary';
+    const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    const rows = summaryMode ? allRows.filter(row => {
+      const t = row.data || {};
+      const finished = t.bracket?.complete === true || ['終了', '終了済み', '大会終了'].includes(t.status);
+      const timestamp = Date.parse(t.completedAt || t.date || '');
+      return !finished || (Number.isFinite(timestamp) && timestamp >= cutoff);
+    }) : allRows;
     const ownerIds = [...new Set(rows.map(row => row.data?.ownerUserId).filter(Boolean))];
     let ownerNames = new Map();
     if (ownerIds.length) {
@@ -132,7 +140,13 @@ export async function GET(request) {
       else ownerNames = new Map((profiles || []).map(profile => [profile.user_id, profile.display_name]));
     }
     return NextResponse.json({ tournaments: rows.map(row => ({
-      ...publicTournament(row, user),
+      ...(summaryMode ? {
+        id: row.data?.id || row.id, name: row.data?.name, format: row.data?.format,
+        date: row.data?.date, participants: row.data?.participants,
+        joinedPlayers: Array.isArray(row.data?.joinedPlayers) ? Array(row.data.joinedPlayers.length).fill(null) : [],
+        status: row.data?.status, completedAt: row.data?.completedAt,
+        bracket: { complete: row.data?.bracket?.complete === true },
+      } : publicTournament(row, user)),
       organizerName: ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || ''
     })) });
   } catch (error) {
