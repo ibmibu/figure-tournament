@@ -609,7 +609,7 @@ export default function TournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '巻き戻せませんでした。');
-      setTournament(result.tournament);
+      applyTournamentSnapshot(result.tournament);
       setAdminMatchSelection(null);
       setActiveMatchId('');
       setNotice('直前の主催者操作を巻き戻しました。');
@@ -862,8 +862,8 @@ export default function TournamentPage() {
               <button type="button" onClick={() => setShowAdminLog(value => !value)}>{showAdminLog ? 'ログを閉じる' : 'ログを見る'}</button>
               <button type="button" disabled={savingBracket || !tournament.adminHistory?.length} onClick={undoAdminAction}>巻き戻し</button>
             </div>
-            {showAdminLog && <div className="bracket-admin-history-list">{(tournament.adminLog || []).length
-              ? [...tournament.adminLog].reverse().map((entry, index) => <div className="bracket-admin-log-entry" key={index}><span className="bracket-admin-log-dot" /><div><time>{new Date(entry.at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time><p><strong>主催者：</strong>{entry.label}</p></div></div>)
+            {showAdminLog && <div className="bracket-admin-history-list">{(tournament.adminLog || tournament.adminHistory || []).length
+              ? [...(tournament.adminLog || tournament.adminHistory || [])].reverse().map((entry, index) => <div className="bracket-admin-log-entry" key={index}><span className="bracket-admin-log-dot" /><div><time>{new Date(entry.at).toLocaleString('ja-JP', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</time><p><strong>主催者：</strong>{entry.label}</p></div></div>)
               : <p>操作履歴はありません。</p>}</div>}
             <div className="bracket-admin-actions">
               {selectedAdminMatch.winnerId || selectedAdminMatch.matchState ? <button type="button" className="bracket-admin-reset" disabled={savingBracket} onClick={() => administerMatch(selectedAdminMatch, 'reset')}>結果をリセット</button> : null}
