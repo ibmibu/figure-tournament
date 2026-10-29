@@ -166,7 +166,7 @@ export default function TournamentPage() {
       channel = client.channel(`tournament-updates:${id}`);
       // Postgres Changes requires the tournaments table in the Supabase
       // Realtime publication. If it is not enabled, the 4s fallback remains.
-      channel.on('postgres_changes', {
+      if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') channel.on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'tournaments',
@@ -182,7 +182,8 @@ export default function TournamentPage() {
     // Keep the existing 4-second polling as a fail-safe. Only reduce it to a
     // 30-second consistency check while the notification channel is connected.
     const interval = setInterval(() => {
-      // Do not slow polling until every write path publishes notifications.\n      const intervalMs = realtimeConnected && process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true' ? 30000 : 4000;
+      // Do not slow polling until every write path publishes notifications.
+      const intervalMs = realtimeConnected && process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true' ? 30000 : 4000;
       if (Date.now() - lastSync >= intervalMs) void refresh();
     }, 4000);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
