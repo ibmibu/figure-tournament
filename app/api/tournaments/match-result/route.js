@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getBracketPlacements } from '../../../../lib/tournament-bracket-admin';
+import { appendMatchLog } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -109,6 +110,7 @@ export async function POST(request) {
       }
       bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
       const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
+      appendMatchLog(updated, current, matchId, actorPlayer.name, `第${gameNumber}ゲーム ${result === 'win' ? '勝利' : '敗北'}報告${found.winnerId ? '・セット確定' : ''}`);
       const { data: changed, error: writeError } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
       if (writeError) throw writeError;
       if (changed?.length) return NextResponse.json({ ok: true, tournament: safeTournament(updated, user) });
