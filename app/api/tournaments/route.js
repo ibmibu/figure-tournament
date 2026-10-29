@@ -121,6 +121,7 @@ export async function GET(request) {
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
       return NextResponse.json({ tournament: publicTournament(data, user, legacyOwnerToken) });
     }
+    const summaryOnly = searchParams.get('view') === 'summary';
     const { data, error } = await supabase.from('tournaments').select('id,data,owner_token,created_at').order('created_at', { ascending: false });
     if (error) throw error;
     const rows = data || [];
@@ -131,10 +132,19 @@ export async function GET(request) {
       if (profileError) console.error('Tournament organizer names could not be loaded:', profileError);
       else ownerNames = new Map((profiles || []).map(profile => [profile.user_id, profile.display_name]));
     }
-    return NextResponse.json({ tournaments: rows.map(row => ({
-      ...publicTournament(row, user),
-      organizerName: ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || ''
-    })) });
+    return NextResponse.json({ tournaments: rows.map(row => {
+      const tournament = publicTournament(row, user);
+      const organizerName = ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || '';
+      if (!summaryOnly) return { ...tournament, organizerName };
+      return {
+        id: row.id, name: tournament.name, format: tournament.format,
+        date: tournament.date, participants: tournament.participants,
+        status: tournament.status, completedAt: tournament.completedAt,
+        bracket: { complete: tournament.bracket?.complete === true },
+        joinedPlayers: Array.from({ length: tournament.joinedPlayers?.length || 0 }, () => ({})),
+        organizerName,
+      };
+    }) });
   } catch (error) {
     return errorResponse(error, '大会データを読み込めませんでした。Supabaseの設定を確認してください。');
   }
