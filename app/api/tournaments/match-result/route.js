@@ -10,6 +10,7 @@ const fail = (error, status = 400) => NextResponse.json({ error }, { status });
 
 function safeTournament(data, user) {
   const { ownerId, ownerUserId, adminHistory, adminLog, ...publicData } = data;
+  publicData.matchLogs = (data.matchLogs || []).map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
   const isOwner = ownerUserId === user.id;
   const visible = new Set([String(user.id)]);
   for (const match of (data.bracket?.rounds || []).flat()) {
