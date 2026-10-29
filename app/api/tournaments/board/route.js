@@ -55,6 +55,12 @@ export async function POST(request) {
     const organizer = String(tournament.ownerUserId || '') === String(user.id);
     const player = (tournament.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === String(user.id));
     if (!organizer && !player) return fail('主催者と大会参加者のみ投稿できます。', 403);
+    // Per-account cooldown limits casual flooding without changing normal board behavior.
+    const since = new Date(Date.now() - 5000).toISOString();
+    const { data: recent, error: recentError } = await db.from('tournament_board_messages')
+      .select('id').eq('author_id', user.id).gte('created_at', since).limit(1);
+    if (recentError) return databaseFailure(recentError, '投稿制限の確認');
+    if (recent?.length) return fail('連続投稿は5秒以上あけてください。', 429);
     const authorName = String(player?.name || user.user_metadata?.full_name || user.user_metadata?.name || '主催者').trim().slice(0, 80);
     const { error } = await db.from('tournament_board_messages').insert({
       tournament_id: tournamentId, author_id: user.id, author_name: authorName,

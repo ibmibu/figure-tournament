@@ -18,7 +18,7 @@ export async function POST(request) {
     if (authError || !authData?.user) return NextResponse.json({ error: 'ログインし直してください。' }, { status: 401 });
 
     const { id, friendCode: submittedFriendCode } = await request.json();
-    if (!id) return NextResponse.json({ error: '大会IDがありません。' }, { status: 400 });
+    if (typeof id !== 'string' || !id || id.length > 128) return NextResponse.json({ error: '大会IDが正しくありません。' }, { status: 400 });
 
     const supabase = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: profile, error: profileError } = await supabase.from('profiles').select('display_name,friend_code').eq('user_id', authData.user.id).maybeSingle();
@@ -46,8 +46,15 @@ export async function POST(request) {
     }
 
     const joinedPlayers = [...players, { id: authData.user.id, userId: authData.user.id, name, friendCode, joinedAt: new Date().toISOString() }];
-    const { error: updateError } = await supabase.from('tournaments').update({ data: { ...tournament, joinedPlayers } }).eq('id', String(id));
+    // Optimistic concurrency control prevents simultaneous joins from overwriting
+    // another participant or bypassing the configured capacity.
+    const { data: updated, error: updateError } = await supabase.from('tournaments')
+      .update({ data: { ...tournament, joinedPlayers } })
+      .eq('id', String(id))
+      .eq('data', JSON.stringify(tournament))
+      .select('id');
     if (updateError) throw updateError;
+    if (!updated?.length) return NextResponse.json({ error: '他の参加登録が先に保存されました。更新して再試行してください。' }, { status: 409 });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('POST /api/tournaments/join failed:', error);
