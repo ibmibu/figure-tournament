@@ -1607,3 +1607,16 @@ body .home-format-badge{border-radius:4px!important}
 .tournament-detail-page #tournament-overview>.overview-stream-link>span{font-size:13px;color:#6c7889;font-weight:600}
 .tournament-detail-page #tournament-overview>.overview-stream-link>a{color:#3170b8;text-decoration:underline;overflow-wrap:anywhere;word-break:break-word}
 @media(max-width:600px){.tournament-detail-page #tournament-overview>.overview-actions>.overview-edit-link,.tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{flex-basis:85px;width:85px}}
+
+/* Keep posted comments visually separate from the editor, without nested boxes. */
+.tournament-board-entry.tournament-board-latest .tournament-board-message{
+  border:0;
+  border-left:3px solid #cbc3e3;
+  border-radius:0;
+  background:transparent;
+  padding:8px 12px;
+  max-height:none;
+  overflow:visible;
+}
+.tournament-board-form{margin-top:12px}
+.tournament-board-form textarea{border-radius:8px;min-height:76px}
