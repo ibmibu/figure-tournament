@@ -52,10 +52,13 @@ export default function PlayerResultsPage() {
     <section className="my-results">
       {loading ? <p className="setting-help">読み込み中…</p> : error ? <p className="form-error" role="alert">{error}</p> : items.length === 0 ? <p className="setting-help">参加大会はまだありません。</p> : <div className="results-table">
         {items.map(({ tournament: t, player }) => <div className="results-table-row" key={t.id}>
-          {t.isLegacy ? <span className="results-table-name"> : <Link href={`/tournaments/${encodeURIComponent(t.id)}`} className="results-table-name">
-            <span className="results-participant-count">{formatDate(t.date)} ・ 参加者{t.isLegacy ? t.participantCount : (t.joinedPlayers || []).length}名</span>
+          {t.isLegacy ? <span className="results-table-name">
+            <span className="results-participant-count">{formatDate(t.date)} ・ 参加者{t.participantCount}名</span>
             <span className="results-tournament-title">{t.name}</span>
-          {t.isLegacy ? </span> : </Link>}
+          </span> : <Link href={`/tournaments/${encodeURIComponent(t.id)}`} className="results-table-name">
+            <span className="results-participant-count">{formatDate(t.date)} ・ 参加者{(t.joinedPlayers || []).length}名</span>
+            <span className="results-tournament-title">{t.name}</span>
+          </Link>}
           <span className={`results-table-placement${(t.isLegacy ? t.myPlacement : placement(t, player)) === '優勝' ? ' results-placement-winner' : ''}`}>{t.isLegacy ? (['優勝', '準優勝', '3位'].includes(t.myPlacement) ? t.myPlacement : '') : t.bracket?.complete ? placement(t, player) : '進行中・開催予定'}</span>
         </div>)}
       </div>}
