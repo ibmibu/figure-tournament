@@ -16,10 +16,22 @@ function formatDate(value) {
 
 // Past 人形劇 tournaments use their series number as the chronological source of truth.
 // Some archived dates are missing or inconsistent, so don't sort them by parsed dates.
+function legacyNumber(item) {
+  const fromId = String(item.id || '').match(/^legacy-(\d+)$/);
+  const fromName = String(item.name || '').match(/人形劇\s*[#＃]\s*(\d+)/);
+  return Number(item.number || fromId?.[1] || fromName?.[1]) || 0;
+}
+
+function isLegacyParticipation(item) {
+  return Boolean(item.isLegacy || String(item.id || '').startsWith('legacy-'));
+}
+
 function sortParticipations(items) {
   return [...items].sort((a, b) => {
-    if (a.isLegacy && b.isLegacy) return (Number(b.number) || 0) - (Number(a.number) || 0);
-    if (a.isLegacy !== b.isLegacy) return a.isLegacy ? 1 : -1;
+    const aLegacy = isLegacyParticipation(a);
+    const bLegacy = isLegacyParticipation(b);
+    if (aLegacy && bLegacy) return legacyNumber(b) - legacyNumber(a);
+    if (aLegacy !== bLegacy) return aLegacy ? 1 : -1;
     const dateA = Date.parse(a.date || a.createdAt || '') || 0;
     const dateB = Date.parse(b.date || b.createdAt || '') || 0;
     return dateB - dateA || (Number(b.number) || 0) - (Number(a.number) || 0);
@@ -41,9 +53,9 @@ export default function ResultsPage() {
           window.location.href = '/login?next=/results';
           return;
         }
-        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(sortParticipations(saved.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); } } catch {}
-        const snapshot = readTabSnapshot('results-' + session.user.id);
-        if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); return; }
+        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(sortParticipations(saved.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); } } catch {}
+        const snapshot = readTabSnapshot('results-v3-' + session.user.id);
+        if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); }
         const headers = { Authorization: `Bearer ${session.access_token}` };
         const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -77,9 +89,9 @@ export default function ResultsPage() {
           const inferredPlace = isChampion ? '優勝' : finalist ? '準優勝' : isSemifinalist ? '3位' : '';
           return { ...item, myPlacement: placement || inferredPlace };
         });
-        const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => item.isLegacy); } catch { return []; } })();
+        const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => isLegacyParticipation(item)); } catch { return []; } })();
         const combined = sortParticipations([...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)]);
-        if (active) { setTournaments(combined); writeTabSnapshot('results-' + session.user.id, combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
+        if (active) { setTournaments(combined); writeTabSnapshot('results-v3-' + session.user.id, combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
