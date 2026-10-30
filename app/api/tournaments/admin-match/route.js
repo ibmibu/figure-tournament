@@ -82,8 +82,16 @@ export async function POST(request) {
       return NextResponse.json({ error: error.message || '対戦結果を変更できませんでした。' }, { status: 400 });
     }
 
-    const { data: changed, error: writeError } = await admin.from('tournaments')
-      .update({ data: updated }).eq('id', String(id)).eq('data', JSON.stringify(existing)).select('id');
+    // Share the compact revision guard with stage actions, result reports and stream changes.
+    // Comparing the entire tournament JSON can exceed request URL limits as match logs grow.
+    const revision = Number.isSafeInteger(existing.stageActionRevision) && existing.stageActionRevision >= 0
+      ? existing.stageActionRevision : null;
+    updated.stageActionRevision = (revision ?? 0) + 1;
+    let update = admin.from('tournaments').update({ data: updated }).eq('id', String(id));
+    update = revision === null
+      ? update.is('data->>stageActionRevision', null)
+      : update.eq('data->>stageActionRevision', String(revision));
+    const { data: changed, error: writeError } = await update.select('id');
     if (writeError) throw writeError;
     if (!changed?.length) return NextResponse.json({ error: '別の操作が先に保存されました。再読み込みしてください。' }, { status: 409 });
     const { ownerUserId, ownerId, ...publicTournament } = updated;
