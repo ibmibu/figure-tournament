@@ -1,15 +1,34 @@
 import { ImageResponse } from 'next/og';
-export const runtime = 'edge';
-export const alt = 'アミコネ | amiibo大会プラットフォーム';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
+export const runtime = 'nodejs';
+export const alt = 'アミコネ | 大会開催・大会参加・戦績管理';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-export default function Image() {
+
+export default async function Image() {
+  let logo = '';
+  try {
+    const svg = await readFile(path.join(process.cwd(), 'public', 'amiconne-logo.svg'), 'utf8');
+    logo = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
+  } catch {}
+
   return new ImageResponse(
-    <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', justifyContent:'center', padding:80, background:'#f5f7fa', color:'#17233a', borderTop:'28px solid #6045a8' }}>
-      <div style={{ fontSize:95, fontWeight:900, letterSpacing:3 }}>アミコネ</div>
-      <div style={{ width:160, height:9, background:'#6045a8', marginTop:28, marginBottom:34 }} />
-      <div style={{ fontSize:40, fontWeight:700 }}>amiibo大会を、もっと楽しく。</div>
-      <div style={{ fontSize:27, marginTop:24, color:'#667085' }}>大会の開催・参加・戦績管理</div>
-    </div>, size
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#ffffff', color: '#6045a8' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 170, width: 850 }}>
+        {logo
+          ? <img src={logo} alt="アミコネ" width={720} height={124} style={{ objectFit: 'contain' }} />
+          : <div style={{ fontSize: 100, fontWeight: 900, color: '#171717' }}>アミコネ</div>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28, marginTop: 54, fontSize: 29, fontWeight: 600 }}>
+        <div>大会開催</div>
+        <div style={{ color: '#c4b5d9', fontWeight: 400 }}>/</div>
+        <div>大会参加</div>
+        <div style={{ color: '#c4b5d9', fontWeight: 400 }}>/</div>
+        <div>戦績管理</div>
+      </div>
+    </div>,
+    size
   );
 }
