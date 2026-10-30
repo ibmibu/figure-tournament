@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { updateBracketMatch } from '../../../../lib/tournament-bracket-admin';
-import { appendMatchLog } from '../../../../lib/tournament-match-log';
+import { appendMatchLog, rewindMatchPath } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,9 +45,8 @@ export async function POST(request) {
         const entries = existing.matchLogs || [];
         const index = entries.findIndex(item => item.id === log.id);
         if (index < 0) throw new Error('巻き戻す履歴が見つかりません。');
-        if (JSON.stringify(existing.bracket) !== JSON.stringify(entries.at(-1)?.afterBracket)) throw new Error('対戦状態が変わりました。再読み込みしてください。');
-        updated = { ...existing, ...log.before, matchLogs: entries.slice(0, index), adminHistory: [] };
-        updated.adminLog = [...(existing.adminLog || []), { at: new Date().toISOString(), label: `履歴を巻き戻し（${entries.length - index}操作）：${log.actor} ${log.action}` }].slice(-100);
+        updated = rewindMatchPath(existing, matchId, logId);
+        updated.adminLog = [...(existing.adminLog || []), { at: new Date().toISOString(), label: `対戦履歴を巻き戻し：${log.actor} ${log.action}` }].slice(-100);
       } else if (action === 'undo') {
         const latest = history.at(-1);
         if (!latest?.before) throw new Error('巻き戻せる主催者操作がありません。');
