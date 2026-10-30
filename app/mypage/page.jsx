@@ -158,7 +158,7 @@ export default function MyPage({ colorsOnly = false }) {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { setError('画像ファイルを選択してください。'); return; }
-    if (file.size > 1024 * 1024) { setError('画像は1MB以下にしてください。'); return; }
+    if (file.size > 5 * 1024 * 1024) { setError('画像は5MB以下にしてください。'); return; }
     try {
       const dataUrl = await new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -222,7 +222,7 @@ export default function MyPage({ colorsOnly = false }) {
             <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
             <label>フレンドコード<input value={draftFriendCode} onChange={e => setDraftFriendCode(e.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" /></label>
             <label>アイコン画像<input type="file" accept="image/*" onChange={chooseImage} /></label>
-            <p className="setting-help">画像は1MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
+            <p className="setting-help">画像は5MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
             <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
           </form>}
         </section>
