@@ -1545,7 +1545,7 @@ body>.bottom-tab-bar{visibility:visible;opacity:1;z-index:50}
 }
 
 /* Global square-corner design: retain rounding only on actual buttons. */
-body :not(button):not([role="button"]):not(.tierBadge):not(.achievementTier):not(.recentResult):not(.characterSoloCount):not(.home-format-badge):not(.overview-edit-link):not(.create-switch-track):not(.create-help-icon){border-radius:0!important}
+body :not(button):not([role="button"]):not(.tierBadge):not(.achievementTier):not(.recentResult):not(.characterSoloCount):not(.home-format-badge):not(.overview-edit-link):not(.create-switch-track):not(.create-help-icon):not(.bracket-admin-log-dot){border-radius:0!important}
 
 /* Only these non-button badges retain subtle rounding. */
 body :is(.tierBadge,.recentResult,.characterSoloCount){border-radius:4px!important}
@@ -1721,4 +1721,20 @@ body .tournament-create-page .create-help summary{border-radius:50%!important}
 .tournament-create-page .create-help:not([open]) .create-help-popover{display:none}
 @media(max-width:640px){
  .tournament-create-page .create-help-popover{width:min(280px,100%);right:0}
+}
+
+/* Compact match timeline controls and round status markers. */
+.tournament-detail-page .bracket-admin-log-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tournament-detail-page .bracket-admin-rewind-mini{
+  width:auto!important;min-height:0!important;height:auto!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  padding:2px 8px!important;margin:0!important;
+  font-size:11px!important;font-weight:600!important;line-height:1.5!important;
+  border:1px solid #b8c8d8!important;background:#fff!important;color:#3170b8!important;
+  box-shadow:none!important;white-space:nowrap;
+}
+.tournament-detail-page .bracket-admin-rewind-mini:disabled{opacity:.45}
+body .tournament-detail-page .bracket-admin-log-dot{
+  display:inline-block;flex-shrink:0;width:10px;height:10px;
+  border-radius:50%!important;
 }
