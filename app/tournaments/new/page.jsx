@@ -306,7 +306,7 @@ export default function NewTournamentPage() {
         </fieldset>
 
         <fieldset className="setup-group">
-          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">拒否ステージ</span><details className="create-help"><summary aria-label="拒否ステージの説明">?</summary><span className="create-help-popover">対戦前にステージを拒否し、残ったステージから選択します。ありにすると詳細を設定できます。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{stageRejects ? 'あり' : 'なし'}</span><input type="checkbox" checked={stageRejects} onChange={event => setStageRejects(event.target.checked)} aria-label="拒否ステージ" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">拒否ステージ</span></span><label className="create-switch-control"><span className="create-switch-status">{stageRejects ? 'あり' : 'なし'}</span><input type="checkbox" checked={stageRejects} onChange={event => setStageRejects(event.target.checked)} aria-label="拒否ステージ" /><span className="create-switch-track" aria-hidden="true" /></label></div>
           {stageRejects && <div className="reject-settings">
             <p className="setting-help">使用ステージの中から、スターターとカウンターピックを選択してください。</p>
             <h3>スターターステージ</h3>
