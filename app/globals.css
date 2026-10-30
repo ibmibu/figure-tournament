@@ -1853,3 +1853,8 @@ body .tournament-detail-page .bracket-admin-log-dot{
 /* Match player names open their selected stats without changing the scorecard appearance. */
 .tournament-detail-page .player-strip .match-player-stats-link{color:inherit;text-decoration:none;font:inherit;font-weight:700;cursor:pointer}
 .tournament-detail-page .player-strip .match-player-stats-link:hover{text-decoration:underline;text-underline-offset:3px}
+
+/* Participant profile thumbnails */
+.tournament-detail-page .participant-side-panel .participant-name-with-avatar{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.tournament-detail-page .participant-side-panel .participant-avatar-square{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;min-width:30px;background:#e9e9ed;border:1px solid #d5d5dc;border-radius:0!important;overflow:hidden}
+.tournament-detail-page .participant-side-panel .participant-avatar-square img{display:block;width:100%;height:100%;object-fit:cover}
