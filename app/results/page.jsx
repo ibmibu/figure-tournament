@@ -96,6 +96,5 @@ export default function ResultsPage() {
         </div>}
       </section>
     </section>
-    <footer>アミコネ</footer>
   </main>;
 }
