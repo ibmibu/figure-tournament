@@ -882,7 +882,7 @@ export default function TournamentPage() {
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
         <div className="bracket-header"><h2>トーナメント表</h2></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
-        {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
+        {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。<div style={{ marginTop: 10 }}><a href={`/tournaments/${encodeURIComponent(id)}/overlay`} target="_blank" rel="noopener noreferrer">OBSスコアボードを開く</a><button type="button" style={{ marginLeft: 12 }} onClick={() => { navigator.clipboard.writeText(window.location.origin + '/tournaments/' + encodeURIComponent(id) + '/overlay').then(() => setNotice('OBS用URLをコピーしました。')).catch(() => setError('URLをコピーできませんでした。')); }}>OBS用URLをコピー</button></div></div>}
         {isOwner && selectedAdminMatch && <div className="bracket-admin-modal-backdrop" onClick={() => { if (!savingBracket) { setAdminMatchSelection(null); setShowForfeitChoices(false); } }}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="主催者の対戦管理" onClick={event => event.stopPropagation()}>
           <div className="bracket-admin-heading">
             <strong>選択中：{selectedAdminMatch.player1?.name || '未定'} VS {selectedAdminMatch.player2?.name || '未定'}</strong>
