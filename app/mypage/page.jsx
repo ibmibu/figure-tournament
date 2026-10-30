@@ -157,8 +157,11 @@ export default function MyPage({ colorsOnly = false }) {
   async function chooseImage(event) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('画像ファイルを選択してください。'); return; }
+    setError('');
     if (file.size > 5 * 1024 * 1024) { setError('画像は5MB以下にしてください。'); return; }
+    if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name)) {
+      setError('画像ファイルを選択してください。'); return;
+    }
     try {
       const dataUrl = await new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
@@ -173,19 +176,26 @@ export default function MyPage({ colorsOnly = false }) {
             const context = canvas.getContext('2d');
             if (!context) throw new Error('画像を処理できません。');
             context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            const output = canvas.toDataURL('image/webp', 0.82);
-            if (!output.startsWith('data:image/webp;')) throw new Error('WebPへの変換に対応していません。');
+            let output = canvas.toDataURL('image/webp', 0.82);
+            if (!output.startsWith('data:image/webp;')) output = canvas.toDataURL('image/jpeg', 0.82);
+            if (!output.startsWith('data:image/')) throw new Error('画像の変換に失敗しました。');
             resolve(output);
           } catch (error) { reject(error); }
           finally { URL.revokeObjectURL(url); }
         };
-        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めません。')); };
+        image.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error(/\.(heic|heif)$/i.test(file.name) || /hei[cf]/i.test(file.type)
+            ? 'この端末ではHEIC画像を読み込めません。JPEGまたはPNGに変換してから選択してください。'
+            : '画像を読み込めません。JPEG、PNG、WebP形式の画像を試してください。'));
+        };
         image.src = url;
       });
       setDraftAvatar(dataUrl);
-      setError('');
-    } catch {
-      setError('画像を読み込めませんでした。');
+    } catch (error) {
+      setError(error?.message || '画像を読み込めませんでした。');
+    } finally {
+      event.target.value = '';
     }
   }
 
