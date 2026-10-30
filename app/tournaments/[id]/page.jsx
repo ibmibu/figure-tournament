@@ -823,12 +823,11 @@ export default function TournamentPage() {
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span></div>}
 
             <div className="game-top">
-              <div className="game-heading"><span className="eyebrow">ROUND {ri + 1} / GAME {state?.gameNumber || 1}</span></div>
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
             </div>
             <div className="player-strip">
-              <div className={state?.currentGame?.firstPlayerId === p1Id ? "current" : ""}><small>PLAYER 1</small><b>{match.player1.name}</b></div>
-              <div className={state?.currentGame?.firstPlayerId === match.player2.id ? "current" : ""}><small>PLAYER 2</small><b>{match.player2.name}</b></div>
+              <div ><small>PLAYER 1</small><b>{match.player1.name}</b></div>
+              <div ><small>PLAYER 2</small><b>{match.player2.name}</b></div>
             </div>
             {(() => {
               const isStreaming = String(streamMatchId) === String(match.id);
@@ -882,7 +881,7 @@ export default function TournamentPage() {
         {boardError && <p className="form-error" role="alert">{boardError.replaceAll('掲示板', 'コメント')}</p>}
       </section>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
-        <div className="bracket-header"><h2>トーナメント表</h2><span className="status">{tournament.bracket.complete ? '結果確定' : '対戦中'}</span></div>
+        <div className="bracket-header"><h2>トーナメント表</h2></div>
         <p className="setting-help">大会作成時に設定したBO形式・使用ステージ・拒否数に従って各ゲームを進めます。ゲーム結果を記録するとセット勝者が次のラウンドへ進みます。</p>
         {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
         {isOwner && selectedAdminMatch && <div className="bracket-admin-modal-backdrop" onClick={() => { if (!savingBracket) { setAdminMatchSelection(null); setShowForfeitChoices(false); } }}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="主催者の対戦管理" onClick={event => event.stopPropagation()}>
