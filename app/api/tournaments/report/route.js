@@ -1,3 +1,4 @@
+import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
@@ -30,7 +31,7 @@ export async function POST(request) {
   const wins=rounds.flat().filter(m=>String(m.winnerId)===String(player.id)&&m.player1&&m.player2&&m.resultType!=='forfeit').length;
   if(![...podium].some(v=>String(v)===String(player.id))||wins<1)return NextResponse.json({error:'1勝以上かつ3位以内の選手のみ報告できます。'},{status:403});
   const updated={...t,characterReports:{...(t.characterReports||{}),[String(player.id)]:{characters}}};
-  const {data:changed,error:writeError}=await admin.from('tournaments').update({data:updated}).eq('id',String(id)).eq('data',JSON.stringify(t)).select('id');
+  const {data:changed,error:writeError}=await saveTournamentRevision(admin,id,t,updated);
   if(writeError)throw writeError;
   if(!changed?.length)return NextResponse.json({error:'他の更新が先に保存されました。再試行してください。'},{status:409});
   return NextResponse.json({ok:true});
