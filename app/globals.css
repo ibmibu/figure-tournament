@@ -1861,3 +1861,7 @@ body .tournament-detail-page .bracket-admin-log-dot{
 
 /* OBS overlay setup is intended for desktop streamers only. */
 @media(max-width:767px){.obs-overlay-desktop-controls{display:none!important}}
+
+/* My Page: organizer-only OBS URL action matches the two navigation rows, desktop only. */
+.mypage-layout .mypage-overlay-copy{width:100%;background:transparent!important;border:0!important;border-bottom:1px solid #dfe3e8!important;border-radius:0!important;box-shadow:none!important;text-align:left;font-family:inherit;cursor:pointer}
+@media(max-width:767px){.mypage-layout .mypage-overlay-copy{display:none!important}}
