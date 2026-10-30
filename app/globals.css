@@ -1921,3 +1921,9 @@ body .tournament-detail-page .bracket-admin-log-dot{
  .tournament-detail-page #tournament-overview>.overview-actions>.overview-join-form{flex-basis:100%;order:1}
  .tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{order:2;margin-left:auto}
 }
+
+/* Keep the complete friend code on one line, independent of the edit link. */
+.mypage-layout .mypage-minimal-profile>.mypage-friend-code{display:block;margin:8px 0 0 86px;white-space:nowrap;overflow-wrap:normal;word-break:normal;font-size:12px;line-height:1.6}
+@media(max-width:600px){
+ .mypage-layout .mypage-minimal-profile>.mypage-friend-code{margin-left:0;font-size:12px}
+}
