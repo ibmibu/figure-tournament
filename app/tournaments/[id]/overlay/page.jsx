@@ -4,7 +4,9 @@ import { useParams } from 'next/navigation';
 
 export default function TournamentOverlay() {
   const params = useParams();
-  const id = String(params.id || '');
+  const id = String(params?.id || '');
+  const [owner, setOwner] = useState('');
+  useEffect(() => { setOwner(new URLSearchParams(window.location.search).get('owner') || ''); }, []);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [debug, setDebug] = useState(false);
@@ -13,7 +15,7 @@ export default function TournamentOverlay() {
     let active = true;
     const refresh = async () => {
       try {
-        const response = await fetch('/api/tournaments/overlay?id=' + encodeURIComponent(id), { cache: 'no-store' });
+        const response = await fetch('/api/tournaments/overlay?' + (owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id)), { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
         if (active) { setData(result); setLoadError(''); }
@@ -22,7 +24,7 @@ export default function TournamentOverlay() {
     refresh();
     const timer = setInterval(refresh, 2000);
     return () => { active = false; clearInterval(timer); };
-  }, [id]);
+  }, [id, owner]);
   const match = data?.match;
   return <main className="obs-overlay-root">
     {debug && <div style={{ color: '#fff', background: '#333', padding: 12, fontSize: 16 }}>OBS診断：{loadError || (data === null ? '読み込み中' : match ? '配信台の対戦を取得しました' : data.status === 'unassigned' ? '配信台が未設定です' : '配信台の対戦が見つかりません')} / 大会ID：{id}</div>}
