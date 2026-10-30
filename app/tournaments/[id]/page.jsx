@@ -848,17 +848,12 @@ export default function TournamentPage() {
 {!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="コメント">
-        <div className="tournament-board-heading"><h2>コメント</h2><button type="button" className="tournament-board-toggle" aria-expanded={boardOpen} onClick={() => setBoardOpen(open => !open)}>{boardOpen ? '履歴を閉じる ▲' : '過去のコメント ▼'}</button></div>
-        {boardMessages.length ? <article className="tournament-board-entry tournament-board-latest">
-          <div className="tournament-board-meta"><strong>{boardMessages[boardMessages.length - 1].author_name}{boardMessages[boardMessages.length - 1].is_organizer ? '（主催者）' : ''}</strong><time dateTime={boardMessages[boardMessages.length - 1].created_at}>{new Date(boardMessages[boardMessages.length - 1].created_at).toLocaleString('ja-JP')}</time></div>
-          <p className="tournament-board-message">{boardMessages[boardMessages.length - 1].body}</p>
-        </article> : <p className="setting-help">まだコメントはありません。</p>}
-        {boardOpen && boardMessages.length > 1 && <div className="tournament-board-messages">
-          {boardMessages.slice(0, -1).map(message => <article className="tournament-board-entry" key={message.id}>
+        <div className="tournament-board-scroll" role="region" aria-label="コメント履歴" tabIndex={0}>
+          {boardMessages.length ? boardMessages.slice().reverse().map(message => <article className="tournament-board-entry" key={message.id}>
             <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
             <p className="tournament-board-message">{message.body}</p>
-          </article>)}
-        </div>}
+          </article>) : <p className="setting-help">まだコメントはありません。</p>}
+        </div>
         {(isOwner || (tournament.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentUserId))) ? <form className="tournament-board-form" onSubmit={postBoardMessage}>
           <textarea aria-label="コメント入力" value={boardText} maxLength={1000} onChange={event => setBoardText(event.target.value)} placeholder="コメントを入力" rows={3} />
           <div className="tournament-board-actions">
