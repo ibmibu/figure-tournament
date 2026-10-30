@@ -509,7 +509,7 @@ export default function TournamentPage() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
-      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner }));
+      // Preserve the current stream assignment if the result response omits it.\n      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner, streamMatchId: body.tournament.streamMatchId ?? prev?.streamMatchId ?? null, effectiveStreamMatchId: body.tournament.effectiveStreamMatchId ?? body.tournament.streamMatchId ?? prev?.effectiveStreamMatchId ?? prev?.streamMatchId ?? null }));
 
     } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
     finally { setSavingBracket(false); }
