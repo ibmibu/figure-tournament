@@ -826,8 +826,8 @@ export default function TournamentPage() {
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
             </div>
             <div className="player-strip">
-              <div ><small>PLAYER 1</small><b>{match.player1.name}</b></div>
-              <div ><small>PLAYER 2</small><b>{match.player2.name}</b></div>
+              <div><small>PLAYER 1</small>{match.player1.isDemo ? <b>{match.player1.name}</b> : <a href={`/stats?player=${encodeURIComponent(match.player1.name)}`} className="match-player-stats-link">{match.player1.name}</a>}</div>
+              <div><small>PLAYER 2</small>{match.player2.isDemo ? <b>{match.player2.name}</b> : <a href={`/stats?player=${encodeURIComponent(match.player2.name)}`} className="match-player-stats-link">{match.player2.name}</a>}</div>
             </div>
             {(() => {
               const isStreaming = String(streamMatchId) === String(match.id);
