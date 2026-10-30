@@ -9,7 +9,6 @@ export default function TournamentOverlay() {
   useEffect(() => {
     let active = true;
     const refresh = async () => {
-      if (document.visibilityState === 'hidden') return;
       try {
         const response = await fetch('/api/tournaments/overlay?id=' + encodeURIComponent(id), { cache: 'no-store' });
         if (!response.ok) return;
@@ -32,12 +31,12 @@ export default function TournamentOverlay() {
       <div className="obs-match-label">{data.name}　|　{match.round}　|　BO{match.bestOf}</div>
     </div>}
     <style jsx global>{`
-      html,body{background:transparent!important;margin:0!important;padding:0!important}
-      .obs-overlay-root{width:100%;min-height:140px;background:transparent!important;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif}
-      .obs-scoreboard{display:grid;grid-template-columns:minmax(160px,1fr) 66px 22px 66px minmax(160px,1fr);align-items:center;gap:5px;width:min(100%,960px);margin:0 auto;padding:8px 12px 28px;position:relative;background:transparent}
-      .obs-player{background:#17243b;padding:15px 16px;font-size:22px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:3px solid #67c1b0}
+      html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important}
+      .obs-overlay-root{width:100%;min-height:140px;background:transparent!important;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif;display:block!important;padding:0!important;margin:0!important}
+      .obs-scoreboard{box-sizing:border-box;display:grid;grid-template-columns:minmax(160px,1fr) 66px 22px 66px minmax(160px,1fr);align-items:center;gap:5px;width:min(100%,960px);margin:0 auto;padding:8px 12px 28px;position:relative;background:transparent}
+      .obs-scoreboard .obs-player{background:#17243b!important;padding:15px 16px;font-size:22px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:3px solid #67c1b0}
       .obs-player-left{text-align:right}.obs-player-right{text-align:left}
-      .obs-score{background:#3170b8;text-align:center;padding:10px 0;font-size:34px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+      .obs-scoreboard .obs-score{background:#3170b8!important;text-align:center;padding:10px 0;font-size:34px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
       .obs-dash{text-align:center;color:#fff;font-size:20px;text-shadow:0 1px 3px #000}
       .obs-match-label{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:13px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000}
     `}</style>
