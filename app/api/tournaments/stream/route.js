@@ -23,7 +23,7 @@ export async function POST(request) {
       if (matchId !== null && !(current.bracket?.rounds || []).flat().some(m => String(m.id) === matchId && m.player1 && m.player2 && !m.winnerId)) {
         return NextResponse.json({ error: '配信台に設定できる対戦ではありません。' }, { status: 400 });
       }
-      const updated = { ...current, streamMatchId: matchId };
+      const updated = { ...current, streamMatchId: matchId, streamMatchManual: true };
       const { data: changed, error } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
       if (error) throw error;
       if (changed?.length) return NextResponse.json({ ok: true, tournament: {
