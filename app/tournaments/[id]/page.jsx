@@ -449,7 +449,21 @@ export default function TournamentPage() {
         body: JSON.stringify({ id, matchId: match.id, action, ...extra }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || '対戦操作に失敗しました。');
+      if (!response.ok) {
+        if (response.status === 409) {
+          // A concurrent action may already have advanced the turn. Refresh
+          // instead of blindly resubmitting a potentially stale action.
+          const owner = localStorage.getItem(OWNER_KEY) || '';
+          const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
+            cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
+          });
+          if (latest.ok) {
+            const snapshot = await latest.json();
+            if (snapshot.tournament) applyTournamentSnapshot(snapshot.tournament);
+          }
+        }
+        throw new Error(response.status === 409 ? '他の操作が先に反映されました。最新の状態を確認して操作してください。' : (result.error || '対戦操作に失敗しました。'));
+      }
       const owner = localStorage.getItem(OWNER_KEY) || '';
       const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
         cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
