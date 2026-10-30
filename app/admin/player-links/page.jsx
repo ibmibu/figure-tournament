@@ -41,6 +41,6 @@ export default function PlayerLinks(){
  <button className="submit" disabled={busy||!selected||!publicUid} type="submit">{busy?'保存中…':'この選手の戦績を連携'}</button>
  </form></section>
  <section className="my-results"><h2>連携済み選手</h2>
- {links.length?links.map(link=>{const u=users.find(u=>u.user_id===link.user_id);return <div key={link.legacy_player_id} className="tournament-result-item"><span>旧ID：{link.legacy_player_id} → {u?.public_uid!=null?'UID:'+String(u.public_uid).padStart(4,'0'):'登録ユーザー'}</span><button type="button" onClick={()=>remove(link.legacy_player_id)}>解除</button></div>}):<p>連携はまだありません。</p>}
+ {links.length?links.map(link=>{const u=users.find(u=>u.user_id===link.user_id);const p=players.find(p=>p.id===link.legacy_player_id);return <div key={link.legacy_player_id} className="tournament-result-item"><span><strong>{p?.name||'選手名不明'}</strong>（旧ID：{link.legacy_player_id}） → <strong>{u?.display_name||'名前未登録'}</strong>（{u?.public_uid!=null?'UID:'+String(u.public_uid).padStart(4,'0'):'UID不明'}）</span><button type="button" onClick={()=>remove(link.legacy_player_id)}>解除</button></div>}):<p>連携はまだありません。</p>}
  </section></section></main>;
 }
