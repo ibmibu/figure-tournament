@@ -1933,3 +1933,15 @@ body .tournament-detail-page .bracket-admin-log-dot{
 .mypage-layout .mypage-signout-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:10px 16px;border:1px solid #dfe3e8;border-radius:6px;background:transparent;color:#5b6472;font:inherit;font-size:13px;font-weight:500;line-height:1.4;cursor:pointer}
 .mypage-layout .mypage-signout-button:hover{background:#f0f3f6;text-decoration:none}
 @media(max-width:600px){.mypage-layout .mypage-signout-section{margin-top:24px}}
+
+/* Keep participant registration and X sharing side by side. */
+.tournament-detail-page #tournament-overview>.overview-actions{flex-wrap:nowrap;align-items:center}
+.tournament-detail-page #tournament-overview>.overview-actions>.overview-join-form{flex:0 1 auto;width:auto;min-width:0;flex-wrap:nowrap}
+.tournament-detail-page #tournament-overview .overview-join-form>.submit{flex:0 0 auto;width:auto;min-width:0;padding:9px 14px;white-space:nowrap}
+.tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{flex:0 0 auto;margin-left:auto;white-space:nowrap}
+@media(max-width:600px){
+ .tournament-detail-page #tournament-overview>.overview-actions{flex-wrap:nowrap;gap:8px}
+ .tournament-detail-page #tournament-overview>.overview-actions>.overview-join-form{flex:0 1 auto;min-width:0;flex-basis:auto;order:1}
+ .tournament-detail-page #tournament-overview .overview-join-form>.submit{font-size:12px;padding:9px 12px}
+ .tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{order:2;flex:0 0 auto;margin-left:auto}
+}
