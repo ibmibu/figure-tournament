@@ -306,7 +306,7 @@ export default function NewTournamentPage() {
         </fieldset>
 
         <fieldset className="setup-group">
-          <div className="create-switch-heading"><span className="create-switch-title">拒否ステージ</span><label className="create-switch-control"><span className="create-switch-status">{stageRejects ? 'あり' : 'なし'}</span><input type="checkbox" checked={stageRejects} onChange={event => setStageRejects(event.target.checked)} aria-label="拒否ステージ" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">拒否ステージ</span><details className="create-help"><summary aria-label="拒否ステージの説明">?</summary><span className="create-help-popover">対戦前にステージを拒否し、残ったステージから選択します。ありにすると詳細を設定できます。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{stageRejects ? 'あり' : 'なし'}</span><input type="checkbox" checked={stageRejects} onChange={event => setStageRejects(event.target.checked)} aria-label="拒否ステージ" /><span className="create-switch-track" aria-hidden="true" /></label></div>
           {stageRejects && <div className="reject-settings">
             <p className="setting-help">使用ステージの中から、スターターとカウンターピックを選択してください。</p>
             <h3>スターターステージ</h3>
@@ -338,11 +338,11 @@ export default function NewTournamentPage() {
         </fieldset>
 
         <fieldset className="setup-group">
-          <div className="create-switch-heading"><span className="create-switch-title">自動シード</span><label className="create-switch-control"><span className="create-switch-status">{autoSeed ? 'あり' : 'なし'}</span><input type="checkbox" checked={autoSeed} onChange={event => setAutoSeed(event.target.checked)} aria-label="自動シード" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">自動シード</span><details className="create-help"><summary aria-label="自動シードの説明">?</summary><span className="create-help-popover">参加者のレート上位25%（最低2名）を離して配置します。その他はランダムです。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{autoSeed ? 'あり' : 'なし'}</span><input type="checkbox" checked={autoSeed} onChange={event => setAutoSeed(event.target.checked)} aria-label="自動シード" /><span className="create-switch-track" aria-hidden="true" /></label></div>
         </fieldset>
 
         <fieldset className="setup-group">
-          <div className="create-switch-heading"><span className="create-switch-title">キャラ宣言</span><label className="create-switch-control"><span className="create-switch-status">{characterDeclaration ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterDeclaration} onChange={event => setCharacterDeclaration(event.target.checked)} aria-label="キャラ宣言" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ宣言</span><details className="create-help"><summary aria-label="キャラ宣言の説明">?</summary><span className="create-help-popover">参加者が使用キャラクターとカラーを大会前に宣言します。送信後は変更できません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterDeclaration ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterDeclaration} onChange={event => setCharacterDeclaration(event.target.checked)} aria-label="キャラ宣言" /><span className="create-switch-track" aria-hidden="true" /></label></div>
         </fieldset>
 
         <label>配信先URL
