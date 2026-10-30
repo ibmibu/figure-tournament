@@ -1823,3 +1823,17 @@ body .tournament-detail-page .bracket-admin-log-dot{
 .tournament-detail-page .participant-side-panel .participant-history-link:hover{
   text-decoration:underline!important;
 }
+
+
+/* Match header: score only, with no unused round/game label spacing. */
+.tournament-detail-page .match-controls-below .game-top{
+  display:block;gap:0;padding-bottom:6px;
+}
+.tournament-detail-page .match-controls-below .game-top::after{content:none;display:none}
+.tournament-detail-page .match-controls-below .current-score{
+  width:100%;margin:0;padding:0 0 4px;text-align:center;
+}
+.tournament-detail-page .match-controls-below .player-strip>div,
+.tournament-detail-page .match-controls-below .player-strip>div.current{
+  border-color:var(--line);background:#fafcfd;
+}
