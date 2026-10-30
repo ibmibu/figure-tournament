@@ -9,6 +9,7 @@ export default function SiteHeader() {
   const [signedIn, setSignedIn] = useState(false);
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
+  const isObsOverlay = /^\/tournaments\/[^/]+\/overlay\/?$/.test(pathname || '');
 
   useEffect(() => {
     let supabase;
@@ -55,6 +56,8 @@ export default function SiteHeader() {
     { label: 'ホーム', href: '/' },
     { label: 'マイページ', href: '/mypage' },
   ];
+
+  if (isObsOverlay) return null;
 
   return <>
     <header className="site-header">
