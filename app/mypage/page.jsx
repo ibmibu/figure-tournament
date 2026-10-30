@@ -19,7 +19,6 @@ export default function MyPage({ colorsOnly = false }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [overlayCopied, setOverlayCopied] = useState(false);
   const [myColors, setMyColors] = useState([]);
   const [selectedFighter, setSelectedFighter] = useState('マリオ');
   const [selectedColor, setSelectedColor] = useState('1P');
@@ -257,7 +256,7 @@ export default function MyPage({ colorsOnly = false }) {
         <nav className="mypage-minimal-nav" aria-label="マイページメニュー">
           <Link href="/results" className="mypage-minimal-link">大会結果一覧 <span aria-hidden="true">›</span></Link>
           <Link href="/mypage/colors" className="mypage-minimal-link">マイカラー登録 <span aria-hidden="true">›</span></Link>
-          {session?.user?.id && <button type="button" className="mypage-minimal-link mypage-overlay-copy" onClick={async () => { try { await navigator.clipboard.writeText(window.location.origin + '/overlay?owner=' + encodeURIComponent(session.user.id)); setOverlayCopied(true); } catch { setError('OBS用URLをコピーできませんでした。'); } }}> {overlayCopied ? 'OBSオーバーレイURLをコピーしました' : 'OBSオーバーレイURLをコピー'} <span aria-hidden="true">›</span></button>}
+          {session?.user?.id && <Link href="/mypage/overlay" className="mypage-minimal-link mypage-overlay-link">OBSオーバーレイ <span aria-hidden="true">›</span></Link>}
         </nav>
       </>}
       {colorsOnly && <section className="my-results my-color-panel">
