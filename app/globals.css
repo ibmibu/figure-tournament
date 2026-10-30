@@ -1755,3 +1755,27 @@ body .tournament-detail-page .bracket-admin-log-dot{
   flex:1 1 auto;min-width:0;
  }
 }
+
+
+/* Tighten the active match layout without affecting the bracket or overview. */
+.tournament-detail-page:has(.tournament-match-area)>.intro{padding-bottom:8px}
+.tournament-detail-page .tournament-match-area{margin-top:6px}
+.tournament-detail-page .tournament-match-area .match-controls-below .game-top{
+  gap:5px;padding-bottom:8px;
+}
+.tournament-detail-page .tournament-match-area .match-controls-below .current-score{
+  padding-bottom:0;
+}
+.tournament-detail-page .tournament-match-area .match-controls-below .player-strip{
+  margin-top:8px;
+}
+@media(max-width:640px){
+ .tournament-detail-page:has(.tournament-match-area)>.intro{padding-bottom:4px}
+ .tournament-detail-page .tournament-match-area{margin-top:4px}
+ .tournament-detail-page .tournament-match-area .match-controls-below .game-top{
+   gap:4px;padding-bottom:6px;
+ }
+ .tournament-detail-page .tournament-match-area .match-controls-below .player-strip{
+   margin-top:6px;
+ }
+}
