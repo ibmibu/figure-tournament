@@ -90,12 +90,12 @@ export async function POST(request) {
       appendMatchLog(next, original, matchId, actor?.name || (owner ? '主催者' : ''), label);
       const { data: saved, error: writeError } = await db.from('tournaments').update({ data: next })
         .eq('id', id).eq('data', JSON.stringify(original)).select('id');
-      if (writeError) throw writeError;
+      if (writeError) { console.error('Stage action database write failed', { code: writeError.code, message: writeError.message, action }); throw writeError; }
       if (saved?.length) return NextResponse.json({ ok: true });
     }
     return fail('他の操作が先に保存されました。再度お試しください。', 409);
   } catch (error) {
-    console.error('stage-action failed', error);
+    console.error('stage-action failed', { message: error?.message, code: error?.code, details: error?.details });
     return fail('ステージ操作に失敗しました。', 500);
   }
 }
