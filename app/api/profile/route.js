@@ -45,14 +45,14 @@ export async function PUT(request) {
     const friendCode = String(body.friend_code || '').trim().toUpperCase();
     if (friendCode && !/^[A-Z0-9-]+$/.test(friendCode)) return NextResponse.json({ error: 'フレンドコードは英数字とハイフンのみで入力してください。' }, { status: 400 });
     if (!displayName || displayName.length > 40) return NextResponse.json({ error: '名前は1〜40文字で入力してください。' }, { status: 400 });
-    if (avatarData && (!avatarData.startsWith('data:image/') || avatarData.length > 1400000)) {
-      return NextResponse.json({ error: '画像は1MB以下の画像を選択してください。' }, { status: 400 });
+    if (avatarData && (!avatarData.startsWith('data:image/') || avatarData.length > 7000000)) {
+      return NextResponse.json({ error: '画像は5MB以下の画像を選択してください。' }, { status: 400 });
     }
     if (avatarData) {
       const match = /^data:image\/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(avatarData);
       if (!match) return NextResponse.json({ error: '画像はPNG・JPEG・GIF・WebP形式で登録してください。' }, { status: 400 });
       const bytes = Buffer.from(match[2], 'base64');
-      if (bytes.length > 1024 * 1024 || bytes.length === 0) return NextResponse.json({ error: '画像は1MB以下にしてください。' }, { status: 400 });
+      if (bytes.length > 5 * 1024 * 1024 || bytes.length === 0) return NextResponse.json({ error: '画像は5MB以下にしてください。' }, { status: 400 });
       const signatures = {
         png: bytes.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')),
         jpeg: bytes.subarray(0, 3).equals(Buffer.from('ffd8ff', 'hex')),
