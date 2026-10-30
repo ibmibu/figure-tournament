@@ -212,7 +212,16 @@ export default function TournamentPage() {
     // Active matches prioritize responsiveness. Overview and declarations use a
     // slower fallback, while change signals can refresh immediately.
     const activeMatch = Boolean(tournament.bracket && !tournament.bracket.complete);
-    const fallbackMs = activeMatch ? 2000 : 4000;
+    const ownMatch = tournament.bracket?.rounds?.flat().find(match =>
+      !match.winnerId && match.player1 && match.player2 &&
+      (String(match.player1.id) === String(currentUserId) || String(match.player2.id) === String(currentUserId))
+    );
+    const game = ownMatch?.matchState?.currentGame;
+    // A chosen stage normally means players are in-game. Keep fast updates
+    // during stage striking and result reporting, but reduce idle game traffic.
+    const reportsPending = Boolean(game?.resultVotes && Object.keys(game.resultVotes).length);
+    const playingGame = Boolean(ownMatch && game?.stage && !reportsPending);
+    const fallbackMs = playingGame ? 5000 : activeMatch && ownMatch ? 2000 : 4000;
     // Spread clients' periodic reads across a short window: a new round can
     // otherwise cause all players' browsers to hit the API at the same instant.
     const staggerMs = Math.floor(Math.random() * 500);
@@ -235,7 +244,7 @@ export default function TournamentPage() {
       window.removeEventListener('focus', onVisible);
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
     };
-  }, [id, Boolean(tournament), Boolean(tournament?.bracket), tournament?.bracket?.complete, savingBracket, declarationBusy, accessToken]);
+  }, [id, Boolean(tournament), Boolean(tournament?.bracket), tournament?.bracket?.complete, tournament?.stageActionRevision, currentUserId, savingBracket, declarationBusy, accessToken]);
 
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
   useEffect(() => {
