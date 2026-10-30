@@ -29,8 +29,9 @@ export async function GET(request) {
     const organizerMatch = matches.find(m => !m.winnerId && m.player1 && m.player2 &&
       [m.player1, m.player2].some(p => !p.isDemo && String(p.userId || p.id) === String(t.ownerUserId)));
     const explicit = t.streamMatchManual === true || t.streamMatchId !== undefined;
+    // Keep the assigned match visible after its winner is confirmed until the organizer changes or clears the assignment.
     const selected = explicit
-      ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2 && !m.winnerId)
+      ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2)
       : organizerMatch;
     if (!selected) return NextResponse.json({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found' }, { headers: { 'Cache-Control': 'no-store' } });
     const roundIndex = rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
