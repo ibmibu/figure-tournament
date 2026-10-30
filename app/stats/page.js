@@ -653,6 +653,13 @@ export default function StatsPage() {
   }, [matrixSeason, sortedPlayers, playerTournamentStats, matrixStats]);
 
 
+  useEffect(() => {
+    const requestedName = new URLSearchParams(window.location.search).get('player');
+    if (!requestedName || !data?.players?.length) return;
+    const player = data.players.find(p => String(p.name).trim() === requestedName.trim());
+    if (player) setSelected(String(player.id));
+  }, [data]);
+
   const selectedPlayer = data?.players.find(
     (player) =>
       String(player.id) === String(selected)
