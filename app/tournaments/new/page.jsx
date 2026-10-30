@@ -362,6 +362,5 @@ export default function NewTournamentPage() {
         </div>
       </form>}
     </section>
-    <footer>アミコネ</footer>
   </main>;
 }
