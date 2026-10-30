@@ -1927,3 +1927,9 @@ body .tournament-detail-page .bracket-admin-log-dot{
 @media(max-width:600px){
  .mypage-layout .mypage-minimal-profile>.mypage-friend-code{margin-left:0;font-size:12px}
 }
+
+/* My Page: make logout a quiet, properly spaced account action. */
+.mypage-layout .mypage-signout-section{margin-top:24px;padding:0;border:0}
+.mypage-layout .mypage-signout-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:10px 16px;border:1px solid #dfe3e8;border-radius:6px;background:transparent;color:#5b6472;font:inherit;font-size:13px;font-weight:500;line-height:1.4;cursor:pointer}
+.mypage-layout .mypage-signout-button:hover{background:#f0f3f6;text-decoration:none}
+@media(max-width:600px){.mypage-layout .mypage-signout-section{margin-top:24px}}
