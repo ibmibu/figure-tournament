@@ -1945,3 +1945,34 @@ body .tournament-detail-page .bracket-admin-log-dot{
  .tournament-detail-page #tournament-overview .overview-join-form>.submit{font-size:12px;padding:9px 12px}
  .tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{order:2;flex:0 0 auto;margin-left:auto}
 }
+
+/* Organizer overview: keep four actions readable instead of forcing one row. */
+@media(max-width:900px){
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link){
+   display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch;
+ }
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-start-button,
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-bracket-button{
+   grid-column:1;grid-row:1;width:100%;min-width:0;max-width:100%;white-space:normal;
+   height:auto;min-height:42px;padding:9px 12px;line-height:1.35;text-align:center;
+ }
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-edit-link{
+   grid-column:2;grid-row:1;width:auto;min-width:70px;flex:auto;margin:0;padding:9px 16px;
+ }
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-join-form,
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-join-status{
+   grid-column:1;grid-row:2;min-width:0;width:100%;margin:0;flex:auto;
+ }
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-join-form>.submit{
+   max-width:100%;white-space:normal;min-height:42px;line-height:1.35;
+ }
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-share-x{
+   grid-column:2;grid-row:2;width:auto;min-width:0;flex:auto;margin:0;padding:9px 12px;
+   min-height:42px;align-self:stretch;
+ }
+}
+@media(max-width:480px){
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link){gap:8px}
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-edit-link,
+ .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-share-x{font-size:12px;padding-inline:10px}
+}
