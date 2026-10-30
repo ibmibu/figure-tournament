@@ -44,7 +44,10 @@ function publicTournament(row, user, legacyOwnerToken = '') {
   const organizerMatch = activeMatches.find(match => !match.winnerId && match.player1 && match.player2 &&
     [match.player1, match.player2].some(player => !player.isDemo && String(player.userId || player.id) === String(ownerUserId)));
   const selectedStreamMatch = activeMatches.find(match => String(match.id) === String(data.streamMatchId) && match.player1 && match.player2 && !match.winnerId);
-  const effectiveStreamMatchId = data.streamMatchId === undefined ? (String(data.streamFriendCode || '').trim() ? (organizerMatch?.id || null) : null) : (selectedStreamMatch?.id || null);
+  // Automatic selection is only the initial default. Explicit assignment or removal always wins.
+  const effectiveStreamMatchId = data.streamMatchManual === true || data.streamMatchId !== undefined
+    ? (selectedStreamMatch?.id || null)
+    : (organizerMatch?.id || null);
   const visibleReports = isOwner ? (data.characterReports || {}) : Object.fromEntries(
     Object.entries(data.characterReports || {}).filter(([playerId]) =>
       user && (data.joinedPlayers || []).some(player =>
