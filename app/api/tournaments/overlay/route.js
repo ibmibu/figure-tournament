@@ -15,8 +15,12 @@ export async function GET(request) {
       // Supabase JSON containment filters the owner without exposing private tournament data.
       const { data: rows, error } = await db.from('tournaments').select('data').contains('data', { ownerUserId: owner }).limit(100);
       if (error) throw error;
-      row = (rows || []).filter(r => r.data?.status === '対戦中' && r.data?.bracket && !r.data.bracket.complete)
-        .sort((a, b) => Date.parse(b.data?.createdAt || 0) - Date.parse(a.data?.createdAt || 0))[0];
+      const eligible = (rows || []).filter(r => r.data?.bracket && (r.data.status === '対戦中' || r.data.status === '終了'));
+      // Prefer a currently running tournament; otherwise retain the most recent completed one.
+      // A future tournament must not replace the last final score before it starts.
+      const newest = items => items.sort((a, b) => Date.parse(b.data?.createdAt || 0) - Date.parse(a.data?.createdAt || 0))[0];
+      row = newest(eligible.filter(r => r.data.status === '対戦中' && !r.data.bracket.complete))
+        || newest(eligible.filter(r => r.data.status === '終了' || r.data.bracket.complete));
     } else {
       const result = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
       if (result.error) throw result.error;
@@ -26,7 +30,7 @@ export async function GET(request) {
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
     const matches = rounds.flat();
-    const organizerMatch = matches.find(m => !m.winnerId && m.player1 && m.player2 &&
+    const organizerMatch = matches.find(m => (t.bracket?.complete || !m.winnerId) && m.player1 && m.player2 &&
       [m.player1, m.player2].some(p => !p.isDemo && String(p.userId || p.id) === String(t.ownerUserId)));
     const explicit = t.streamMatchManual === true || t.streamMatchId !== undefined;
     // Keep the assigned match visible after its winner is confirmed until the organizer changes or clears the assignment.
