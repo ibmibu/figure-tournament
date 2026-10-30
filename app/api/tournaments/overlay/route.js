@@ -13,7 +13,7 @@ export async function GET(request) {
     if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
-    const selected = rounds.flat().find(m => String(m.id) === String(t.streamMatchId) && m.player1 && m.player2);
+    const selected = t.streamMatchId != null ? rounds.flat().find(m => String(m.id) === String(t.streamMatchId) && m.player1 && m.player2 && !m.winnerId) : null;
     if (!selected) return NextResponse.json({ name: t.name || '', match: null }, { headers: { 'Cache-Control': 'no-store' } });
     const roundIndex = rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
     const score = selected.matchState?.score || {};
