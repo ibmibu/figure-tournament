@@ -993,7 +993,6 @@ export default function TournamentPage() {
         {isOwner && !tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit overview-start-button" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメント表へ' : '大会を開始する'}</button>}
         {tournament.bracket && <button className="overview-bracket-button" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
         {isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
-        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
         {!tournament.bracket && !isOwner && !joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && (
           joinedPlayers.length >= Number(tournament.participants || 8)
             ? <p className="setting-help overview-join-status">定員に達しています。</p>
@@ -1004,6 +1003,7 @@ export default function TournamentPage() {
               </form>
         )}
         {!tournament.bracket && !isOwner && joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && <p className="setting-help overview-join-status">参加済み</p>}
+        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
       </div>
 
       <div className="detail-grid">
@@ -1012,7 +1012,6 @@ export default function TournamentPage() {
         <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
       </div>
-      {/^https?:\/\//i.test(tournament.streamUrl || '') && <div className="overview-stream-link"><span>配信先</span><a href={tournament.streamUrl} target="_blank" rel="noopener noreferrer">{tournament.streamUrl}</a></div>}
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
         <h3>キャラ宣言</h3>
         <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
@@ -1040,6 +1039,7 @@ export default function TournamentPage() {
         <div className="detail-stage-list">{(tournament.stageSettings?.counterpickStages || []).map(stage => <span key={stage}>{stage}</span>)}</div>
         <p className="generated-description">最初のプレイヤー：{tournament.stageSettings?.firstPlayerRejects ?? 1}ステージ拒否／次のプレイヤー：{tournament.stageSettings?.secondPlayerRejects ?? 2}ステージ拒否／2ゲーム目以降：{tournament.stageSettings?.laterRejects ?? 3}ステージ拒否</p>
       </>}
+      {/^https?:\/\//i.test(tournament.streamUrl || '') && <div className="overview-stream-link"><span>配信先</span><a href={tournament.streamUrl} target="_blank" rel="noopener noreferrer">{tournament.streamUrl}</a></div>}
       <h3>大会説明</h3>
       <p className="generated-description">{(tournament.description || '大会の詳細設定をご確認ください。').replace(/\\n|\/n/g, '\n')}</p>
 
