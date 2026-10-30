@@ -700,6 +700,21 @@ export default function TournamentPage() {
     try { await updateTournament(next); } catch (updateError) { setError(updateError.message); }
   }
 
+  async function withdrawTournament() {
+    if (!window.confirm('この大会の参加登録を解除しますか？')) return;
+    setError('');
+    try {
+      const response = await fetch('/api/tournaments/join', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '参加解除に失敗しました。');
+      setTournament(current => ({ ...current, joinedPlayers: result.joinedPlayers }));
+    } catch (error) { setError(error.message || '参加解除に失敗しました。'); }
+  }
+
   async function deleteTournament() {
     if (!window.confirm('この大会を削除しますか？この操作は取り消せません。')) return;
     try {
@@ -995,8 +1010,8 @@ export default function TournamentPage() {
 
     </section>
     <section className="create-panel tournament-detail participant-side-panel">
-      <h2>参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.isDemo ? <>{player.name}（デモ）</> : <a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>}</span>{isOwner && !tournament.bracket && <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button>}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+      <h2 className="participant-section-heading">参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span>{player.isDemo ? <>{player.name}（デモ）</> : <a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && String(player.userId || player.id) === String(currentUserId) ? <button type="button" onClick={withdrawTournament}>参加を解除</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
       {!tournament.bracket && !joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && (
         joinedPlayers.length >= Number(tournament.participants || 8)
           ? <p className="setting-help">定員に達しています。</p>
