@@ -54,26 +54,27 @@ export default async function Image({ params }) {
   } catch {}
 
   return new ImageResponse(
-    <div style={{ width:'100%', height:'100%', background:'#ffffff', display:'flex', flexDirection:'column', padding:'46px 76px 40px', color:'#17233a' }}>
-      <div style={{ display:'flex', alignItems:'center', height:64 }}>
-        {logo ? <img src={logo} alt="アミコネ" width={290} height={50} style={{ objectFit:'contain', objectPosition:'left center' }} /> : <div style={{ fontSize:44, fontWeight:900 }}>アミコネ</div>}
+    <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', padding: '44px 72px 38px', color: '#17233a' }}>
+      <div style={{ display: 'flex', alignItems: 'center', height: 74 }}>
+        {logo ? <img src={logo} alt="アミコネ" width={330} height={57} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 46, fontWeight: 900 }}>アミコネ</div>}
       </div>
-      <div style={{ display:'flex', flexDirection:'column', flex:1, justifyContent:'center', borderLeft:'7px solid #6045a8', paddingLeft:32, marginTop:28, marginBottom:22, gap:13, minHeight:0 }}>
-        <div style={{ display:'flex', color:'#64748b', fontSize:name.length > 46 ? 24 : 30, lineHeight:1.25, maxHeight:78, overflow:'hidden', overflowWrap:'anywhere' }}>{name}</div>
-        <div style={{ display:'flex', fontSize:62, fontWeight:800, lineHeight:1.2 }}>{dateText}</div>
-        <div style={{ display:'flex', alignItems:'baseline', gap:32 }}>
-          <div style={{ display:'flex', color:'#6045a8', fontSize:76, fontWeight:800, lineHeight:1.1 }}>{timeText}</div>
-          <div style={{ display:'flex', fontSize:34, fontWeight:800 }}>{formatText}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', borderLeft: '6px solid #6045a8', paddingLeft: 32, marginTop: 30, marginBottom: 25, gap: 13, minHeight: 0 }}>
+        <div style={{ display: 'flex', fontSize: name.length > 45 ? 24 : name.length > 27 ? 28 : 33, lineHeight: 1.3, color: '#64748b', maxHeight: 85, overflow: 'hidden', overflowWrap: 'anywhere' }}>{name}</div>
+        <div style={{ display: 'flex', fontSize: 59, fontWeight: 800, lineHeight: 1.25 }}>{dateText}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 34 }}>
+          <div style={{ display: 'flex', fontSize: 79, fontWeight: 800, color: '#6045a8', lineHeight: 1.1 }}>{timeText}</div>
+          <div style={{ display: 'flex', fontSize: 34, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
         </div>
       </div>
-      <div style={{ display:'flex', flexDirection:'column', gap:10, borderTop:'2px solid #e2e8f0', paddingTop:18, minHeight:stageRows.length ? 90 : 48 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, minHeight: 104 }}>
+        <div style={{ display: 'flex', fontSize: 17, fontWeight: 700, letterSpacing: 2, color: '#64748b' }}>STAGE RULE</div>
         {stageRows.map(([label, value]) => (
-          <div key={label} style={{ display:'flex', gap:18, alignItems:'flex-start', fontSize:21, lineHeight:1.25 }}>
-            <div style={{ display:'flex', flexShrink:0, width:145, color:'#64748b', fontWeight:700 }}>{label}</div>
-            <div style={{ display:'flex', flex:1, color:'#334155', maxHeight:55, overflow:'hidden' }}>{value}</div>
+          <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, fontSize: 21, lineHeight: 1.3 }}>
+            <div style={{ display: 'flex', flexShrink: 0, color: '#64748b', width: 150 }}>{label}</div>
+            <div style={{ display: 'flex', flex: 1, color: '#334155', maxHeight: 55, overflow: 'hidden' }}>{value}</div>
           </div>
         ))}
-        {!stageRows.length && <div style={{ display:'flex', fontSize:21, color:'#64748b' }}>amiibo大会プラットフォーム</div>}
+        {!stageRows.length && <div style={{ display: 'flex', fontSize: 21, color: '#64748b' }}>ステージ情報未設定</div>}
       </div>
     </div>, size
   );
