@@ -159,7 +159,7 @@ export default function TournamentPage() {
   // Avoid overlapping four-second requests from separate UI sections.
   // Keep tournament state synchronized without flashing the loading screen.
   useEffect(() => {
-    if (!tournament || tournament.bracket?.complete || savingBracket) return;
+    if (!id || !tournament || tournament.bracket?.complete || savingBracket || declarationBusy) return;
     let cancelled = false;
     let inFlight = false;
     let lastSync = 0;
@@ -221,7 +221,7 @@ export default function TournamentPage() {
       window.removeEventListener('focus', onVisible);
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
     };
-  }, [id, Boolean(tournament), tournament?.bracket?.complete, savingBracket, accessToken]);
+  }, [id, Boolean(tournament), tournament?.bracket?.complete, savingBracket, declarationBusy, accessToken]);
 
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
   useEffect(() => {
