@@ -37,7 +37,16 @@ export default function PlayerResultsPage() {
       });
       const legacy = legacyResponse.ok ? (await legacyResponse.json()).tournaments || [] : [];
       matches.push(...legacy.map(tournament => ({ tournament, player: { id: userId, name: '' } })));
-      matches.sort((a, b) => (Date.parse(b.tournament.date || b.tournament.createdAt || '') || 0) - (Date.parse(a.tournament.date || a.tournament.createdAt || '') || 0));
+      matches.sort((a, b) => {
+        const x = a.tournament;
+        const y = b.tournament;
+        if (x.isLegacy && y.isLegacy) {
+          const number = t => Number(t.number || String(t.id || '').match(/^legacy-(\\d+)$/)?.[1] || String(t.name || '').match(/人形劇\\s*[#＃]\\s*(\\d+)/)?.[1]) || 0;
+          return number(y) - number(x);
+        }
+        if (x.isLegacy !== y.isLegacy) return x.isLegacy ? 1 : -1;
+        return (Date.parse(y.date || y.createdAt || '') || 0) - (Date.parse(x.date || x.createdAt || '') || 0);
+      });
       if (active) {
         setItems(matches);
         setName(matches.find(item => !item.tournament.isLegacy)?.player.name || searchParams.get('name') || '選手');
