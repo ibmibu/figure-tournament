@@ -137,6 +137,20 @@ export async function GET(request) {
       if (error) throw error;
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
       const tournament = publicTournament(data, user, legacyOwnerToken);
+      const participantIds = [...new Set((tournament.joinedPlayers || [])
+        .filter(player => !player.isDemo)
+        .map(player => String(player.userId || player.id || ''))
+        .filter(value => /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value)))];
+      tournament.participantAvatars = {};
+      if (participantIds.length) {
+        const { data: profiles, error: avatarError } = await supabase.from('profiles')
+          .select('user_id,avatar_data').in('user_id', participantIds);
+        if (avatarError) console.error('Tournament participant avatars could not be loaded:', avatarError);
+        else tournament.participantAvatars = Object.fromEntries(
+          (profiles || []).filter(profile => /^data:image\/(png|jpeg|webp);base64,/.test(profile.avatar_data || ''))
+            .map(profile => [profile.user_id, profile.avatar_data])
+        );
+      }
       const payload = JSON.stringify({ tournament });
       // ETag is derived from the caller-specific, redacted response.
       const etag = '"' + createHash('sha256').update(payload).digest('hex') + '"';
