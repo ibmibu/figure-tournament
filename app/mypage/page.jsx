@@ -34,7 +34,7 @@ export default function MyPage({ colorsOnly = false }) {
         const { data } = await getSupabaseBrowserClient().auth.getSession();
         const currentSession = data.session;
         if (!currentSession) {
-          window.location.href = '/login?next=/mypage';
+          if (colorsOnly) window.location.href = '/login?next=/mypage/colors';
           return;
         }
         if (!active) return;
@@ -223,6 +223,23 @@ export default function MyPage({ colorsOnly = false }) {
     }
   }
 
+  async function signOut() {
+    try {
+      const { error: signOutError } = await getSupabaseBrowserClient().auth.signOut();
+      if (signOutError) throw signOutError;
+      // Clear account-specific in-memory state and avoid showing stale profile.
+      setSession(null);
+      setProfile(EMPTY_PROFILE);
+      setTournaments([]);
+      setMyColors([]);
+      setEditing(false);
+      setError('');
+      window.location.reload();
+    } catch (signOutError) {
+      setError(signOutError.message || 'ログアウトに失敗しました。');
+    }
+  }
+
   const availableFighters = fighters.filter(name => !myColors.some(item => item.fighter === name));
   const activeFighter = availableFighters.includes(selectedFighter) ? selectedFighter : (availableFighters[0] || '');
   const avatar = editing ? draftAvatar : profile.avatar_data;
@@ -234,7 +251,8 @@ export default function MyPage({ colorsOnly = false }) {
       <h1>{colorsOnly ? 'マイカラー登録' : 'マイページ'}</h1>
       {colorsOnly && <Link className="my-colors-back" href="/mypage">← マイページに戻る</Link>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      {!colorsOnly && <>
+      {!colorsOnly && !session && !loading && <section className="mypage-login-panel"><p className="setting-help">マイページの利用にはログインが必要です。</p><Link href="/login?next=/mypage" className="button-link submit">Googleでログイン</Link></section>}
+      {!colorsOnly && session && <>
         <section className="mypage-minimal-profile">
           <div className="profile-summary">
             {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
@@ -257,6 +275,7 @@ export default function MyPage({ colorsOnly = false }) {
           <Link href="/mypage/colors" className="mypage-minimal-link">マイカラー登録 <span aria-hidden="true">›</span></Link>
           {session?.user?.id && <Link href="/mypage/overlay" className="mypage-minimal-link mypage-overlay-link">OBSオーバーレイ <span aria-hidden="true">›</span></Link>}
         </nav>
+        <div className="mypage-signout-section"><button type="button" className="mypage-signout-button" onClick={signOut}>ログアウト</button></div>
       </>}
       {colorsOnly && <section className="my-results my-color-panel">
         <div className="my-color-heading">
