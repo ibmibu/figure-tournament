@@ -1,3 +1,4 @@
+import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -48,11 +49,7 @@ export async function POST(request) {
     const joinedPlayers = [...players, { id: authData.user.id, userId: authData.user.id, name, friendCode, joinedAt: new Date().toISOString() }];
     // Optimistic concurrency control prevents simultaneous joins from overwriting
     // another participant or bypassing the configured capacity.
-    const { data: updated, error: updateError } = await supabase.from('tournaments')
-      .update({ data: { ...tournament, joinedPlayers } })
-      .eq('id', String(id))
-      .eq('data', JSON.stringify(tournament))
-      .select('id');
+    const { data: updated, error: updateError } = await saveTournamentRevision(supabase, id, tournament, { ...tournament, joinedPlayers });
     if (updateError) throw updateError;
     if (!updated?.length) return NextResponse.json({ error: '他の参加登録が先に保存されました。更新して再試行してください。' }, { status: 409 });
     return NextResponse.json({ ok: true, joinedPlayers });
@@ -91,8 +88,7 @@ export async function DELETE(request) {
     const declarations = { ...(existing.characterDeclarations || {}) };
     delete declarations[String(mine.id)];
     const updatedData = { ...existing, joinedPlayers, characterDeclarations: declarations };
-    const { data: changed, error: writeError } = await supabase.from('tournaments')
-      .update({ data: updatedData }).eq('id', id).eq('data', JSON.stringify(existing)).select('id');
+    const { data: changed, error: writeError } = await saveTournamentRevision(supabase, id, existing, updatedData);
     if (writeError) throw writeError;
     if (!changed?.length) return NextResponse.json({ error: '他の操作が先に保存されました。再読み込みしてやり直してください。' }, { status: 409 });
     return NextResponse.json({ ok: true, joinedPlayers });
