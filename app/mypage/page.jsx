@@ -277,10 +277,10 @@ export default function MyPage({ colorsOnly = false }) {
             {avatar ? <img className="profile-avatar" src={avatar} alt="プロフィールアイコン" /> : <div className="profile-avatar profile-avatar-empty" aria-label="初期アイコン" />}
             <div className="mypage-profile-info">
               <div className="profile-name">{displayName || 'no name'}</div>
-              {!editing && <div className="setting-help mypage-friend-code">フレンドコード：{profile.friend_code || '未登録'}</div>}
             </div>
             {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setDraftFriendCode(profile.friend_code || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>}
           </div>
+          {!editing && <div className="setting-help mypage-friend-code">フレンドコード：{profile.friend_code || '未登録'}</div>}
           {editing && <form onSubmit={saveProfile} className="profile-edit-form">
             <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
             <label>フレンドコード<input value={draftFriendCode} onChange={e => setDraftFriendCode(e.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" /></label>
