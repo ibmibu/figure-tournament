@@ -61,7 +61,7 @@ export async function POST(request) {
     if (!token) return fail('ログインが必要です。', 401);
     const { data: { user }, error: authError } = await auth().auth.getUser(token);
     if (authError || !user) return fail('ログインが必要です。', 401);
-    const { id, matchId, gameNumber, result, demoPerspective } = await request.json();
+    const { id, matchId, gameNumber, result } = await request.json();
     if (!['win', 'lose'].includes(result)) return fail('報告内容が不正です。');
     const db = admin();
     for (let attempt = 0; attempt < 6; attempt++) {
@@ -69,8 +69,7 @@ export async function POST(request) {
       if (error) throw error;
       if (!row) return fail('大会が見つかりません。', 404);
       const current = row.data;
-      const owner = current.ownerUserId === user.id;
-      const actorId = owner && demoPerspective ? String(demoPerspective) : user.id;
+      const actorId = user.id;
       const bracket = structuredClone(current.bracket);
       if (!bracket || bracket.complete) return fail('大会は終了しています。', 409);
       let found = null, roundIndex = -1, matchIndex = -1;
@@ -82,8 +81,7 @@ export async function POST(request) {
       const p1 = String(found.player1.id), p2 = String(found.player2.id);
       if (![p1, p2].includes(String(actorId))) return fail('対戦選手ではありません。', 403);
       const actorPlayer = [found.player1, found.player2].find(p => String(p.id) === String(actorId));
-      if (demoPerspective && (!owner || !actorPlayer?.isDemo)) return fail('デモ選手の操作権限がありません。', 403);
-      if (!demoPerspective && (actorPlayer?.isDemo || String(actorPlayer?.userId || actorPlayer?.id) !== String(user.id))) return fail('報告権限がありません。', 403);
+      if (actorPlayer?.isDemo || String(actorPlayer?.userId || actorPlayer?.id) !== String(user.id)) return fail('報告権限がありません。', 403);
       const state = found.matchState;
       if (!state || state.complete || Number(state.gameNumber) !== Number(gameNumber) || !state.currentGame?.stage) return fail('ゲームが更新されています。', 409);
       const votes = { ...(state.currentGame.results || {}), [actorId]: result };
