@@ -514,7 +514,23 @@ export default function TournamentPage() {
         body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result }),
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
+      if (!response.ok) {
+        if (response.status === 409) {
+          // The other player may have advanced the game first. Refresh the
+          // authoritative snapshot; never blindly replay a stale result.
+          const owner = localStorage.getItem(OWNER_KEY) || '';
+          const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
+            cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
+          });
+          if (latest.ok) {
+            const snapshot = await latest.json();
+            if (snapshot.tournament) applyTournamentSnapshot(snapshot.tournament);
+          }
+        }
+        throw new Error(response.status === 409
+          ? '他の報告が先に反映されました。最新の対戦状況を確認してください。'
+          : (body.error || '報告を保存できませんでした。'));
+      }
       // Preserve the current stream assignment if the result response omits it.\n      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner, streamMatchId: body.tournament.streamMatchId !== undefined ? body.tournament.streamMatchId : (prev?.streamMatchId ?? null), effectiveStreamMatchId: body.tournament.effectiveStreamMatchId !== undefined ? body.tournament.effectiveStreamMatchId : (body.tournament.streamMatchId !== undefined ? body.tournament.streamMatchId : (prev?.effectiveStreamMatchId ?? prev?.streamMatchId ?? null)) }));
 
     } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
