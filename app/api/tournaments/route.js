@@ -215,13 +215,30 @@ export async function POST(request) {
     const tournament = { ...safeTournament, name, status: '募集中',
       createdAt: new Date().toISOString(), ownerUserId: user.id };
     const supabase = getAdminClient();
+    // Preserve legacy tournament IDs, but reject matching existing records.
+    const { data: existing, error: lookupError } = await supabase.from('tournaments')
+      .select('id').contains('data', { ownerUserId: user.id, name, date: tournament.date }).limit(1);
+    if (lookupError) throw lookupError;
+    if (existing?.length) return NextResponse.json(
+      { error: '同じ大会名・開催日時の大会がすでに作成されています。大会一覧を確認してください。' },
+      { status: 409 }
+    );
+    // The deterministic primary key also prevents concurrent requests racing
+    // past the lookup from creating two rows with the same owner/name/date.
+    const uniqueId = 't-' + createHash('sha256')
+      .update(JSON.stringify([user.id, name, tournament.date || ''])).digest('hex').slice(0, 32);
+    tournament.id = uniqueId;
     const { error } = await supabase.from('tournaments').insert({
-      id,
+      id: uniqueId,
       data: tournament,
       owner_token: randomUUID(),
     });
+    if (error?.code === '23505') return NextResponse.json(
+      { error: 'この大会はすでに作成されています。大会一覧を確認してください。' },
+      { status: 409 }
+    );
     if (error) throw error;
-    return NextResponse.json({ ok: true, id }, { status: 201 });
+    return NextResponse.json({ ok: true, id: uniqueId }, { status: 201 });
   } catch (error) {
     return errorResponse(error, '大会を保存できませんでした。Supabaseの設定を確認してください。');
   }
