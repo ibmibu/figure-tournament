@@ -1837,3 +1837,15 @@ body .tournament-detail-page .bracket-admin-log-dot{
 .tournament-detail-page .match-controls-below .player-strip>div.current{
   border-color:var(--line);background:#fafcfd;
 }
+
+
+/* Separate the registration action from the participant list. */
+.tournament-detail-page .participant-side-panel .joined-player-list + form{
+  margin-top:20px!important;
+  padding-top:0;
+}
+@media(max-width:600px){
+  .tournament-detail-page .participant-side-panel .joined-player-list + form{
+    margin-top:18px!important;
+  }
+}
