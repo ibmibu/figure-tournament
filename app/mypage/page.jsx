@@ -161,10 +161,26 @@ export default function MyPage({ colorsOnly = false }) {
     if (file.size > 5 * 1024 * 1024) { setError('画像は5MB以下にしてください。'); return; }
     try {
       const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const maxSide = 256;
+            const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
+            canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+            canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('画像を処理できません。');
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            const output = canvas.toDataURL('image/webp', 0.82);
+            if (!output.startsWith('data:image/webp;')) throw new Error('WebPへの変換に対応していません。');
+            resolve(output);
+          } catch (error) { reject(error); }
+          finally { URL.revokeObjectURL(url); }
+        };
+        image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('画像を読み込めません。')); };
+        image.src = url;
       });
       setDraftAvatar(dataUrl);
       setError('');
@@ -222,7 +238,7 @@ export default function MyPage({ colorsOnly = false }) {
             <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
             <label>フレンドコード<input value={draftFriendCode} onChange={e => setDraftFriendCode(e.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" /></label>
             <label>アイコン画像<input type="file" accept="image/*" onChange={chooseImage} /></label>
-            <p className="setting-help">画像は5MB以下。画像を選ばず保存すると現在のアイコンを維持します。</p>
+            <p className="setting-help">画像は5MB以下。選択すると自動でWebP形式（最大256px）に圧縮します。</p>
             <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
           </form>}
         </section>
