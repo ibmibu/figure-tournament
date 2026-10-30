@@ -165,6 +165,7 @@ export default function TournamentPage() {
     let lastSync = 0;
     let realtimeConnected = false;
     let receivedSignal = false;
+    let pendingRefresh = false;
     let channel = null;
     const refresh = async () => {
       if (cancelled || inFlight || document.visibilityState === 'hidden') return;
@@ -181,6 +182,10 @@ export default function TournamentPage() {
         }
       } catch {} finally {
         inFlight = false;
+        if (pendingRefresh && !cancelled) {
+          pendingRefresh = false;
+          void refresh();
+        }
       }
     };
     // Subscribe only to a dedicated, non-sensitive change signal table.
@@ -195,7 +200,7 @@ export default function TournamentPage() {
           schema: 'public',
           table: 'tournament_change_signals',
           filter: `tournament_id=eq.${id}`,
-        }, () => { receivedSignal = true; void refresh(); });
+        }, () => { receivedSignal = true; if (inFlight) pendingRefresh = true; else void refresh(); });
         channel.subscribe(status => {
           realtimeConnected = status === 'SUBSCRIBED';
           if (status === 'SUBSCRIBED') void refresh();
@@ -204,13 +209,14 @@ export default function TournamentPage() {
         realtimeConnected = false;
       }
     }
-    // Preserve the 4-second fallback if the signal channel is unavailable.
-    // While connected, a periodic 30-second refresh catches missed signals.
+    // Active matches prioritize responsiveness. Overview and declarations use a
+    // slower fallback, while change signals can refresh immediately.
+    const activeMatch = Boolean(tournament.bracket && !tournament.bracket.complete);
+    const fallbackMs = activeMatch ? 2000 : 4000;
     const interval = setInterval(() => {
-      // Do not slow polling until every write path publishes notifications.
-      const intervalMs = realtimeConnected && receivedSignal ? 30000 : 4000;
+      const intervalMs = realtimeConnected && receivedSignal ? (activeMatch ? 2000 : 4000) : fallbackMs;
       if (Date.now() - lastSync >= intervalMs) void refresh();
-    }, 4000);
+    }, fallbackMs);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
@@ -221,7 +227,7 @@ export default function TournamentPage() {
       window.removeEventListener('focus', onVisible);
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
     };
-  }, [id, Boolean(tournament), tournament?.bracket?.complete, savingBracket, declarationBusy, accessToken]);
+  }, [id, Boolean(tournament), Boolean(tournament?.bracket), tournament?.bracket?.complete, savingBracket, declarationBusy, accessToken]);
 
   // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
   useEffect(() => {
