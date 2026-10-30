@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { getSupabaseBrowserClient } from '../../../../lib/supabase/client';
 
 export default function TournamentOverlay() {
   const params = useParams();
@@ -9,16 +10,19 @@ export default function TournamentOverlay() {
   useEffect(() => { setOwner(new URLSearchParams(window.location.search).get('owner') || ''); }, []);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const lastStatusRef = useRef('unassigned');
   const [debug, setDebug] = useState(false);
   useEffect(() => { setDebug(new URLSearchParams(window.location.search).has('debug')); }, []);
   useEffect(() => {
-    // Wait for the permanent owner URL to be parsed before requesting an overlay.
     if (!owner && !id) return;
     let active = true;
-    let timer;
+    let channel;
     let controller;
+    let debounce;
+    let requestVersion = 0;
     const refresh = async () => {
+      if (!active) return;
+      const version = ++requestVersion;
+      controller?.abort();
       controller = new AbortController();
       try {
         const response = await fetch('/api/tournaments/overlay?' + (owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id)), {
@@ -26,24 +30,43 @@ export default function TournamentOverlay() {
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
-        if (active) {
-          lastStatusRef.current = result.match ? 'active' : 'unassigned';
+        if (active && version === requestVersion) {
           setData(result);
           setLoadError('');
         }
       } catch (error) {
-        if (active && error.name !== 'AbortError') setLoadError(error.message || '通信に失敗しました。');
+        if (active && version === requestVersion && error.name !== 'AbortError') setLoadError(error.message || '通信に失敗しました。');
       }
     };
-    const poll = async () => {
-      if (!active) return;
-      await refresh();
-      // OBS browser sources may report hidden even while being composited.
-      // Never suppress polling based on document.visibilityState.
-      if (active) timer = setTimeout(poll, lastStatusRef.current === 'active' ? 10000 : 15000);
+    const scheduleRefresh = () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(refresh, 250);
     };
-    poll();
-    return () => { active = false; clearTimeout(timer); controller?.abort(); };
+    // The public change-signals table exposes only IDs and revision tokens,
+    // never private tournament JSON. Its trigger must be installed in Supabase.
+    try {
+      const supabase = getSupabaseBrowserClient();
+      channel = supabase.channel('obs-overlay-' + (owner || id))
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'tournament_change_signals',
+          ...(id && !owner ? { filter: 'tournament_id=eq.' + id } : {}),
+        }, scheduleRefresh)
+        .subscribe(status => {
+          // A fresh read on subscription/reconnection catches missed changes.
+          if (status === 'SUBSCRIBED') refresh();
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setLoadError('Realtimeの接続が切れました。再接続を待っています。');
+        });
+    } catch (error) {
+      setLoadError(error.message || 'Realtimeに接続できませんでした。');
+    }
+    // Initial read also works if the subscription is delayed or unavailable.
+    refresh();
+    return () => {
+      active = false;
+      clearTimeout(debounce);
+      controller?.abort();
+      if (channel) getSupabaseBrowserClient().removeChannel(channel);
+    };
   }, [id, owner]);
   // Show a clearly labeled sample whenever no stream match is assigned,
   // so OBS placement can be adjusted before the tournament starts.
