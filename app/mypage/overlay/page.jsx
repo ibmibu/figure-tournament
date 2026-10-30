@@ -52,6 +52,11 @@ export default function MyOverlayPage() {
         <p><strong>幅：960 px　高さ：90 px</strong></p>
         <p className="setting-help">背景は透明です。スコアや配信台の情報は自動更新されます。決勝終了後も次の大会が始まるまで最終スコアを表示します。</p>
       </section>
+      <section className="my-results my-color-panel" style={{ marginTop: 24 }} aria-labelledby="scoreboard-editor-heading">
+        <h2 id="scoreboard-editor-heading">スコアボードエディター</h2>
+        <p className="setting-help">選手名・スコア・大会情報の配置や色を自由に調整できる機能を予定しています。左右対称のレイアウトにも対応予定です。</p>
+        <p className="setting-help" style={{ marginTop: 12, fontWeight: 700 }}>近日実装予定</p>
+      </section>
     </section>
   </main>;
 }
