@@ -210,7 +210,7 @@ export default function MyPage({ colorsOnly = false }) {
       const response = await fetch('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ display_name: draftName, avatar_data: draftAvatar, friend_code: draftFriendCode }),
+        body: JSON.stringify({ display_name: draftName, avatar_data: draftAvatar, friend_code: draftFriendCode.trim().toUpperCase() }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'プロフィールを保存できませんでした。');
@@ -283,7 +283,7 @@ export default function MyPage({ colorsOnly = false }) {
           {!editing && <div className="setting-help mypage-friend-code">フレンドコード：{profile.friend_code || '未登録'}</div>}
           {editing && <form onSubmit={saveProfile} className="profile-edit-form">
             <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
-            <label>フレンドコード<input value={draftFriendCode} onChange={e => setDraftFriendCode(e.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" /></label>
+            <label>フレンドコード<input value={draftFriendCode} onChange={e => setDraftFriendCode(e.target.value)} autoCapitalize="off" autoCorrect="off" spellCheck={false} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" /></label>
             <label>アイコン画像<input type="file" accept="image/*" onChange={chooseImage} /></label>
             <p className="setting-help">画像は5MB以下。選択すると自動でWebP形式（最大256px）に圧縮します。</p>
             <div className="form-actions"><button type="button" onClick={() => { setEditing(false); setError(''); }}>キャンセル</button><button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : '保存する'}</button></div>
