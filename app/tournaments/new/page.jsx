@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 
 const STORAGE_KEY = 'figure-tournament-list-v1';
@@ -21,6 +21,8 @@ function nextTournamentName(previousName) {
 
 export default function NewTournamentPage() {
   const [editId, setEditId] = useState('');
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
@@ -159,6 +161,10 @@ export default function NewTournamentPage() {
 
   async function createTournament(event) {
     event.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError('大会名を入力してください。');
@@ -236,6 +242,7 @@ export default function NewTournamentPage() {
     } catch (saveError) {
       setError(saveError.message || '保存できませんでした。通信状況とサーバー設定を確認してください。');
     }
+    } finally { savingRef.current = false; setSaving(false); }
   }
 
   const weekday = date ? ['日', '月', '火', '水', '木', '金', '土'][new Date(date + 'T12:00:00').getDay()] : '';
@@ -358,7 +365,7 @@ export default function NewTournamentPage() {
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
           <a className="cancel-link" href="/">キャンセル</a>
-          <button className="submit" type="submit">{editId ? '変更を保存する' : '大会を作成する'}</button>
+          <button className="submit" type="submit" disabled={saving}>{saving ? '保存中…' : editId ? '変更を保存する' : '大会を作成する'}</button>
         </div>
       </form>}
     </section>
