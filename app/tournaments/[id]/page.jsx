@@ -479,8 +479,9 @@ export default function TournamentPage() {
       setStageSelection('');
     } catch (e) {
       if (automatic) {
+        autoStartAttemptRef.current.delete(String(match.id));
         console.error('Automatic match initialization failed:', e);
-        setNotice('対戦の準備に失敗しました。画面を更新して再試行してください。');
+        setNotice('対戦の準備に失敗しました。対戦画面の「準備を再試行」を押してください。');
       } else setError(e.message || '対戦操作に失敗しました。');
     } finally {
       setSavingBracket(false);
@@ -841,7 +842,7 @@ export default function TournamentPage() {
               const code = isStreaming ? '' : opponent?.friendCode;
               return code ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{code}</strong></div> : null;
             })()}
-            {!state ? <p className="setting-help">対戦を準備しています…</p> : <>
+            {!state ? <div><p className="setting-help">対戦を準備しています…</p><button type="button" className="submit" disabled={savingBracket} onClick={() => startMatch(ri, mi)}>準備を再試行</button></div> : <>
               {!game?.stage ? <>
                 {rejectsDone ? (canActFor(chooserId) ? <>
                   <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
