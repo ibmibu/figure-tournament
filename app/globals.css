@@ -1976,3 +1976,18 @@ body .tournament-detail-page .bracket-admin-log-dot{
  .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-edit-link,
  .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-share-x{font-size:12px;padding-inline:10px}
 }
+
+/* Registration takes the same available action-column width as Start, for hosts and players. */
+.tournament-detail-page #tournament-overview>.overview-actions>.overview-join-form{
+  flex:1 1 0;width:auto;min-width:0;
+}
+.tournament-detail-page #tournament-overview>.overview-actions>.overview-join-form>.submit{
+  display:flex;align-items:center;justify-content:center;flex:1 1 auto;
+  width:100%;min-width:0;max-width:100%;min-height:42px;
+  white-space:normal;text-align:center;line-height:1.35;
+}
+@media(max-width:900px){
+  .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-join-form{
+    width:100%;min-width:0;
+  }
+}
