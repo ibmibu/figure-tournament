@@ -66,7 +66,7 @@ export default function TournamentOverlay() {
       html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important}
       .obs-overlay-root{width:100%;min-height:80px;background:transparent!important;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif;display:block!important;padding:0!important;margin:0!important}
       .obs-scoreboard{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:5px;width:min(100%,960px);margin:0 auto;padding:0 8px;background:transparent}
-      .obs-scoreboard-main{box-sizing:border-box;width:100%;height:46px;display:grid;grid-template-columns:minmax(0,1fr) 46px 92px 46px minmax(0,1fr);align-items:stretch;column-gap:4px}
+      .obs-scoreboard-main{box-sizing:border-box;width:80%;height:46px;display:grid;grid-template-columns:minmax(0,1fr) 46px 92px 46px minmax(0,1fr);align-items:stretch;column-gap:4px;margin:0 auto}
       .obs-player{box-sizing:border-box;min-width:0;height:46px;background:#fff!important;border:2px solid #5e45a8;border-radius:2px;display:flex;align-items:center;padding:0 12px;color:#24232b;font-size:25px;font-weight:800;line-height:1}
       .obs-player span{display:block;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .obs-player-left{justify-content:flex-end;text-align:right}
