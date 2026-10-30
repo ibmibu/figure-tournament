@@ -155,48 +155,9 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
-  // Keep the overview synchronized as well: tournament start and declaration
-  // changes must appear on other participants' screens without a reload.
-  useEffect(() => {
-    if (!id || !tournament || !showTournamentOverview || tournament.bracket?.complete || savingBracket || tournament.declarationPhase === 'collecting') return;
-    let cancelled = false;
-    let inFlight = false;
-    const refresh = async () => {
-      if (cancelled || inFlight || document.visibilityState !== 'visible') return;
-      inFlight = true;
-      try {
-        const owner = localStorage.getItem(OWNER_KEY) || '';
-        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
-        if (response.status === 304) return;
-        const newEtag = response.headers.get('etag');
-        if (newEtag) tournamentEtagRef.current = newEtag;
-        if (!response.ok || cancelled) return;
-        const result = await response.json();
-        if (!cancelled && result.tournament) applyTournamentSnapshot(result.tournament);
-      } catch {} finally { inFlight = false; }
-    };
-    const timer = setInterval(refresh, 4000);
-    const onVisible = () => { void refresh(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => { cancelled = true; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); };
-  }, [id, Boolean(tournament), showTournamentOverview, tournament?.bracket?.complete, tournament?.declarationPhase, savingBracket, accessToken]);
-
-  // Character declaration is live even before the bracket exists.
-  useEffect(() => {
-    if (tournament?.declarationPhase !== 'collecting' || !id) return;
-    const timer = setInterval(() => {
-      if (document.visibilityState !== 'visible' || declarationBusy || savingBracket) return;
-      fetch(`/api/tournaments?id=${encodeURIComponent(id)}`, { cache: 'no-store', headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {} })
-        .then(async response => {
-          if (!response.ok) return;
-          const result = await response.json();
-          if (result.tournament) applyTournamentSnapshot(result.tournament);
-        }).catch(() => {});
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [id, tournament?.declarationPhase, declarationBusy, savingBracket, accessToken]);
-
-  // Keep both players in sync while a bracket is active, without flashing the loading screen.
+  // A single tournament sync loop covers the overview, declarations and live bracket.
+  // Avoid overlapping four-second requests from separate UI sections.
+  // Keep tournament state synchronized without flashing the loading screen.
   useEffect(() => {
     if (!tournament || tournament.bracket?.complete || savingBracket) return;
     let cancelled = false;
