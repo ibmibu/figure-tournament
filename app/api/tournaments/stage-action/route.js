@@ -96,6 +96,7 @@ export async function POST(request) {
     return fail('他の操作が先に保存されました。再度お試しください。', 409);
   } catch (error) {
     console.error('stage-action failed', { message: error?.message, code: error?.code, details: error?.details });
-    return fail('ステージ操作に失敗しました。', 500);
+    const code = typeof error?.code === 'string' && /^[A-Z0-9_]{3,12}$/i.test(error.code) ? error.code : null;
+    return NextResponse.json({ error: 'ステージ操作に失敗しました。' + (code ? '（エラーコード: ' + code + '）' : ''), code }, { status: 500 });
   }
 }
