@@ -2448,3 +2448,12 @@ footer span {
 .stats-shell .seriesTagSelector{min-height:0!important;margin:0!important;padding:12px 0!important}
 .stats-shell .content>section.matrixCard{margin:0!important;padding-top:0!important}
 @media(max-width:600px){.stats-shell .seriesTagSelector{min-height:0!important;margin:0!important;padding:10px 0!important}.stats-shell .content>section.matrixCard{margin-top:0!important}}
+
+/* Clearer neutral achievement chips; keep solo gold and Tier badges unchanged. */
+.stats-shell .characterTopList .characterTopCard,
+.stats-shell .achievementTournaments > .achievementTournament{
+  background:#eef1f5;
+  border:1px solid #bfc8d5;
+  color:#253149;
+  box-shadow:none;
+}
