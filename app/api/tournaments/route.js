@@ -100,7 +100,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
   if (!isOwner && !isStreamPlayer) delete publicData.streamFriendCode;
   publicData.matchLogs = (data.matchLogs || []).map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
   if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
-  return { ...publicData, characterReports: visibleReports, isOwner, effectiveStreamMatchId };
+  return { ...publicData, characterReports: visibleReports, isOwner, ...(isOwner ? { overlayOwnerId: ownerUserId } : {}), effectiveStreamMatchId };
 }
 
 function errorResponse(error, fallback) {
