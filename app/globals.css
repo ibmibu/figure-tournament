@@ -1884,3 +1884,14 @@ body .tournament-detail-page .bracket-admin-log-dot{
   .mypage-layout .mypage-profile-name-row{column-gap:12px}
   .mypage-layout .mypage-profile-name-row .profile-name{font-size:18px}
 }
+
+/* My Page: separate profile identity from its edit action. */
+.mypage-layout .mypage-minimal-profile .profile-summary{width:100%;min-width:0}
+.mypage-layout .mypage-minimal-profile .mypage-profile-info{flex:1;min-width:0}
+.mypage-layout .mypage-minimal-profile .mypage-edit-link{margin-left:auto;flex-shrink:0;align-self:center;min-height:36px;padding:8px 0 8px 12px;cursor:pointer}
+.mypage-layout .mypage-minimal-profile .mypage-edit-link:focus-visible{outline:2px solid #6046a6;outline-offset:3px;border-radius:3px}
+@media(max-width:600px){
+  .mypage-layout .mypage-minimal-profile .profile-summary{gap:12px}
+  .mypage-layout .mypage-minimal-profile .mypage-edit-link{font-size:11px;padding-left:6px}
+  .mypage-layout .mypage-minimal-profile .mypage-friend-code{overflow-wrap:anywhere}
+}
