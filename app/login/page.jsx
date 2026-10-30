@@ -55,6 +55,5 @@ export default function LoginPage() {
       </button>
       {error && <p className="form-error" role="alert">{error}</p>}
     </section>
-    <footer>アミコネ</footer>
   </main>;
 }
