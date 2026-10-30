@@ -1849,3 +1849,7 @@ body .tournament-detail-page .bracket-admin-log-dot{
     margin-top:18px!important;
   }
 }
+
+/* Match player names open their selected stats without changing the scorecard appearance. */
+.tournament-detail-page .player-strip .match-player-stats-link{color:inherit;text-decoration:none;font:inherit;font-weight:700;cursor:pointer}
+.tournament-detail-page .player-strip .match-player-stats-link:hover{text-decoration:underline;text-underline-offset:3px}
