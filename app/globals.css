@@ -1779,3 +1779,22 @@ body .tournament-detail-page .bracket-admin-log-dot{
    margin-top:6px;
  }
 }
+
+
+/* Comments: no heading/toggle; newest first in a compact scrolling history. */
+.tournament-detail-page .tournament-board{padding-top:12px}
+.tournament-detail-page .tournament-board-scroll{
+ display:flex;flex-direction:column;gap:12px;max-height:240px;
+ overflow-y:auto;overscroll-behavior:contain;
+ scrollbar-width:thin;padding:2px 4px 2px 0;
+}
+.tournament-detail-page .tournament-board-scroll .tournament-board-entry{
+ flex-shrink:0;
+}
+.tournament-detail-page .tournament-board-scroll .tournament-board-message{
+ max-height:none;overflow:visible;
+}
+@media(max-width:600px){
+ .tournament-detail-page .tournament-board{padding-top:10px}
+ .tournament-detail-page .tournament-board-scroll{max-height:210px}
+}
