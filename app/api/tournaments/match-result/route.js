@@ -69,6 +69,7 @@ export async function POST(request) {
       if (error) throw error;
       if (!row) return fail('大会が見つかりません。', 404);
       const current = row.data;
+      const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0 ? current.stageActionRevision : null;
       const actorId = user.id;
       const bracket = structuredClone(current.bracket);
       if (!bracket || bracket.complete) return fail('大会は終了しています。', 409);
@@ -110,14 +111,18 @@ export async function POST(request) {
       bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
       const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
       appendMatchLog(updated, current, matchId, actorPlayer.name, `第${gameNumber}ゲーム ${result === 'win' ? '勝利' : '敗北'}報告${found.winnerId ? '・セット確定' : ''}`);
-      const { data: changed, error: writeError } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
+      updated.stageActionRevision = (revision ?? 0) + 1;
+      let update = db.from('tournaments').update({ data: updated }).eq('id', id);
+      update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
+      const { data: changed, error: writeError } = await update.select('id');
       if (writeError) throw writeError;
       if (changed?.length) return NextResponse.json({ ok: true, tournament: safeTournament(updated, user) });
       // Another player committed first. Reload, merge this vote and retry.
     }
     return fail('同時操作が集中しています。もう一度お試しください。', 409);
   } catch (error) {
-    console.error('Match result error:', error);
-    return fail('勝敗報告を保存できませんでした。', 500);
+    console.error('Match result error:', { message: error?.message, code: error?.code, details: error?.details });
+    const code = typeof error?.code === 'string' && /^[A-Z0-9_]{3,12}$/i.test(error.code) ? error.code : null;
+    return fail('勝敗報告を保存できませんでした。' + (code ? '（エラーコード: ' + code + '）' : ''), 500);
   }
 }
