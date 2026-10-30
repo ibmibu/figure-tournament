@@ -599,7 +599,7 @@ export default function TournamentPage() {
     if (!isOwner || savingBracket) return;
     const entries = tournament.matchLogs || [];
     const targetIndex = entries.findIndex(entry => entry.id === logId && String(entry.matchId) === String(matchId));
-    if (targetIndex < 0 || !window.confirm(`この操作の直前まで巻き戻しますか？以降の${entries.length - targetIndex}件の操作と、後続の対戦進行も取り消されます。`)) return;
+    if (targetIndex < 0 || !window.confirm(`この対戦カードを選択した操作の直前まで戻しますか？このカードの以降の操作と、影響を受ける後続カードだけを取り消します。無関係な対戦カードは維持します。`)) return;
     setSavingBracket(true);
     setError('');
     try {
