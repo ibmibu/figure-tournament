@@ -662,7 +662,7 @@ export default function TournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '配信台を設定できませんでした。');
-      setTournament(result.tournament);
+      setTournament(prev => ({ ...result.tournament, overlayOwnerId: prev?.overlayOwnerId, effectiveStreamMatchId: matchId }));
       setAdminMatchSelection(null);
       setShowForfeitChoices(false);
 
@@ -763,7 +763,7 @@ export default function TournamentPage() {
     ? tournament.bracket?.rounds?.[adminMatchSelection.roundIndex]?.[adminMatchSelection.matchIndex] || null
     : null;
   const canEditAdminMatch = Boolean(selectedAdminMatch?.player1 && selectedAdminMatch?.player2);
-  const streamMatchId = tournament.effectiveStreamMatchId ?? tournament.streamMatchId ?? null;
+  const streamMatchId = tournament.effectiveStreamMatchId !== undefined ? tournament.effectiveStreamMatchId : (tournament.streamMatchId ?? null);
 
   // Declaration is its own phase, not a section hidden below the overview.
   if (tournament.characterDeclaration && tournament.declarationPhase === 'collecting') {
