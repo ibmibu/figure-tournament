@@ -18,6 +18,7 @@ export default function MyPage({ colorsOnly = false }) {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState('');
   const [myColors, setMyColors] = useState([]);
   const [selectedFighter, setSelectedFighter] = useState('マリオ');
@@ -223,6 +224,21 @@ export default function MyPage({ colorsOnly = false }) {
     }
   }
 
+  async function signInWithGoogle() {
+    setError('');
+    setSigningIn(true);
+    try {
+      const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/mypage')}` },
+      });
+      if (authError) throw authError;
+    } catch (authError) {
+      setError(authError.message || 'Googleログインを開始できませんでした。');
+      setSigningIn(false);
+    }
+  }
+
   async function signOut() {
     try {
       const { error: signOutError } = await getSupabaseBrowserClient().auth.signOut();
@@ -251,7 +267,10 @@ export default function MyPage({ colorsOnly = false }) {
       <h1>{colorsOnly ? 'マイカラー登録' : 'マイページ'}</h1>
       {colorsOnly && <Link className="my-colors-back" href="/mypage">← マイページに戻る</Link>}
       {error && <p className="form-error" role="alert">{error}</p>}
-      {!colorsOnly && !session && !loading && <section className="mypage-login-panel"><p className="setting-help">マイページの利用にはログインが必要です。</p><Link href="/login?next=/mypage" className="button-link submit">Googleでログイン</Link></section>}
+      {!colorsOnly && !session && !loading && <section className="mypage-login-panel">
+        <p className="setting-help">Googleアカウントでアミコネにログインします。</p>
+        <button type="button" className="submit" onClick={signInWithGoogle} disabled={signingIn}>{signingIn ? '接続しています…' : 'Googleでログイン'}</button>
+      </section>}
       {!colorsOnly && session && <>
         <section className="mypage-minimal-profile">
           <div className="profile-summary">
