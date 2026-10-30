@@ -242,7 +242,7 @@ export default function MyPage({ colorsOnly = false }) {
               <div className="profile-name">{displayName || 'no name'}</div>
               {!editing && <div className="setting-help mypage-friend-code">フレンドコード：{profile.friend_code || '未登録'}</div>}
             </div>
-            {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setDraftFriendCode(profile.friend_code || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>
+            {!editing && <button type="button" className="mypage-edit-link" onClick={() => { setDraftName(profile.display_name || 'no name'); setDraftAvatar(profile.avatar_data || ''); setDraftFriendCode(profile.friend_code || ''); setEditing(true); }}>プロフィールを編集 <span aria-hidden="true">›</span></button>}
           </div>
           {editing && <form onSubmit={saveProfile} className="profile-edit-form">
             <label>名前<input value={draftName} onChange={e => setDraftName(e.target.value)} maxLength={40} required placeholder="no name" /></label>
