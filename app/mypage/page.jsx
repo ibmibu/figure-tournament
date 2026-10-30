@@ -164,8 +164,10 @@ export default function MyPage({ colorsOnly = false }) {
     }
     try {
       const dataUrl = await new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(file);
+        const reader = new FileReader();
         const image = new Image();
+        reader.onload = () => { image.src = String(reader.result || ''); };
+        reader.onerror = () => reject(new Error('画像ファイルを読み取れませんでした。'));
         image.onload = () => {
           try {
             const canvas = document.createElement('canvas');
@@ -181,15 +183,14 @@ export default function MyPage({ colorsOnly = false }) {
             if (!output.startsWith('data:image/')) throw new Error('画像の変換に失敗しました。');
             resolve(output);
           } catch (error) { reject(error); }
-          finally { URL.revokeObjectURL(url); }
+          finally { image.onload = null; image.onerror = null; }
         };
         image.onerror = () => {
-          URL.revokeObjectURL(url);
           reject(new Error(/\.(heic|heif)$/i.test(file.name) || /hei[cf]/i.test(file.type)
             ? 'この端末ではHEIC画像を読み込めません。JPEGまたはPNGに変換してから選択してください。'
             : '画像を読み込めません。JPEG、PNG、WebP形式の画像を試してください。'));
         };
-        image.src = url;
+        reader.readAsDataURL(file);
       });
       setDraftAvatar(dataUrl);
     } catch (error) {
