@@ -213,16 +213,24 @@ export default function TournamentPage() {
     // slower fallback, while change signals can refresh immediately.
     const activeMatch = Boolean(tournament.bracket && !tournament.bracket.complete);
     const fallbackMs = activeMatch ? 2000 : 4000;
-    const interval = setInterval(() => {
-      const intervalMs = realtimeConnected && receivedSignal ? (activeMatch ? 2000 : 4000) : fallbackMs;
-      if (Date.now() - lastSync >= intervalMs) void refresh();
-    }, fallbackMs);
+    // Spread clients' periodic reads across a short window: a new round can
+    // otherwise cause all players' browsers to hit the API at the same instant.
+    const staggerMs = Math.floor(Math.random() * 500);
+    let timer;
+    const poll = () => {
+      if (cancelled) return;
+      // Keep a fallback even with Realtime connected: not every write path
+      // necessarily emits a signal yet.
+      if (Date.now() - lastSync >= fallbackMs) void refresh();
+      timer = setTimeout(poll, fallbackMs);
+    };
+    timer = setTimeout(poll, fallbackMs + staggerMs);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
