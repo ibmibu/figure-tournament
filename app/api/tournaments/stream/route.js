@@ -23,8 +23,11 @@ export async function POST(request) {
       if (matchId !== null && !(current.bracket?.rounds || []).flat().some(m => String(m.id) === matchId && m.player1 && m.player2 && !m.winnerId)) {
         return NextResponse.json({ error: '配信台に設定できる対戦ではありません。' }, { status: 400 });
       }
-      const updated = { ...current, streamMatchId: matchId, streamMatchManual: true };
-      const { data: changed, error } = await db.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(current)).select('id');
+      const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0 ? current.stageActionRevision : null;
+      const updated = { ...current, streamMatchId: matchId, streamMatchManual: true, stageActionRevision: (revision ?? 0) + 1 };
+      let update = db.from('tournaments').update({ data: updated }).eq('id', id);
+      update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
+      const { data: changed, error } = await update.select('id');
       if (error) throw error;
       if (changed?.length) return NextResponse.json({ ok: true, tournament: {
         ...updated, ownerUserId: undefined, ownerId: undefined, isOwner: true, effectiveStreamMatchId: matchId,
