@@ -989,12 +989,22 @@ export default function TournamentPage() {
     {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2></div>
-      {(isOwner || tournament.bracket) && <div className="overview-actions">
+      <div className="overview-actions">
         {isOwner && !tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit overview-start-button" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメント表へ' : '大会を開始する'}</button>}
         {tournament.bracket && <button className="overview-bracket-button" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
         {isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
         <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
-      </div>}
+        {!tournament.bracket && !isOwner && !joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && (
+          joinedPlayers.length >= Number(tournament.participants || 8)
+            ? <p className="setting-help overview-join-status">定員に達しています。</p>
+            : <form className="overview-join-form" onSubmit={joinTournament}>
+                {!savedFriendCode && <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" required /></label>}
+                {error && <p className="form-error" role="alert">{error}</p>}
+                <button className="submit" type="submit">参加登録する</button>
+              </form>
+        )}
+        {!tournament.bracket && !isOwner && joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && <p className="setting-help overview-join-status">参加済み</p>}
+      </div>
 
       <div className="detail-grid">
         <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
@@ -1037,15 +1047,6 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail participant-side-panel">
       <h2 className="participant-section-heading">参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
       {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a></span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && String(player.userId || player.id) === String(currentUserId) ? <button type="button" onClick={withdrawTournament}>参加を解除</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
-      {!tournament.bracket && !joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && (
-        joinedPlayers.length >= Number(tournament.participants || 8)
-          ? <p className="setting-help">定員に達しています。</p>
-          : <form onSubmit={joinTournament}>
-              {!savedFriendCode && <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" required /></label>}
-              {error && <p className="form-error" role="alert">{error}</p>}
-              <button className="submit" type="submit">参加登録する</button>
-            </form>
-      )}
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
