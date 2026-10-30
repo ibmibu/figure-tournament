@@ -44,10 +44,10 @@ export async function POST(request) {
         if (!log?.before?.bracket) throw new Error('巻き戻す履歴が見つかりません。');
         const entries = existing.matchLogs || [];
         const index = entries.findIndex(item => item.id === log.id);
-        if (index < 0 || index !== entries.length - 1) throw new Error('安全のため、最新の操作から順に巻き戻してください。');
-        if (JSON.stringify(existing.bracket) !== JSON.stringify(log.afterBracket)) throw new Error('対戦状態が変わりました。再読み込みしてください。');
-        updated = { ...existing, ...log.before, matchLogs: entries.slice(0, -1) };
-        updated.adminLog = [...(existing.adminLog || []), { at: new Date().toISOString(), label: `巻き戻し：${log.actor} ${log.action}` }].slice(-100);
+        if (index < 0) throw new Error('巻き戻す履歴が見つかりません。');
+        if (JSON.stringify(existing.bracket) !== JSON.stringify(entries.at(-1)?.afterBracket)) throw new Error('対戦状態が変わりました。再読み込みしてください。');
+        updated = { ...existing, ...log.before, matchLogs: entries.slice(0, index), adminHistory: [] };
+        updated.adminLog = [...(existing.adminLog || []), { at: new Date().toISOString(), label: `履歴を巻き戻し（${entries.length - index}操作）：${log.actor} ${log.action}` }].slice(-100);
       } else if (action === 'undo') {
         const latest = history.at(-1);
         if (!latest?.before) throw new Error('巻き戻せる主催者操作がありません。');
