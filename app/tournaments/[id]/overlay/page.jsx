@@ -13,26 +13,37 @@ export default function TournamentOverlay() {
   const [debug, setDebug] = useState(false);
   useEffect(() => { setDebug(new URLSearchParams(window.location.search).has('debug')); }, []);
   useEffect(() => {
+    // Wait for the permanent owner URL to be parsed before requesting an overlay.
+    if (!owner && !id) return;
     let active = true;
+    let timer;
+    let controller;
     const refresh = async () => {
+      controller = new AbortController();
       try {
-        const response = await fetch('/api/tournaments/overlay?' + (owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id)), { cache: 'no-store' });
+        const response = await fetch('/api/tournaments/overlay?' + (owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id)), {
+          cache: 'no-store', signal: controller.signal,
+        });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
-        if (active) { lastStatusRef.current = result.match ? 'active' : 'unassigned'; setData(result); setLoadError(''); }
-      } catch (error) { if (active) setLoadError(error.message || '通信に失敗しました。'); }
+        if (active) {
+          lastStatusRef.current = result.match ? 'active' : 'unassigned';
+          setData(result);
+          setLoadError('');
+        }
+      } catch (error) {
+        if (active && error.name !== 'AbortError') setLoadError(error.message || '通信に失敗しました。');
+      }
     };
-    refresh();
-    let timer;
-    const schedule = async () => {
+    const poll = async () => {
       if (!active) return;
-      if (!document.hidden) await refresh();
-      if (active) timer = setTimeout(schedule, document.hidden ? 60000 : lastStatusRef.current === 'active' ? 10000 : 300000);
+      await refresh();
+      // OBS browser sources may report hidden even while being composited.
+      // Never suppress polling based on document.visibilityState.
+      if (active) timer = setTimeout(poll, lastStatusRef.current === 'active' ? 10000 : 15000);
     };
-    const onVisibility = () => { if (!document.hidden) { clearTimeout(timer); schedule(); } };
-    document.addEventListener('visibilitychange', onVisibility);
-    timer = setTimeout(schedule, 10000);
-    return () => { active = false; clearTimeout(timer); document.removeEventListener('visibilitychange', onVisibility); };
+    poll();
+    return () => { active = false; clearTimeout(timer); controller?.abort(); };
   }, [id, owner]);
   const match = data?.match;
   return <main className="obs-overlay-root">
