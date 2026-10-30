@@ -1895,3 +1895,9 @@ body .tournament-detail-page .bracket-admin-log-dot{
   .mypage-layout .mypage-minimal-profile .mypage-edit-link{font-size:11px;padding-left:6px}
   .mypage-layout .mypage-minimal-profile .mypage-friend-code{overflow-wrap:anywhere}
 }
+
+/* Match UX: show the next action before the stage controls. */
+.match-next-action{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;margin:12px 0;background:#f1eef9;border-left:3px solid #6046a6;color:#30234e;font-size:14px;line-height:1.5}
+.match-next-action strong{font-weight:800}
+.match-next-action span{font-size:12px;color:#665a7f;white-space:nowrap}
+@media(max-width:600px){.match-next-action{padding:10px 11px;font-size:13px;gap:8px}.match-next-action span{font-size:11px}}
