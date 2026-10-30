@@ -1,3 +1,4 @@
+import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -39,7 +40,7 @@ export async function POST(request) {
       }
       next = { ...t, declarationPhase: 'published', characterReports: reports };
     } else return NextResponse.json({ error: '操作が不正です。' }, { status: 400 });
-    const { data: updated, error: updateError } = await db.from('tournaments').update({ data: next }).eq('id', String(id)).eq('data', JSON.stringify(t)).select('id');
+    const { data: updated, error: updateError } = await saveTournamentRevision(db,id,t,next);
     if (updateError) throw updateError;
     if (!updated?.length) return NextResponse.json({ error: '他の操作が先に保存されました。再試行してください。' }, { status: 409 });
     return NextResponse.json({ ok: true });
