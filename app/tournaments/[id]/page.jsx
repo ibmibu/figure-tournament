@@ -42,6 +42,7 @@ export default function TournamentPage() {
   const tournamentEtagRef = useRef('');
   const boardSnapshotRef = useRef('');
   const boardInFlightRef = useRef(false);
+  const autoStartAttemptRef = useRef(new Set());
 
   function applyTournamentSnapshot(next) {
     const signature = JSON.stringify(next);
@@ -291,7 +292,10 @@ export default function TournamentPage() {
       if (mi >= 0) {
         const ownMatch = round[mi];
         setActiveMatchId(ownMatch.id);
-        if (!ownMatch.matchState) startMatch(ri, mi);
+        if (!ownMatch.matchState && !autoStartAttemptRef.current.has(String(ownMatch.id))) {
+          autoStartAttemptRef.current.add(String(ownMatch.id));
+          performStageAction(ri, mi, 'start', {}, true);
+        }
         return;
       }
     }
@@ -445,7 +449,7 @@ export default function TournamentPage() {
     return { selected, starter: starter.length ? starter : selected, counter };
   }
 
-  async function performStageAction(roundIndex, matchIndex, action, extra = {}) {
+  async function performStageAction(roundIndex, matchIndex, action, extra = {}, automatic = false) {
     if (savingBracket) return;
     const match = tournament?.bracket?.rounds?.[roundIndex]?.[matchIndex];
     if (!match) return;
@@ -474,7 +478,10 @@ export default function TournamentPage() {
       setRejectSelection([]);
       setStageSelection('');
     } catch (e) {
-      setError(e.message || '対戦操作に失敗しました。');
+      if (automatic) {
+        console.error('Automatic match initialization failed:', e);
+        setNotice('対戦の準備に失敗しました。画面を更新して再試行してください。');
+      } else setError(e.message || '対戦操作に失敗しました。');
     } finally {
       setSavingBracket(false);
     }
