@@ -47,13 +47,13 @@ export default function TournamentOverlay() {
     </div>}
     <style jsx global>{`
       html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important}
-      .obs-overlay-root{width:100%;min-height:86px;background:transparent!important;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif;display:block!important;padding:0!important;margin:0!important}
-      .obs-scoreboard{box-sizing:border-box;display:grid;grid-template-columns:minmax(160px,1fr) 66px 22px 66px minmax(160px,1fr);align-items:center;gap:5px;width:min(100%,960px);margin:0 auto;padding:3px 8px 19px;position:relative;background:transparent}
-      .obs-scoreboard .obs-player{background:#17243b!important;padding:8px 12px;font-size:19px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:2px solid #67c1b0}
-      .obs-player-left{text-align:right}.obs-player-right{text-align:left}
-      .obs-scoreboard .obs-score{background:#3170b8!important;text-align:center;padding:5px 0;font-size:27px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
-      .obs-dash{text-align:center;color:#fff;font-size:20px;text-shadow:0 1px 3px #000}
-      .obs-match-label{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;color:#fff;text-shadow:0 1px 3px #000}
+      .obs-overlay-root{width:100%;min-height:80px;background:transparent!important;color:#fff;font-family:Arial,"Noto Sans JP",sans-serif;display:block!important;padding:0!important;margin:0!important}
+      .obs-scoreboard{box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 52px 24px 52px minmax(0,1fr);grid-template-rows:52px auto;align-items:center;column-gap:5px;row-gap:4px;width:min(100%,960px);margin:0 auto;padding:0 8px;position:relative;background:transparent}
+      .obs-scoreboard .obs-player{box-sizing:border-box;background:#19263e!important;height:52px;display:flex;align-items:center;padding:0 14px;font-size:22px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+      .obs-player-left{justify-content:flex-end;text-align:right}.obs-player-right{justify-content:flex-start;text-align:left}
+      .obs-scoreboard .obs-score{box-sizing:border-box;background:#3170b8!important;width:52px;height:52px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:30px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+      .obs-dash{text-align:center;color:#fff;font-size:24px;font-weight:700;text-shadow:0 1px 3px #000}
+      .obs-match-label{grid-column:1/-1;justify-self:center;max-width:100%;box-sizing:border-box;background:#19263e!important;padding:5px 14px;text-align:center;font-size:13px;line-height:1.25;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     `}</style>
   </main>;
 }
