@@ -14,6 +14,18 @@ function formatDate(value) {
   return `${year}/${month}/${day}(${weekday})${timePart ? ` ${timePart.slice(0, 5)}` : ''}`;
 }
 
+// Past 人形劇 tournaments use their series number as the chronological source of truth.
+// Some archived dates are missing or inconsistent, so don't sort them by parsed dates.
+function sortParticipations(items) {
+  return [...items].sort((a, b) => {
+    if (a.isLegacy && b.isLegacy) return (Number(b.number) || 0) - (Number(a.number) || 0);
+    if (a.isLegacy !== b.isLegacy) return a.isLegacy ? 1 : -1;
+    const dateA = Date.parse(a.date || a.createdAt || '') || 0;
+    const dateB = Date.parse(b.date || b.createdAt || '') || 0;
+    return dateB - dateA || (Number(b.number) || 0) - (Number(a.number) || 0);
+  });
+}
+
 export default function ResultsPage() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,9 +41,9 @@ export default function ResultsPage() {
           window.location.href = '/login?next=/results';
           return;
         }
-        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(saved.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length))); setLoading(false); } } catch {}
+        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(sortParticipations(saved.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); } } catch {}
         const snapshot = readTabSnapshot('results-' + session.user.id);
-        if (snapshot) { setTournaments(snapshot.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length))); setLoading(false); return; }
+        if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => t.isLegacy || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); return; }
         const headers = { Authorization: `Bearer ${session.access_token}` };
         const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
           fetch('/api/profile', { headers, cache: 'no-store' }),
@@ -66,11 +78,7 @@ export default function ResultsPage() {
           return { ...item, myPlacement: placement || inferredPlace };
         });
         const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => item.isLegacy); } catch { return []; } })();
-        const combined = [...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)].sort((a, b) => {
-          const dateA = Date.parse(a.date || a.createdAt || '') || 0;
-          const dateB = Date.parse(b.date || b.createdAt || '') || 0;
-          return dateB - dateA || (Number(b.number) || 0) - (Number(a.number) || 0);
-        });
+        const combined = sortParticipations([...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)]);
         if (active) { setTournaments(combined); writeTabSnapshot('results-' + session.user.id, combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
