@@ -20,6 +20,8 @@ export async function POST(request) {
       const original = row.data;
       if (!original.bracket || original.bracket.complete) return fail('対戦を操作できません。', 409);
       const next = structuredClone(original);
+      // Compare a compact revision rather than placing the entire tournament JSON in the request URL.
+      const revision = Number.isSafeInteger(original.stageActionRevision) && original.stageActionRevision >= 0 ? original.stageActionRevision : null;
       const match = next.bracket.rounds.flat().find(m => String(m.id) === String(matchId));
       if (!match?.player1 || !match?.player2 || match.winnerId) return fail('対戦が更新されています。', 409);
       const players = [match.player1, match.player2];
@@ -88,8 +90,10 @@ export async function POST(request) {
         ? `第${match.matchState.gameNumber}ゲーム 拒否：${stages.join('、')}`
         : `第${match.matchState.gameNumber}ゲーム ステージ決定：${stage}`;
       appendMatchLog(next, original, matchId, actor?.name || (owner ? '主催者' : ''), label);
-      const { data: saved, error: writeError } = await db.from('tournaments').update({ data: next })
-        .eq('id', id).eq('data', JSON.stringify(original)).select('id');
+      next.stageActionRevision = (revision ?? 0) + 1;
+      let update = db.from('tournaments').update({ data: next }).eq('id', id);
+      update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
+      const { data: saved, error: writeError } = await update.select('id');
       if (writeError) { console.error('Stage action database write failed', { code: writeError.code, message: writeError.message, action }); throw writeError; }
       if (saved?.length) return NextResponse.json({ ok: true });
     }
