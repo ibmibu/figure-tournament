@@ -1680,3 +1680,12 @@ body .home-format-badge{border-radius:4px!important}
 .tournament-create-page .create-panel .create-switch-control .create-switch-track:before{
   border-radius:50%!important;
 }
+
+
+/* Specific exception to the legacy global square-corner rule. */
+body .tournament-create-page .create-panel .create-switch-control .create-switch-track{
+  border-radius:999px!important;
+}
+body .tournament-create-page .create-panel .create-switch-control .create-switch-track::before{
+  border-radius:50%!important;
+}
