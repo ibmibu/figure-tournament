@@ -1798,3 +1798,28 @@ body .tournament-detail-page .bracket-admin-log-dot{
  .tournament-detail-page .tournament-board{padding-top:10px}
  .tournament-detail-page .tournament-board-scroll{max-height:210px}
 }
+
+
+/* Participants: unboxed section with the standard purple title bar. */
+.tournament-detail-page .tournament-bottom-grid>.participant-side-panel{
+  border:0!important;background:transparent!important;box-shadow:none!important;
+  padding:0!important;margin-top:14px;
+}
+.tournament-detail-page .participant-side-panel .participant-section-heading{
+  display:block;background:#6045a8!important;color:#fff!important;
+  border:0;padding:12px 16px!important;margin:0 0 10px!important;
+  font-size:17px!important;font-weight:800!important;
+}
+.tournament-detail-page .participant-side-panel .joined-player-list{
+  margin:0;padding:0!important;list-style:none;
+}
+.tournament-detail-page .participant-side-panel .joined-player-list li{
+  padding:10px 4px;border-bottom:1px solid #dce2eb;
+}
+.tournament-detail-page .participant-side-panel .participant-history-link,
+.tournament-detail-page .participant-side-panel .participant-history-link:visited{
+  color:inherit!important;text-decoration:none!important;font-weight:500;
+}
+.tournament-detail-page .participant-side-panel .participant-history-link:hover{
+  text-decoration:underline!important;
+}
