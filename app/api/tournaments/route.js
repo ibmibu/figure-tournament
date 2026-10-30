@@ -1,3 +1,4 @@
+import { saveTournamentRevision } from '../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, createHash } from 'crypto';
@@ -380,7 +381,7 @@ export async function PUT(request) {
           resultPlacements: existing.resultPlacements,
           completedAt: existing.completedAt,
         };
-    const { data: changed, error } = await supabase.from('tournaments').update({ data: updated }).eq('id', id).eq('data', JSON.stringify(existing)).select('id');
+    const { data: changed, error } = await saveTournamentRevision(supabase, id, existing, updated);
     if (error) throw error;
     if (!changed?.length) return NextResponse.json({ error: '他の操作が先に保存されました。画面を更新してやり直してください。' }, { status: 409 });
     return NextResponse.json({ ok: true });
