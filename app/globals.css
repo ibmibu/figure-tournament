@@ -1689,3 +1689,13 @@ body .tournament-create-page .create-panel .create-switch-control .create-switch
 body .tournament-create-page .create-panel .create-switch-control .create-switch-track::before{
   border-radius:50%!important;
 }
+
+
+.tournament-create-page .create-switch-control,.tournament-create-page .create-switch-control *,.tournament-create-page .create-help summary{-webkit-tap-highlight-color:transparent}
+.tournament-create-page .create-switch-control{user-select:none}
+.tournament-create-page .create-switch-label{display:inline-flex;align-items:center;gap:8px}
+.tournament-create-page .create-help{position:relative;display:inline-flex}
+.tournament-create-page .create-help summary{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;border:1px solid #9294a3;border-radius:50%;color:#777989;font-size:12px;font-weight:700;cursor:pointer;list-style:none}
+.tournament-create-page .create-help summary::-webkit-details-marker{display:none}
+.tournament-create-page .create-help-popover{position:absolute;z-index:30;left:-8px;top:28px;width:260px;max-width:75vw;padding:11px 13px;border:1px solid #d9d3ea;background:white;box-shadow:0 5px 20px #0002;color:#454451;font-size:12px;line-height:1.65;font-weight:400}
+body .tournament-create-page .create-help summary{border-radius:50%!important}
