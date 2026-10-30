@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 export default function TournamentOverlay() {
@@ -9,6 +9,7 @@ export default function TournamentOverlay() {
   useEffect(() => { setOwner(new URLSearchParams(window.location.search).get('owner') || ''); }, []);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const lastStatusRef = useRef('unassigned');
   const [debug, setDebug] = useState(false);
   useEffect(() => { setDebug(new URLSearchParams(window.location.search).has('debug')); }, []);
   useEffect(() => {
@@ -18,12 +19,20 @@ export default function TournamentOverlay() {
         const response = await fetch('/api/tournaments/overlay?' + (owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id)), { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
-        if (active) { setData(result); setLoadError(''); }
+        if (active) { lastStatusRef.current = result.match ? 'active' : 'unassigned'; setData(result); setLoadError(''); }
       } catch (error) { if (active) setLoadError(error.message || '通信に失敗しました。'); }
     };
     refresh();
-    const timer = setInterval(refresh, 2000);
-    return () => { active = false; clearInterval(timer); };
+    let timer;
+    const schedule = async () => {
+      if (!active) return;
+      if (!document.hidden) await refresh();
+      if (active) timer = setTimeout(schedule, document.hidden ? 60000 : lastStatusRef.current === 'active' ? 10000 : 300000);
+    };
+    const onVisibility = () => { if (!document.hidden) { clearTimeout(timer); schedule(); } };
+    document.addEventListener('visibilitychange', onVisibility);
+    timer = setTimeout(schedule, 10000);
+    return () => { active = false; clearTimeout(timer); document.removeEventListener('visibilitychange', onVisibility); };
   }, [id, owner]);
   const match = data?.match;
   return <main className="obs-overlay-root">
