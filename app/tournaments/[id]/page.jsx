@@ -419,7 +419,7 @@ export default function TournamentPage() {
       await saveBracket({ ...tournament, status: 'キャラ宣言中', declarationPhase: 'collecting', characterDeclarations: {} });
       return;
     }
-    const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), streamMatchId: undefined, resultPlacements: null };
+    const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), streamMatchId: undefined, streamMatchManual: false, resultPlacements: null };
     await saveBracket(next);
     setShowTournamentOverview(false);
     setTimeout(() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
@@ -517,7 +517,7 @@ export default function TournamentPage() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || '報告を保存できませんでした。');
-      // Preserve the current stream assignment if the result response omits it.\n      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner, streamMatchId: body.tournament.streamMatchId ?? prev?.streamMatchId ?? null, effectiveStreamMatchId: body.tournament.effectiveStreamMatchId ?? body.tournament.streamMatchId ?? prev?.effectiveStreamMatchId ?? prev?.streamMatchId ?? null }));
+      // Preserve the current stream assignment if the result response omits it.\n      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner, streamMatchId: body.tournament.streamMatchId !== undefined ? body.tournament.streamMatchId : (prev?.streamMatchId ?? null), effectiveStreamMatchId: body.tournament.effectiveStreamMatchId !== undefined ? body.tournament.effectiveStreamMatchId : (body.tournament.streamMatchId !== undefined ? body.tournament.streamMatchId : (prev?.effectiveStreamMatchId ?? prev?.streamMatchId ?? null)) }));
 
     } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
     finally { setSavingBracket(false); }
