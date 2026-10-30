@@ -219,7 +219,7 @@ export default function TournamentPage() {
     const game = ownMatch?.matchState?.currentGame;
     // A chosen stage normally means players are in-game. Keep fast updates
     // during stage striking and result reporting, but reduce idle game traffic.
-    const reportsPending = Boolean(game?.resultVotes && Object.keys(game.resultVotes).length);
+    const reportsPending = Boolean(game?.results && Object.keys(game.results).length);
     const playingGame = Boolean(ownMatch && game?.stage && !reportsPending);
     const fallbackMs = playingGame ? 5000 : activeMatch && ownMatch ? 2000 : 4000;
     // Spread clients' periodic reads across a short window: a new round can
@@ -826,6 +826,11 @@ export default function TournamentPage() {
               const code = isStreaming ? '' : opponent?.friendCode;
               return code ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{code}</strong></div> : null;
             })()}
+            {state && <div className="match-next-action" role="status" aria-live="polite">
+              {!game?.stage
+                ? <><strong>{rejectsDone ? (canActFor(chooserId) ? 'あなたの番：ステージを選択' : '相手のステージ選択待ち') : (canActFor(rejectTurnId) ? 'あなたの番：ステージを拒否' : '相手のステージ拒否待ち')}</strong><span>第{state.gameNumber}ゲーム</span></>
+                : <><strong>{game?.results?.[String(viewingPlayerId)] ? '報告済み：相手の報告を待っています' : '試合後に勝敗を報告してください'}</strong><span>第{state.gameNumber}ゲーム</span></>}
+            </div>}
             {!state ? <div><p className="setting-help">対戦を準備しています…</p><button type="button" className="submit" disabled={savingBracket} onClick={() => startMatch(ri, mi)}>準備を再試行</button></div> : <>
               {!game?.stage ? <>
                 {rejectsDone ? (canActFor(chooserId) ? <>
