@@ -816,8 +816,7 @@ export default function TournamentPage() {
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1.id ? match.player2.id : match.player1.id);
-          const demoMatch = Boolean(match.player1?.isDemo || match.player2?.isDemo);
-          const canActFor = id => isOwner && demoMatch ? true : String(id) === String(viewingPlayerId);
+          const canActFor = id => String(id) === String(viewingPlayerId);
           const waitingFor = id => <p className="setting-help match-turn-waiting">{[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span></div>}
@@ -826,8 +825,8 @@ export default function TournamentPage() {
               <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
             </div>
             <div className="player-strip">
-              <div><small>PLAYER 1</small>{match.player1.isDemo ? <b>{match.player1.name}</b> : <a href={`/stats?player=${encodeURIComponent(match.player1.name)}`} className="match-player-stats-link">{match.player1.name}</a>}</div>
-              <div><small>PLAYER 2</small>{match.player2.isDemo ? <b>{match.player2.name}</b> : <a href={`/stats?player=${encodeURIComponent(match.player2.name)}`} className="match-player-stats-link">{match.player2.name}</a>}</div>
+              <div><small>PLAYER 1</small><a href={`/stats?player=${encodeURIComponent(match.player1.name)}`} className="match-player-stats-link">{match.player1.name}</a></div>
+              <div><small>PLAYER 2</small><a href={`/stats?player=${encodeURIComponent(match.player2.name)}`} className="match-player-stats-link">{match.player2.name}</a></div>
             </div>
             {(() => {
               const isStreaming = String(streamMatchId) === String(match.id);
@@ -840,11 +839,11 @@ export default function TournamentPage() {
                 {rejectsDone ? (canActFor(chooserId) ? <>
                   <p className="setting-help">{[match.player1,match.player2].find(p=>p?.id===chooserId)?.name || 'プレイヤー'} がステージを選択</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={stageSelection===stage?'stage selected':'stage'} onClick={()=>setStageSelection(stage)}>{stage}</button>)}</div>
-                  <button className="submit" type="button" disabled={!stageSelection || savingBracket || (demoMatch && String(chooserId) !== String(viewingPlayerId))} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
+                  <button className="submit" type="button" disabled={!stageSelection || savingBracket} onClick={() => { const chosen = stageSelection; setStageSelection(''); chooseMatchStage(ri,mi,chosen); }}>このステージに決定</button>
                 </> : waitingFor(chooserId)) : (canActFor(rejectTurnId) ? <>
                   <p className="setting-help">ステージ拒否：{[match.player1,match.player2].find(p=>p?.id===rejectTurnId)?.name || 'プレイヤー'}（{state.gameNumber===1 ? (rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))}個選択）</p>
                   <div className="stage-grid">{available.map(stage => <button key={stage} type="button" className={rejectSelection.includes(stage)?'stage selected':'stage'} disabled={rejectSelection.length >= (state.gameNumber===1 ? Number(rejectTurnId===firstId ? settings.firstPlayerRejects??1 : settings.secondPlayerRejects??2) : Math.max(0,Number(settings.laterRejects??3)-(game?.rejects?.length||0))) && !rejectSelection.includes(stage)} onClick={()=>setRejectSelection(old=>old.includes(stage)?old.filter(s=>s!==stage):[...old,stage])}>{stage}</button>)}</div>
-                  <button className="submit" type="button" disabled={savingBracket || (demoMatch && String(rejectTurnId) !== String(viewingPlayerId))} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
+                  <button className="submit" type="button" disabled={savingBracket} onClick={() => rejectMatchStages(ri,mi,rejectTurnId,rejectSelection)}>拒否を確定</button>
                 </> : waitingFor(rejectTurnId))}
               </> : <>
                 
