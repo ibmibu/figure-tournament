@@ -9,7 +9,7 @@ export default function SiteHeader() {
   const [signedIn, setSignedIn] = useState(false);
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
-  const isObsOverlay = /^\/tournaments\/[^/]+\/overlay\/?$/.test(pathname || '');
+  const isObsOverlay = (/^\/tournaments\/[^/]+\/overlay\/?$/.test(pathname || '') || pathname === '/overlay');
 
   useEffect(() => {
     let supabase;
