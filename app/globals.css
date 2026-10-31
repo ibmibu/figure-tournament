@@ -1991,22 +1991,3 @@ body .tournament-detail-page .bracket-admin-log-dot{
     width:100%;min-width:0;
   }
 }
-
-/* Keep the Discord-ready share link outside the crowded overview actions. */
-.tournament-detail-page #tournament-overview>.overview-share-copy {
-  display: flex;
-  justify-content: flex-end;
-  margin: -8px 0 10px;
-}
-.tournament-detail-page #tournament-overview>.overview-share-copy>button {
-  border: 0;
-  background: transparent;
-  color: #3170b8;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 650;
-  padding: 5px 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  cursor: pointer;
-}

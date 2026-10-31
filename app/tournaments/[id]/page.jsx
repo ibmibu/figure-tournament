@@ -11,6 +11,15 @@ const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','�
 export default function TournamentPage() {
   const params = useParams();
   const id = decodeURIComponent(String(params.id || ''));
+  // ChatGPT may append a referrer query parameter when a link is opened.
+  // Keep the versioned Discord/X preview URL, but clean that tracker from the
+  // browser address bar without triggering a reload or losing Next.js state.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('utm_source') !== 'chatgpt.com') return;
+    url.searchParams.delete('utm_source');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+  }, []);
   const [tournament, setTournament] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ownerId, setOwnerId] = useState('');
@@ -21,7 +30,6 @@ export default function TournamentPage() {
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [copiedShareUrl, setCopiedShareUrl] = useState('');
   const [savingBracket, setSavingBracket] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
@@ -763,16 +771,6 @@ export default function TournamentPage() {
   const tournamentShareUrl = () =>
     'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)
     + '?v=og4-' + encodeURIComponent(String(tournament?.stageActionRevision ?? 0));
-  async function copyTournamentShareUrl() {
-    try {
-      const url = tournamentShareUrl();
-      await navigator.clipboard.writeText(url);
-      setCopiedShareUrl(url);
-    } catch {
-      setError('共有URLをコピーできませんでした。');
-    }
-  }
-
   if (loading && !tournament) return <main className="page tournament-detail-page"><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
 
   if (!tournament) return <main className="page">
@@ -1028,11 +1026,6 @@ export default function TournamentPage() {
         )}
         {!tournament.bracket && joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && <p className="setting-help overview-join-status">参加済み</p>}
         <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl())}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
-      </div>
-      <div className="overview-share-copy">
-        <button type="button" onClick={copyTournamentShareUrl}>
-          {copiedShareUrl === tournamentShareUrl() ? 'URLをコピーしました' : '共有URLをコピー'}
-        </button>
       </div>
 
       <div className="detail-grid">
