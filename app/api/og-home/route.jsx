@@ -4,9 +4,7 @@ import path from 'node:path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const alt = 'アミコネ | 大会開催・大会参加・戦績管理';
-export const size = { width: 1200, height: 630 };
-export const contentType = 'image/png';
+const size = { width: 1200, height: 630 };
 
 export async function GET() {
   let logo = '';
