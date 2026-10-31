@@ -13,6 +13,12 @@ export default function CharacterReportPage(){
  useEffect(()=>{let live=true;(async()=>{try{
  const {data:{session}}=await getSupabaseBrowserClient().auth.getSession();if(!session)throw Error('キャラ報告にはログインが必要です。');
  const mine=JSON.parse(localStorage.getItem('figure-my-colors-'+session.user.id)||'[]');
+ const response=await fetch('/api/tournaments?id='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error||'大会を読み込めませんでした。');
+ const t=result.tournament;const p=(t?.joinedPlayers||[]).find(p=>!p.isDemo&&String(p.userId||p.id)===String(session.user.id));
+ const placement=p?getCharacterReportPlacement(t?.bracket,p.id):null;
+ if(live){setTournament(t);setPlayer(p);setColors(mine);setEligible(Boolean(!t?.characterDeclaration&&placement));const saved=t?.characterReports?.[String(p?.id)];if(saved){setCharacters(Array.isArray(saved.characters)?saved.characters:(saved.fighter?[{fighter:saved.fighter,color:saved.color||'1P'}]:[]));}setColor(mine.find(c=>c.fighter==='マリオ')?.color||'1P');}
+ // Start optional ranking only after the initial form state is ready.
+ if(placement&&!t.characterDeclaration){
  // Ordering is optional; do not block the report form if this fetch fails.
  fetch('/api/stats/fighter-order',{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'})
    .then(async res=>res.ok?res.json():null).then(result=>{
@@ -24,10 +30,7 @@ export default function CharacterReportPage(){
        setColor(mine.find(c=>c.fighter===ranked[0])?.color||'1P');
      }
    }).catch(()=>{});
- const response=await fetch('/api/tournaments?id='+encodeURIComponent(id),{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error||'大会を読み込めませんでした。');
- const t=result.tournament;const p=(t?.joinedPlayers||[]).find(p=>!p.isDemo&&String(p.userId||p.id)===String(session.user.id));
- const placement=p?getCharacterReportPlacement(t?.bracket,p.id):null;
- if(live){setTournament(t);setPlayer(p);setColors(mine);setEligible(Boolean(!t?.characterDeclaration&&placement));const saved=t?.characterReports?.[String(p?.id)];if(saved){setCharacters(Array.isArray(saved.characters)?saved.characters:(saved.fighter?[{fighter:saved.fighter,color:saved.color||'1P'}]:[]));}setColor(mine.find(c=>c.fighter==='マリオ')?.color||'1P');}
+ }
  }catch(e){if(live)setError(e.message);}finally{if(live)setLoading(false);}})();return()=>{live=false}},[id]);
  const availableFighters=[...orderedFighters,...fighters.filter(name=>!orderedFighters.includes(name))];
  function addCharacter(){const name=fighter;if(!name)return;setCharacters(old=>[...old,{fighter:name,color}]);setColor(colors.find(c=>c.fighter===name)?.color||'1P');}
