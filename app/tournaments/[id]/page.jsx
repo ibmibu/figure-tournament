@@ -1011,7 +1011,7 @@ export default function TournamentPage() {
               </form>
         )}
         {!tournament.bracket && joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && <p className="setting-help overview-join-status">参加済み</p>}
-        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin + '/tournaments/' + encodeURIComponent(id) : 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
+        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin : 'https://figure-tournament.vercel.app') + '/tournaments/' + encodeURIComponent(id) + '?v=' + encodeURIComponent(String(tournament.stageActionRevision ?? 0))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
       </div>
 
       <div className="detail-grid">
