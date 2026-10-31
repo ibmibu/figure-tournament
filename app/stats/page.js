@@ -1846,7 +1846,7 @@ export default function StatsPage() {
               .reverse()
               .map((tournament) => (
                 <div className="tournamentRow" key={tournament.number}>
-                  <div className="tournamentTitle">
+                  <div className={`tournamentTitle${seriesTag === '人形劇' ? '' : ' noTier'}`}>
                     <b>{tournament.name || `人形劇#${tournament.number}`}</b>
                     {seriesTag === '人形劇' && (<small className="tournamentTier">
                       {(() => {

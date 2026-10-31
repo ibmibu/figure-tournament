@@ -2513,3 +2513,35 @@ footer span {
     grid-template-columns: min(190px, 68%) 63px minmax(0, 1fr);
   }
 }
+
+/* Non-Tier lists: show the entire title, moving the winner after a wider
+   title column. On narrow screens allow wrapping rather than ellipsis. */
+.tournamentList .tournamentTitle.noTier {
+  grid-template-columns: min(430px, 68%) minmax(0, 1fr);
+  overflow: visible;
+  white-space: normal;
+}
+.tournamentList .tournamentTitle.noTier > b {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.tournamentList .tournamentTitle.noTier > .tournamentChampion {
+  grid-column: 2;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 700px) {
+  .tournamentList .tournamentTitle.noTier {
+    grid-template-columns: minmax(0, 65%) minmax(0, 1fr);
+  }
+}
+@media (max-width: 380px) {
+  .tournamentList .tournamentTitle.noTier {
+    grid-template-columns: minmax(0, 63%) minmax(0, 1fr);
+  }
+}
