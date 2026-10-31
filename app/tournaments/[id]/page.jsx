@@ -762,7 +762,7 @@ export default function TournamentPage() {
   // Version the URL without altering the tournament's actual identifier.
   const tournamentShareUrl = () =>
     'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)
-    + '?v=og3-' + encodeURIComponent(String(tournament?.stageActionRevision ?? 0));
+    + '?v=og4-' + encodeURIComponent(String(tournament?.stageActionRevision ?? 0));
   async function copyTournamentShareUrl() {
     try {
       const url = tournamentShareUrl();
