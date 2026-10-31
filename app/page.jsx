@@ -1,7 +1,6 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { readTournamentCache, writeTournamentCache } from '../lib/tournament-cache';
 import { readTabSnapshot, writeTabSnapshot } from '../lib/tab-snapshot';
 
@@ -31,15 +30,12 @@ export default function Home() {
   const [tournaments, setTournaments] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshRef = useRef(null);
 
   useEffect(() => {
     let active = true;
     let inFlight = false;
-    let queued = false;
-    let lastFetch = 0;
-    let channel = null;
-    let realtimeConnected = false;
-    let receivedSignal = false;
     const snapshot = readTabSnapshot('home');
     if (snapshot) { setTournaments(snapshot); setLoading(false); }
     else {
@@ -48,9 +44,9 @@ export default function Home() {
     }
 
     const refresh = async () => {
-      if (!active || document.visibilityState === 'hidden') return;
-      if (inFlight) { queued = true; return; }
+      if (!active || inFlight) return;
       inFlight = true;
+      setRefreshing(true);
       try {
         const response = await fetch('/api/tournaments?view=summary', { cache: 'no-store' });
         const result = await response.json();
@@ -66,42 +62,16 @@ export default function Home() {
         console.error(error);
         if (active) setLoadError(error.message || '大会データを読み込めませんでした。');
       } finally {
-        lastFetch = Date.now();
         inFlight = false;
-        if (active) setLoading(false);
-        if (queued && active) { queued = false; void refresh(); }
+        if (active) { setLoading(false); setRefreshing(false); }
       }
     };
 
-    // Only the dedicated signal table is exposed to Realtime, never tournament JSON.
-    if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
-      try {
-        const client = getSupabaseBrowserClient();
-        channel = client.channel('home-tournament-signals');
-        channel.on('postgres_changes', {
-          event: '*', schema: 'public', table: 'tournament_change_signals',
-        }, () => { receivedSignal = true; void refresh(); });
-        channel.subscribe(status => {
-          realtimeConnected = status === 'SUBSCRIBED';
-          if (realtimeConnected) void refresh();
-        });
-      } catch {}
-    }
+    refreshRef.current = refresh;
     void refresh();
-    // Reconnect/fallback: retain polling even when Realtime is unavailable.
-    const timer = setInterval(() => {
-      const intervalMs = realtimeConnected && receivedSignal ? 30000 : 10000;
-      if (Date.now() - lastFetch >= intervalMs) void refresh();
-    }, 5000);
-    const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', onVisible);
     return () => {
       active = false;
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', onVisible);
-      if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+      refreshRef.current = null;
     };
   }, []);
 
@@ -113,7 +83,10 @@ export default function Home() {
     <section className="tournaments">
       <div className="section-title">
         <h2>大会一覧</h2>
-        <a className="button-link" href="/tournaments/new">＋ 大会を作成</a>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginLeft:"auto"}}>
+          <button type="button" className="button-link" onClick={() => refreshRef.current?.()} disabled={refreshing} aria-label="大会一覧を更新">{refreshing ? "更新中…" : "↻ 更新"}</button>
+          <a className="button-link" href="/tournaments/new">＋ 大会を作成</a>
+        </div>
       </div>
       {loading ? <div className="empty"><p>大会を読み込み中…</p></div> : loadError ? <div className="empty"><p role="alert">{loadError}</p></div> : active.length===0?<div className="empty"><p>開催予定・進行中の大会はありません。</p></div>:<TournamentTable items={active}/>}
     </section>
