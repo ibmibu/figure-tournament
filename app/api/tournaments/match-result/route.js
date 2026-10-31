@@ -109,7 +109,9 @@ export async function POST(request) {
         }
       }
       bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
-      const updated = { ...current, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
+      const isStreamResult = Boolean(found.winnerId) && String(current.streamMatchId ?? '') === String(matchId);
+      const streamHold = isStreamResult ? { streamHoldMatchId: matchId, streamHoldUntil: new Date(Date.now() + 60000).toISOString() } : {};
+      const updated = { ...current, ...streamHold, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
       appendMatchLog(updated, current, matchId, actorPlayer.name, `第${gameNumber}ゲーム ${result === 'win' ? '勝利' : '敗北'}報告${found.winnerId ? '・セット確定' : ''}`);
       updated.stageActionRevision = (revision ?? 0) + 1;
       let update = db.from('tournaments').update({ data: updated }).eq('id', id);
