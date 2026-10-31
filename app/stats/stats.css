@@ -2501,3 +2501,15 @@ footer span {
     align-items: center;
   }
 }
+
+/* Give tournament names a little more room on narrow screens. */
+@media (max-width: 700px) {
+  .tournamentList .tournamentTitle {
+    grid-template-columns: min(220px, 70%) 67px minmax(0, 1fr);
+  }
+}
+@media (max-width: 380px) {
+  .tournamentList .tournamentTitle {
+    grid-template-columns: min(190px, 68%) 63px minmax(0, 1fr);
+  }
+}
