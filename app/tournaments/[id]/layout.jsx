@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'node:crypto';
 const baseUrl = 'https://figure-tournament.vercel.app';
-export async function generateMetadata({ params, searchParams }) {
+export async function generateMetadata({ params }) {
   const { id } = await params;
   let name = '大会';
   let description = 'アミコネで大会の詳細を確認して参加しよう。';
@@ -28,12 +28,9 @@ export async function generateMetadata({ params, searchParams }) {
     }
   } catch {}
   const title = name + ' | アミコネ';
-  const version = (await searchParams)?.v;
-  // Match the URL that X is actually sharing to avoid reusing stale card metadata.
-  const shareVersion = typeof version === 'string' && /^[0-9a-z_-]{1,32}$/i.test(version) ? version : null;
-  const tournamentUrl = baseUrl + '/tournaments/' + encodeURIComponent(id) +
-    (shareVersion ? '?v=' + encodeURIComponent(shareVersion) : '');
-  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id) + '?v=' + imageVersion;
+  const tournamentUrl = baseUrl + '/tournaments/' + encodeURIComponent(id);
+  // Bump this release key if a previously cached image failed to decode in Discord.
+  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id) + '?v=og2-' + imageVersion;
   return {
     title, description,
     openGraph: { title, description, type: 'website', url: tournamentUrl, siteName: 'アミコネ', images: [{ url: imageUrl, width: 1200, height: 630 }] },

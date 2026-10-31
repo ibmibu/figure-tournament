@@ -21,6 +21,7 @@ export default function TournamentPage() {
   const [accessToken, setAccessToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [copiedShareUrl, setCopiedShareUrl] = useState('');
   const [savingBracket, setSavingBracket] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
@@ -757,6 +758,21 @@ export default function TournamentPage() {
     }
   }
 
+  // A changed link prompts Discord to fetch a fresh embed after a failed image.
+  // Version the URL without altering the tournament's actual identifier.
+  const tournamentShareUrl = () =>
+    'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)
+    + '?v=og2-' + encodeURIComponent(String(tournament?.stageActionRevision ?? 0));
+  async function copyTournamentShareUrl() {
+    try {
+      const url = tournamentShareUrl();
+      await navigator.clipboard.writeText(url);
+      setCopiedShareUrl(url);
+    } catch {
+      setError('共有URLをコピーできませんでした。');
+    }
+  }
+
   if (loading && !tournament) return <main className="page tournament-detail-page"><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
 
   if (!tournament) return <main className="page">
@@ -1011,7 +1027,12 @@ export default function TournamentPage() {
               </form>
         )}
         {!tournament.bracket && joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && <p className="setting-help overview-join-status">参加済み</p>}
-        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + (typeof window !== 'undefined' ? window.location.origin : 'https://figure-tournament.vercel.app') + '/tournaments/' + encodeURIComponent(id) + '?v=' + encodeURIComponent(String(tournament.stageActionRevision ?? 0))) }`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
+        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl())}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
+      </div>
+      <div className="overview-share-copy">
+        <button type="button" onClick={copyTournamentShareUrl}>
+          {copiedShareUrl === tournamentShareUrl() ? 'URLをコピーしました' : '共有URLをコピー'}
+        </button>
       </div>
 
       <div className="detail-grid">
