@@ -1,3 +1,4 @@
+import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { updateBracketMatch, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
@@ -90,7 +91,7 @@ export async function POST(request) {
     const revision = Number.isSafeInteger(existing.stageActionRevision) && existing.stageActionRevision >= 0
       ? existing.stageActionRevision : null;
     updated.stageActionRevision = (revision ?? 0) + 1;
-    let update = admin.from('tournaments').update({ data: updated }).eq('id', String(id));
+    let update = admin.from('tournaments').update({ data: withStatsSnapshot(updated) }).eq('id', String(id));
     update = revision === null
       ? update.is('data->>stageActionRevision', null)
       : update.eq('data->>stageActionRevision', String(revision));

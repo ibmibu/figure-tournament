@@ -1,3 +1,4 @@
+import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getBracketPlacements, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
@@ -114,7 +115,7 @@ export async function POST(request) {
       const updated = { ...current, ...streamHold, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
       appendMatchLog(updated, current, matchId, actorPlayer.name, `第${gameNumber}ゲーム ${result === 'win' ? '勝利' : '敗北'}報告${found.winnerId ? '・セット確定' : ''}`);
       updated.stageActionRevision = (revision ?? 0) + 1;
-      let update = db.from('tournaments').update({ data: updated }).eq('id', id);
+      let update = db.from('tournaments').update({ data: withStatsSnapshot(updated) }).eq('id', id);
       update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
       const { data: changed, error: writeError } = await update.select('id');
       if (writeError) throw writeError;

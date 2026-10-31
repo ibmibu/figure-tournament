@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  buildStatsSnapshot, completedForStats, snapshotIsCurrent, snapshotToPublicResult,
+  withStatsSnapshot,
+} from '../../../../lib/stats-snapshot';
+
 export const dynamic = 'force-dynamic';
 
 // Tournament schedules are entered as Japan-local YYYY-MM-DDTHH:mm (no offset).
-// Interpret them consistently in JST, independent of Vercel's timezone.
 function toTime(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
   const normalized = value.trim().replace(' ', 'T');
@@ -12,8 +16,6 @@ function toTime(value) {
   const time = Date.parse(iso);
   return Number.isFinite(time) ? time : null;
 }
-
-// Scheduled start is primary. Creation time only breaks ties or handles missing dates.
 function compareByScheduledStart(a, b) {
   const startA = toTime(a.data?.date) ?? toTime(a.data?.createdAt) ?? toTime(a.created_at) ?? Number.MAX_SAFE_INTEGER;
   const startB = toTime(b.data?.date) ?? toTime(b.data?.createdAt) ?? toTime(b.created_at) ?? Number.MAX_SAFE_INTEGER;
@@ -23,7 +25,47 @@ function compareByScheduledStart(a, b) {
   return createdA - createdB || String(a.id).localeCompare(String(b.id));
 }
 
-// Only expose links for participants in public tournament brackets.
+// Supabase defaults to 1000 rows; page even when the tournaments table grows.
+async function readAllTournaments(db, select) {
+  const result = [];
+  for (let start = 0; ; start += 500) {
+    const { data, error } = await db.from('tournaments').select(select)
+      .order('created_at', { ascending: true }).order('id', { ascending: true })
+      .range(start, start + 499);
+    if (error) throw error;
+    result.push(...(data || []));
+    if (!data || data.length < 500) return result;
+  }
+}
+async function readFullByIds(db, ids) {
+  const rows = [];
+  for (let index = 0; index < ids.length; index += 100) {
+    const { data, error } = await db.from('tournaments').select('id,data,created_at')
+      .in('id', ids.slice(index, index + 100));
+    if (error) throw error;
+    rows.push(...(data || []));
+  }
+  return rows;
+}
+function positiveRevision(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+// One-time lazy migration of old finalized events. Optimistic revision checking
+// prevents overwriting a concurrent report, reset, or match update.
+async function backfillSnapshot(db, row) {
+  if (!completedForStats(row.data)) return;
+  const prev = positiveRevision(row.data.stageActionRevision);
+  const updated = withStatsSnapshot({ ...row.data, stageActionRevision: (prev ?? 0) + 1 });
+  let query = db.from('tournaments').update({ data: updated }).eq('id', row.id);
+  query = prev === null ? query.is('data->>stageActionRevision', null)
+    : query.eq('data->>stageActionRevision', String(prev));
+  const { error } = await query.select('id');
+  if (error) throw error;
+}
+
+// Only expose results of completed tournaments, not private bracket data.
+// The small projection avoids downloading full brackets for cached tournaments.
 export async function GET() {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -32,56 +74,58 @@ export async function GET() {
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: rows, error } = await db.from('legacy_player_links').select('legacy_player_id,user_id');
     if (error) throw error;
-    const { data: tournaments, error: tournamentError } = await db.from('tournaments').select('id,data,created_at');
-    if (tournamentError) throw tournamentError;
     const linkMap = new Map((rows || []).map(row => [String(row.user_id), String(row.legacy_player_id)]));
-    // Only finalized brackets belong in the shared public record. Drafts and active events are excluded.
-    const results = (tournaments || []).filter(row => {
-      const bracket = row.data?.bracket;
-      const final = bracket?.rounds?.at(-1)?.[0];
-      return bracket?.complete === true && final?.player1 && final?.player2 && final?.winnerId &&
-        [final.player1, final.player2].some(player => String(player.id) === String(final.winnerId));
-    })
-      // Rating records receive tournament numbers in scheduled chronological order.
-      .sort(compareByScheduledStart)
-      .map(row => {
-      const t = row.data || {};
-      const participants = new Map();
-      // Demo entrants count as 1500 toward tournament size, but not player stats.
-      const demoTierIds = (t.joinedPlayers || []).filter(p => p.isDemo).map(p => 'demo-tier:' + String(row.id) + ':' + String(p.id));
-      const characterReports = [];
-      for (const p of t.joinedPlayers || []) {
-        if (p.isDemo) continue;
-        const accountId = String(p.userId || p.id);
-        const id = linkMap.get(accountId) || linkMap.get(String(p.id)) || 'figure:' + accountId;
-        participants.set(String(p.id), { id, name: p.name || p.displayName || String(p.id) });
-        const report = t.characterReports?.[String(p.id)];
-        if (Array.isArray(report?.characters) && report.characters.length) {
-          characterReports.push({ playerId: id, characters: [...new Set(report.characters.map(c => String(c?.fighter || '').trim()).filter(Boolean))] });
+
+    const entries = [];
+    const needsBackfill = [];
+    let compactRows = null;
+    try {
+      compactRows = await readAllTournaments(db,
+        'id,created_at,stats_snapshot:data->statsSnapshot,revision:data->>stageActionRevision,completed:data->bracket->>complete');
+    } catch (projectionError) {
+      // Older PostgREST versions may not support JSON projections. Keep the
+      // original full-data read as a fully functional fallback.
+      console.warn('Compact stats projection unavailable; using full rows:', projectionError.message);
+    }
+
+    if (compactRows) {
+      const finished = compactRows.filter(row => row.completed === 'true' || row.completed === true);
+      const missing = finished.filter(row => !snapshotIsCurrent(row.stats_snapshot, row.revision));
+      const originals = new Map((await readFullByIds(db, missing.map(row => row.id)))
+        .map(row => [String(row.id), row]));
+      for (const row of finished) {
+        if (snapshotIsCurrent(row.stats_snapshot, row.revision)) {
+          entries.push({ id: row.id, created_at: row.created_at, data: row.stats_snapshot });
+          continue;
         }
+        const original = originals.get(String(row.id));
+        if (!original || !completedForStats(original.data)) continue;
+        const snapshot = buildStatsSnapshot(original.data);
+        if (!snapshot) continue;
+        entries.push({ id: row.id, created_at: row.created_at, data: snapshot });
+        needsBackfill.push(original);
       }
-      const matches = (t.bracket?.rounds || []).flatMap(round => round.flatMap(match => {
-        if (!match.player1 || !match.player2 || !match.winnerId || match.resultType === 'forfeit') return [];
-        const first = participants.get(String(match.player1.id));
-        const second = participants.get(String(match.player2.id));
-        if (!first || !second || first.id === second.id) return [];
-        const winner = String(match.winnerId) === String(match.player1.id) ? first : String(match.winnerId) === String(match.player2.id) ? second : null;
-        return winner ? [{ winnerId: winner.id, loserId: winner.id === first.id ? second.id : first.id }] : [];
-      }));
-      const final = t.bracket.rounds.at(-1)?.[0];
-      const championId = participants.get(String(final.winnerId))?.id || null;
-      const runnerUp = [final.player1, final.player2].find(p => p && String(p.id) !== String(final.winnerId));
-      const runnerUpId = runnerUp ? participants.get(String(runnerUp.id))?.id || null : null;
-      const semifinal = t.bracket.rounds.length > 1 ? t.bracket.rounds.at(-2) : [];
-      const thirdPlaceIds = [...new Set((semifinal || []).flatMap(match => {
-        if (!match.winnerId) return [];
-        const loser = [match.player1, match.player2].find(p => p && String(p.id) !== String(match.winnerId));
-        const mapped = loser && participants.get(String(loser.id));
-        return mapped ? [mapped.id] : [];
-      }))];
-      return { id: row.id, characterReports, championId, runnerUpId, thirdPlaceIds, name: t.name || '', date: t.date || t.createdAt || '', seriesTags: Array.isArray(t.seriesTags) ? t.seriesTags : (typeof t.seriesTag === 'string' && t.seriesTag ? [t.seriesTag] : []), players: [...participants.values()], demoTierIds, matches };
-    });
-    return NextResponse.json({ tournaments: results }, { headers: { 'Cache-Control': 'no-store' } });
+    } else {
+      const originals = await readAllTournaments(db, 'id,data,created_at');
+      for (const original of originals) {
+        if (!completedForStats(original.data)) continue;
+        const snapshot = buildStatsSnapshot(original.data);
+        if (!snapshot) continue;
+        entries.push({ id: original.id, created_at: original.created_at, data: snapshot });
+        if (!snapshotIsCurrent(original.data.statsSnapshot, original.data.stageActionRevision)) needsBackfill.push(original);
+      }
+    }
+
+    // Work in bounded batches: this runs only for old/missing snapshots, never
+    // for a live tournament, and a failed write doesn't prevent stats rendering.
+    await Promise.all(needsBackfill.slice(0, 12).map(async row => {
+      try { await backfillSnapshot(db, row); }
+      catch (error) { console.warn('Stats snapshot backfill skipped:', row.id, error.message); }
+    }));
+
+    const tournaments = entries.sort(compareByScheduledStart)
+      .map(row => snapshotToPublicResult(row.id, row.data, linkMap));
+    return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Stats identity links:', error);
     return NextResponse.json({ error: '旧ID連携情報を取得できませんでした。' }, { status: 500 });

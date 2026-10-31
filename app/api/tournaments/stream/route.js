@@ -1,3 +1,4 @@
+import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -25,7 +26,7 @@ export async function POST(request) {
       }
       const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0 ? current.stageActionRevision : null;
       const updated = { ...current, streamMatchId: matchId, streamMatchManual: true, stageActionRevision: (revision ?? 0) + 1 };
-      let update = db.from('tournaments').update({ data: updated }).eq('id', id);
+      let update = db.from('tournaments').update({ data: withStatsSnapshot(updated) }).eq('id', id);
       update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
       const { data: changed, error } = await update.select('id');
       if (error) throw error;

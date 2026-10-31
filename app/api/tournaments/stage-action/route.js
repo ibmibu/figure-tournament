@@ -1,3 +1,4 @@
+import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
@@ -92,7 +93,7 @@ export async function POST(request) {
         : `第${match.matchState.gameNumber}ゲーム ステージ決定：${stage}`;
       appendMatchLog(next, original, matchId, actor?.name || (owner ? '主催者' : ''), label);
       next.stageActionRevision = (revision ?? 0) + 1;
-      let update = db.from('tournaments').update({ data: next }).eq('id', id);
+      let update = db.from('tournaments').update({ data: withStatsSnapshot(next) }).eq('id', id);
       update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
       const { data: saved, error: writeError } = await update.select('id');
       if (writeError) { console.error('Stage action database write failed', { code: writeError.code, message: writeError.message, action }); throw writeError; }
