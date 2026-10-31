@@ -233,7 +233,7 @@ export default function NewTournamentPage() {
       const response = await fetch('/api/tournaments', {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ tournament }),
+        body: JSON.stringify({ tournament, editSettings: Boolean(editId) }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
