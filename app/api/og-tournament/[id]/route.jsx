@@ -11,7 +11,9 @@ const size = { width: 1200, height: 630 };
 const stageLabel = stages => (Array.isArray(stages) ? stages : []).filter(Boolean).join(' / ');
 
 export async function GET(_request, { params }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  // Both the legacy URL and the explicit .png URL remain valid.
+  const id = String(rawId).endsWith('.png') ? String(rawId).slice(0, -4) : String(rawId);
   let name = '大会情報';
   let dateText = '開催日未定';
   let timeText = '--:--';
@@ -55,7 +57,7 @@ export async function GET(_request, { params }) {
 
   let heavyFont;
   try { heavyFont = await readFile(join(process.cwd(), 'public', 'fonts', 'NotoSansJP-Black.ttf')); } catch {}
-  return new ImageResponse(
+  const image = new ImageResponse(
     <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', fontWeight: 900, padding: '40px 62px 40px', color: '#17233a' }}>
       <div style={{ display: 'flex', alignItems: 'center', height: 115 }}>
         {logo ? <img src={logo} alt="アミコネ" width={430} height={75} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 60, fontWeight: 900 }}>アミコネ</div>}
@@ -79,4 +81,39 @@ export async function GET(_request, { params }) {
       </div>
     </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: heavyFont ? [{ name: 'Noto Sans JP', data: heavyFont, weight: 900, style: 'normal' }] : [] }
   );
+  // Fully buffer the PNG before returning it. Some social preview fetchers
+  // require a complete binary response with an explicit content length.
+  async function pngResponse(source) {
+    const buffer = new Uint8Array(await source.arrayBuffer());
+    const valid = buffer.length > 8 &&
+      [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => buffer[index] === byte);
+    if (!valid) throw new Error('OG generator returned an invalid PNG');
+    return new Response(buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'Content-Length': String(buffer.length),
+        'Content-Disposition': 'inline; filename="tournament.png"',
+        'Cache-Control': 'public, max-age=300, s-maxage=300',
+        'X-Content-Type-Options': 'nosniff',
+      },
+    });
+  }
+  try {
+    return await pngResponse(image);
+  } catch (error) {
+    console.error('Tournament OG image rendering failed:', id, error);
+    // A failed dynamic render must still return an actual image, not an
+    // HTML error body that Discord caches as a broken embed.
+    const fallback = new ImageResponse(
+      <div style={{
+        width: '100%', height: '100%', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: '#ffffff', color: '#6045a8',
+        fontSize: 84, fontWeight: 800,
+      }}>AmiCone</div>,
+      { ...size }
+    );
+    return pngResponse(fallback);
+  }
 }

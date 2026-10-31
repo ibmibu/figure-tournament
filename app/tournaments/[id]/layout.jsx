@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'node:crypto';
 const baseUrl = 'https://figure-tournament.vercel.app';
-export async function generateMetadata({ params }) {
+export async function generateMetadata({ params, searchParams }) {
   const { id } = await params;
   let name = '大会';
   let description = 'アミコネで大会の詳細を確認して参加しよう。';
@@ -28,12 +28,17 @@ export async function generateMetadata({ params }) {
     }
   } catch {}
   const title = name + ' | アミコネ';
-  const tournamentUrl = baseUrl + '/tournaments/' + encodeURIComponent(id);
-  // Bump this release key if a previously cached image failed to decode in Discord.
-  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id) + '?v=og2-' + imageVersion;
+  const suppliedVersion = (await searchParams)?.v;
+  // Match the URL being shared so Discord does not reuse the prior card.
+  const sharedVersion = typeof suppliedVersion === 'string' &&
+    /^[0-9a-z_-]{1,48}$/i.test(suppliedVersion) ? suppliedVersion : '';
+  const tournamentUrl = baseUrl + '/tournaments/' + encodeURIComponent(id) +
+    (sharedVersion ? '?v=' + encodeURIComponent(sharedVersion) : '');
+  // An explicit PNG path and a new release version avoid stale failed fetches.
+  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id) + '.png?v=og3-' + imageVersion;
   return {
     title, description,
-    openGraph: { title, description, type: 'website', url: tournamentUrl, siteName: 'アミコネ', images: [{ url: imageUrl, width: 1200, height: 630 }] },
+    openGraph: { title, description, type: 'website', url: tournamentUrl, siteName: 'アミコネ', images: [{ url: imageUrl, width: 1200, height: 630, type: 'image/png', alt: name + ' 大会サムネイル' }] },
     twitter: { card: 'summary_large_image', title, description, images: [imageUrl] },
   };
 }
