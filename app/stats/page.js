@@ -1287,8 +1287,10 @@ export default function StatsPage() {
                       const tier = score >= 24000 ? 'S' : score >= 20000 ? 'A' : score >= 16000 ? 'B' : score >= 12000 ? 'C' : 'D';
                       return (
                         <span className="achievementTournament" key={number}>
-                          <b className={`achievementTier tier${tier}`}><span className="tierLetter">{tier}</span></b>
-                          <span>{data?.tournaments?.find(t => Number(t.number) === Number(number))?.name || `人形劇#${number}`}</span>
+                          {seriesTag === '人形劇' && (
+                            <b className={`achievementTier tier${tier}`}><span className="tierLetter">{tier}</span></b>
+                          )}
+                          <span>{data?.tournaments?.find(t => Number(t.number) === Number(number))?.name || `大会#${number}`}</span>
                         </span>
                       );
                     })}
@@ -1298,7 +1300,7 @@ export default function StatsPage() {
                       {showAllTitles ? '閉じる ▲' : 'すべて表示 ▼'}
                     </button>
                   )}
-                  <div className="achievementTierCounts">
+                  {seriesTag === '人形劇' && <div className="achievementTierCounts">
                     {['S', 'A', 'B', 'C', 'D'].map((tier) => {
                       const count = selectedAchievements.titleNumbers.filter((number) => {
                         const score = Number(tournamentTierScores[Number(number)] || 0);
@@ -1312,7 +1314,7 @@ export default function StatsPage() {
                         </span>
                       );
                     })}
-                  </div>
+                  </div>}
                   </>
                 ) : (
                   <strong>優勝記録なし</strong>
