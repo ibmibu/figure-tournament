@@ -529,7 +529,7 @@ export default function StatsPage() {
   }, [sortedPlayers, playerSearch]);
 
   const seasons = useMemo(() => {
-    if (!data?.tournaments?.length) return [];
+    if (seriesTag !== '人形劇' || !data?.tournaments?.length) return [];
 
     const max = Math.max(
       ...data.tournaments.map(
@@ -550,7 +550,7 @@ export default function StatsPage() {
         to: (i + 1) * 25,
       })
     );
-  }, [data]);
+  }, [data, seriesTag]);
 
   // 同じデータに対するシーズン別Elo計算を共有し、重複計算を避ける。
   const getEloResult = useMemo(() => {
@@ -606,9 +606,10 @@ export default function StatsPage() {
     ? String(Math.floor((maxTournament - 1) / 25) + 1)
     : '1';
 
-  const selectedSeason = season === 'current'
-    ? currentSeason
-    : season;
+  // 人形劇だけ25大会ごとに区切る。他のタグは全期間の通算レートを使用。
+  const selectedSeason = seriesTag === '人形劇'
+    ? (season === 'current' ? currentSeason : season)
+    : 'all';
 
   const eloResult = useMemo(
     () => getEloResult(selectedSeason),
@@ -620,10 +621,12 @@ export default function StatsPage() {
   const ranking = eloResult.ranking;
   const matchHistory = eloResult.history;
 
-  const matrixSelectedSeason = matrixSeason === 'current' ? currentSeason : matrixSeason;
+  const matrixSelectedSeason = seriesTag === '人形劇'
+    ? (matrixSeason === 'current' ? currentSeason : matrixSeason)
+    : 'all';
 
   const matrixStats = useMemo(() => {
-    if (matrixSeason === 'all') return data?.stats || {};
+    if (matrixSelectedSeason === 'all') return data?.stats || {};
     const firstTournament = (Number(matrixSelectedSeason) - 1) * 25 + 1;
     const lastTournament = Number(matrixSelectedSeason) * 25;
     const stats = {};
@@ -649,14 +652,14 @@ export default function StatsPage() {
       }
     }
     return stats;
-  }, [data, matrixSeason, matrixSelectedSeason]);
+  }, [data, matrixSelectedSeason]);
 
   const matrixPlayers = useMemo(() => {
-    const participantIds = matrixSeason === 'all'
+    const participantIds = matrixSelectedSeason === 'all'
       ? new Set(playerTournamentStats.appearances.keys())
       : new Set(Object.keys(matrixStats));
     return sortedPlayers.filter((player) => participantIds.has(String(player.id)));
-  }, [matrixSeason, sortedPlayers, playerTournamentStats, matrixStats]);
+  }, [matrixSelectedSeason, sortedPlayers, playerTournamentStats, matrixStats]);
 
 
   useEffect(() => {
@@ -1333,7 +1336,7 @@ export default function StatsPage() {
             </div>
           )}
 
-          {selected === 'all' && (
+          {selected === 'all' && seriesTag === '人形劇' && (
             <div className="matrixSeasonControl">
               <div className="seasonTabs" aria-label="対戦表のシーズン">
                 <button className={matrixSeason === 'current' ? 'active' : ''} onClick={() => setMatrixSeason('current')}>現在</button>
@@ -1532,7 +1535,7 @@ export default function StatsPage() {
 
           </div>
 
-          <div className="seasonTabs">
+          {seriesTag === '人形劇' && <div className="seasonTabs">
             <button
               className={
                 season === 'current' ? 'active' : ''
@@ -1570,7 +1573,7 @@ export default function StatsPage() {
                 {s.label}
               </button>
             ))}
-          </div>
+          </div>}
 
           {ratingTrends.length > 0 && (
             <section className="ratingTrend" aria-label="選手のレート推移">
