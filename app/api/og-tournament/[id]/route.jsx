@@ -2,13 +2,37 @@ import { ImageResponse } from 'next/og';
 import { createClient } from '@supabase/supabase-js';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { join } from 'node:path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const size = { width: 1200, height: 630 };
 
 const stageLabel = stages => (Array.isArray(stages) ? stages : []).filter(Boolean).join(' / ');
+
+// The previous font path was not committed, so Japanese text could fail to
+// render and the English-only emergency card was shown instead.
+// Google Fonts supports request-time TTF subsets for precisely the glyphs used.
+async function loadJapaneseFont(text) {
+  const glyphs = [...new Set(Array.from(String(text)))].join('');
+  const base = 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&text=' + encodeURIComponent(glyphs);
+  const agents = [
+    {},
+    { 'User-Agent': 'Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 6.1; Trident/4.0)' },
+  ];
+  for (const headers of agents) {
+    const cssResponse = await fetch(base, { headers, next: { revalidate: 86400 } });
+    if (!cssResponse.ok) continue;
+    const css = await cssResponse.text();
+    const match = css.match(/src:\s*url\(([^)]+)\)\s*format\('(truetype|opentype|woff)'\)/);
+    if (!match) continue;
+    const url = match[1].replace(/^['"]|['"]$/g, '');
+    if (!url.startsWith('https://fonts.gstatic.com/')) continue;
+    const fontResponse = await fetch(url, { next: { revalidate: 86400 } });
+    if (fontResponse.ok) return fontResponse.arrayBuffer();
+  }
+  throw new Error('Japanese font could not be loaded in a Satori-compatible format');
+}
+
 
 export async function GET(_request, { params }) {
   const { id: rawId } = await params;
@@ -55,10 +79,17 @@ export async function GET(_request, { params }) {
     logo = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64');
   } catch {}
 
-  let heavyFont;
-  try { heavyFont = await readFile(join(process.cwd(), 'public', 'fonts', 'NotoSansJP-Black.ttf')); } catch {}
+  let japaneseFont;
+  try {
+    const glyphText = [name, dateText, timeText, formatText,
+      ...stageRows.flat(), 'アミコネ', 'ステージ情報未設定'].join('');
+    japaneseFont = await loadJapaneseFont(glyphText);
+  } catch (error) {
+    console.error('Tournament OG Japanese font loading failed:', error);
+  }
+
   const image = new ImageResponse(
-    <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', fontWeight: 900, padding: '40px 62px 40px', color: '#17233a' }}>
+    <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: 'Noto Sans JP', fontWeight: 900, padding: '40px 62px 40px', color: '#17233a' }}>
       <div style={{ display: 'flex', alignItems: 'center', height: 115 }}>
         {logo ? <img src={logo} alt="アミコネ" width={430} height={75} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 60, fontWeight: 900 }}>アミコネ</div>}
       </div>
@@ -79,11 +110,11 @@ export async function GET(_request, { params }) {
         ))}
         {!stageRows.length && <div style={{ display: 'flex', fontSize: 21, color: '#64748b' }}>ステージ情報未設定</div>}
       </div>
-    </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: heavyFont ? [{ name: 'Noto Sans JP', data: heavyFont, weight: 900, style: 'normal' }] : [] }
+    </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: japaneseFont ? [{ name: 'Noto Sans JP', data: japaneseFont, weight: 900, style: 'normal' }] : [] }
   );
   // Fully buffer the PNG before returning it. Some social preview fetchers
   // require a complete binary response with an explicit content length.
-  async function pngResponse(source) {
+  async function pngResponse(source, variant) {
     const buffer = new Uint8Array(await source.arrayBuffer());
     const valid = buffer.length > 8 &&
       [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => buffer[index] === byte);
@@ -96,11 +127,12 @@ export async function GET(_request, { params }) {
         'Content-Disposition': 'inline; filename="tournament.png"',
         'Cache-Control': 'public, max-age=300, s-maxage=300',
         'X-Content-Type-Options': 'nosniff',
+        'X-OG-Variant': variant,
       },
     });
   }
   try {
-    return await pngResponse(image);
+    return await pngResponse(image, 'tournament');
   } catch (error) {
     console.error('Tournament OG image rendering failed:', id, error);
     // A failed dynamic render must still return an actual image, not an
@@ -114,6 +146,6 @@ export async function GET(_request, { params }) {
       }}>AmiCone</div>,
       { ...size }
     );
-    return pngResponse(fallback);
+    return pngResponse(fallback, 'fallback');
   }
 }
