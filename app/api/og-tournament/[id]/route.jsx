@@ -55,23 +55,22 @@ export async function GET(_request, { params }) {
   } catch {}
 
   return new ImageResponse(
-    <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', padding: '44px 72px 38px', color: '#17233a' }}>
-      <div style={{ display: 'flex', alignItems: 'center', height: 74 }}>
-        {logo ? <img src={logo} alt="アミコネ" width={330} height={57} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 46, fontWeight: 900 }}>アミコネ</div>}
+    <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', padding: '40px 62px 40px', color: '#17233a' }}>
+      <div style={{ display: 'flex', alignItems: 'center', height: 115 }}>
+        {logo ? <img src={logo} alt="アミコネ" width={430} height={75} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 60, fontWeight: 900 }}>アミコネ</div>}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', borderLeft: '6px solid #6045a8', paddingLeft: 32, marginTop: 30, marginBottom: 25, gap: 13, minHeight: 0 }}>
-        <div style={{ display: 'flex', fontSize: name.length > 45 ? 24 : name.length > 27 ? 28 : 33, lineHeight: 1.3, color: '#64748b', maxHeight: 85, overflow: 'hidden', overflowWrap: 'anywhere' }}>{name}</div>
-        <div style={{ display: 'flex', fontSize: 59, fontWeight: 800, lineHeight: 1.25 }}>{dateText}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', borderLeft: '8px solid #6045a8', paddingLeft: 32, marginTop: 18, marginBottom: 18, gap: 20, minHeight: 0 }}>
+        <div style={{ display: 'flex', fontSize: name.length > 45 ? 26 : name.length > 27 ? 31 : 38, lineHeight: 1.3, color: '#64748b', maxHeight: 85, overflow: 'hidden', overflowWrap: 'anywhere' }}>{name}</div>
+        <div style={{ display: 'flex', fontSize: 76, fontWeight: 800, lineHeight: 1.25 }}>{dateText}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 34 }}>
-          <div style={{ display: 'flex', fontSize: 79, fontWeight: 800, color: '#6045a8', lineHeight: 1.1 }}>{timeText}</div>
-          <div style={{ display: 'flex', fontSize: 34, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
+          <div style={{ display: 'flex', fontSize: 92, fontWeight: 800, color: '#6045a8', lineHeight: 1.1 }}>{timeText}</div>
+          <div style={{ display: 'flex', fontSize: 36, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, minHeight: 104 }}>
-        <div style={{ display: 'flex', fontSize: 17, fontWeight: 700, letterSpacing: 2, color: '#64748b' }}>STAGE RULE</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, minHeight: 85 }}>
         {stageRows.map(([label, value]) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, fontSize: 21, lineHeight: 1.3 }}>
-            <div style={{ display: 'flex', flexShrink: 0, color: '#64748b', width: 150 }}>{label}</div>
+          <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, fontSize: 25, lineHeight: 1.3 }}>
+            <div style={{ display: 'flex', flexShrink: 0, color: '#64748b', width: 180 }}>{label}</div>
             <div style={{ display: 'flex', flex: 1, color: '#334155', maxHeight: 55, overflow: 'hidden' }}>{value}</div>
           </div>
         ))}
