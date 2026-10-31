@@ -388,6 +388,29 @@ export async function PUT(request) {
       }
     }
 
+    // Settings edits must never replace the tournament document or erase registrations.
+    // Only explicitly editable settings are copied onto the latest server version.
+    if (body?.editSettings === true) {
+      if (!isCurrentOwner) return NextResponse.json({ error: '大会設定を編集する権限がありません。' }, { status: 403 });
+      if (existing.bracket) return NextResponse.json({ error: '大会開始後は設定を編集できません。' }, { status: 409 });
+      const editableFields = [
+        'name', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags',
+        'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects',
+        'autoSeed', 'characterDeclaration', 'stageSettings',
+      ];
+      const updatedSettings = { ...existing };
+      for (const field of editableFields) {
+        if (Object.prototype.hasOwnProperty.call(input, field)) updatedSettings[field] = input[field];
+      }
+      if (Number(updatedSettings.participants) < (existing.joinedPlayers || []).length) {
+        return NextResponse.json({ error: '参加人数を現在の登録者数より少なくできません。' }, { status: 400 });
+      }
+      const { data: saved, error: saveError } = await saveTournamentRevision(supabase, id, existing, updatedSettings);
+      if (saveError) throw saveError;
+      if (!saved?.length) return NextResponse.json({ error: '他の操作が先に保存されました。画面を更新してやり直してください。' }, { status: 409 });
+      return NextResponse.json({ ok: true });
+    }
+
     const { ownerId, ownerUserId, ...safeInput } = input;
     const updated = isCurrentOwner
       ? { ...safeInput, ownerUserId: existingOwnerId || user.id }
