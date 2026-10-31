@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { updateBracketMatch } from '../../../../lib/tournament-bracket-admin';
+import { updateBracketMatch, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 import { appendMatchLog, rewindMatchPath } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +29,7 @@ export async function POST(request) {
     if (readError) throw readError;
     if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
 
-    const existing = row.data || {};
+    const existing = repairPrematureAdvances(row.data || {});
     const isOwner = existing.ownerUserId
       ? String(existing.ownerUserId) === String(user.id)
       : Boolean(ownerToken && String(ownerToken) === String(row.owner_token));
@@ -81,6 +81,9 @@ export async function POST(request) {
     } catch (error) {
       return NextResponse.json({ error: error.message || '対戦結果を変更できませんでした。' }, { status: 400 });
     }
+
+    // Older undo snapshots can also contain invalid automatic advancements.
+    updated = repairPrematureAdvances(updated);
 
     // Share the compact revision guard with stage actions, result reports and stream changes.
     // Comparing the entire tournament JSON can exceed request URL limits as match logs grow.

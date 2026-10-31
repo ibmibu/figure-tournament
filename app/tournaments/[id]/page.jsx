@@ -351,12 +351,13 @@ export default function TournamentPage() {
         winnerId: null,
       })));
     }
-    // Bye slots advance automatically.
-    for (let r = 0; r < rounds.length - 1; r++) {
-      rounds[r].forEach((match, i) => {
+    // A bye applies only to an empty seed in round one.
+    // A future-round card with one participant must wait for its other feeder.
+    if (rounds.length > 1) {
+      rounds[0].forEach((match, i) => {
         if (Boolean(match.player1) !== Boolean(match.player2)) {
           match.winnerId = (match.player1 || match.player2).id;
-          rounds[r + 1][Math.floor(i / 2)][i % 2 === 0 ? 'player1' : 'player2'] = match.player1 || match.player2;
+          rounds[1][Math.floor(i / 2)][i % 2 === 0 ? 'player1' : 'player2'] = match.player1 || match.player2;
         }
       });
     }

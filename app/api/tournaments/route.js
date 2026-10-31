@@ -1,4 +1,5 @@
 import { saveTournamentRevision } from '../../../lib/tournament-save';
+import { repairPrematureAdvances } from '../../../lib/tournament-bracket-admin';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, createHash } from 'crypto';
@@ -35,7 +36,7 @@ async function getUser(request, required = true) {
 }
 
 function publicTournament(row, user, legacyOwnerToken = '') {
-  const data = row.data || {};
+  const data = repairPrematureAdvances(row.data || {});
   const { ownerId, ownerUserId, ...publicData } = data;
   const isOwner = Boolean(user && (
     ownerUserId === user.id ||

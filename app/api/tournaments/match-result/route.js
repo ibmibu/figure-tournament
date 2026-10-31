@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getBracketPlacements } from '../../../../lib/tournament-bracket-admin';
+import { getBracketPlacements, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
@@ -68,7 +68,7 @@ export async function POST(request) {
       const { data: row, error } = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
       if (error) throw error;
       if (!row) return fail('大会が見つかりません。', 404);
-      const current = row.data;
+      const current = repairPrematureAdvances(row.data);
       const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0 ? current.stageActionRevision : null;
       const actorId = user.id;
       const bracket = structuredClone(current.bracket);

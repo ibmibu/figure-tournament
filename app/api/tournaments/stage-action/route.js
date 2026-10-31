@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
+import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 export const dynamic = 'force-dynamic';
 const client = key => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const fail = (error, status = 400) => NextResponse.json({ error }, { status });
@@ -17,7 +18,7 @@ export async function POST(request) {
       const { data: row, error } = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
       if (error) throw error;
       if (!row) return fail('大会が見つかりません。', 404);
-      const original = row.data;
+      const original = repairPrematureAdvances(row.data);
       if (!original.bracket || original.bracket.complete) return fail('対戦を操作できません。', 409);
       const next = structuredClone(original);
       // Compare a compact revision rather than placing the entire tournament JSON in the request URL.
