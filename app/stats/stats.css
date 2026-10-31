@@ -2093,7 +2093,7 @@ footer span {
   background: #f0f3fa;
 }
 .tournamentList .tournamentTitle {
-  grid-template-columns: min(186px, 45%) 78px minmax(0, 1fr);
+  grid-template-columns: min(204px, 50%) 78px minmax(0, 1fr);
   column-gap: 12px;
   overflow: hidden;
   color: #26354d;
@@ -2134,7 +2134,7 @@ footer span {
     padding: 11px 8px;
   }
   .tournamentList .tournamentTitle {
-    grid-template-columns: min(144px, 44%) 67px minmax(0, 1fr);
+    grid-template-columns: min(166px, 55%) 67px minmax(0, 1fr);
     column-gap: 7px;
   }
   .tournamentList .tournamentTitle b { font-size: 13px; }
@@ -2145,7 +2145,7 @@ footer span {
 @media (max-width: 380px) {
   .tournamentList .tournamentRow { gap: 7px; padding-inline: 6px; }
   .tournamentList .tournamentTitle {
-    grid-template-columns: min(130px, 42%) 63px minmax(0, 1fr);
+    grid-template-columns: min(146px, 50%) 63px minmax(0, 1fr);
     column-gap: 6px;
   }
   .tournamentList .tournamentTitle b { font-size: 12px; }
