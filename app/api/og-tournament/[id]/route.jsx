@@ -77,6 +77,6 @@ export async function GET(_request, { params }) {
         ))}
         {!stageRows.length && <div style={{ display: 'flex', fontSize: 21, color: '#64748b' }}>ステージ情報未設定</div>}
       </div>
-    </div>, { ...size, fonts: heavyFont ? [{ name: 'Noto Sans JP', data: heavyFont, weight: 900, style: 'normal' }] : [] }
+    </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: heavyFont ? [{ name: 'Noto Sans JP', data: heavyFont, weight: 900, style: 'normal' }] : [] }
   );
 }
