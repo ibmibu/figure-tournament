@@ -1,4 +1,5 @@
 import { saveTournamentRevision } from '../../../../lib/tournament-save';
+import { getCharacterReportPlacement, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
@@ -21,15 +22,13 @@ export async function POST(request) {
   if(!row)return NextResponse.json({error:'大会が見つかりません。'},{status:404});
   const t=row.data||{};
   if(t.characterDeclaration)return NextResponse.json({error:'キャラ宣言ありの大会では終了後のキャラ報告は不要です。'},{status:409});
-  if(!t.bracket?.complete)return NextResponse.json({error:'大会終了後に報告してください。'},{status:400});
+  if(!t.bracket?.rounds?.length)return NextResponse.json({error:'大会開始後に報告してください。'},{status:400});
   const player=(t.joinedPlayers||[]).find(p=>!p.isDemo&&String(p.userId||p.id)===String(user.id));
   if(!player)return NextResponse.json({error:'参加者ではありません。'},{status:403});
-  const rounds=t.bracket.rounds||[];
-  const final=rounds.at(-1)?.[0];
-  const podium=new Set([final?.winnerId, ...[final?.player1,final?.player2].filter(Boolean).map(p=>p.id)]);
-  if(rounds.length>=2)for(const m of rounds.at(-2))for(const p of [m.player1,m.player2])if(p&&m.winnerId&&String(p.id)!==String(m.winnerId))podium.add(p.id);
-  const wins=rounds.flat().filter(m=>String(m.winnerId)===String(player.id)&&m.player1&&m.player2&&m.resultType!=='forfeit').length;
-  if(![...podium].some(v=>String(v)===String(player.id))||wins<1)return NextResponse.json({error:'1勝以上かつ3位以内の選手のみ報告できます。'},{status:403});
+  // Check eligibility against a corrected read-only bracket. A report save
+  // does not overwrite any in-progress match data.
+  const placement=getCharacterReportPlacement(repairPrematureAdvances(t).bracket,player.id);
+  if(!placement)return NextResponse.json({error:'1勝以上かつ、準決勝敗退または決勝終了で3位以内が確定した選手のみ報告できます。'},{status:403});
   const updated={...t,characterReports:{...(t.characterReports||{}),[String(player.id)]:{characters}}};
   const {data:changed,error:writeError}=await saveTournamentRevision(admin,id,t,updated);
   if(writeError)throw writeError;

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getCharacterReportPlacement, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
@@ -18,13 +19,14 @@ export async function GET(request) {
     if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
     const tournament = row.data || {};
     if (String(tournament.ownerUserId) !== String(user.id)) return NextResponse.json({ error: '主催者のみ閲覧できます。' }, { status: 403 });
+    const bracket = repairPrematureAdvances(tournament).bracket;
     const placements = tournament.resultPlacements || [];
     const placeRank = place => ({ '優勝': 0, '準優勝': 1, '3位': 2, 'ベスト4': 2 })[place] ?? 99;
     const players = (tournament.joinedPlayers || []).filter(p => !p.isDemo).map(p => ({
       id: String(p.id),
       name: p.name || p.displayName || '名前未登録',
       characters: tournament.characterReports?.[String(p.id)]?.characters || [],
-      place: placements.find(entry => String(entry.playerId) === String(p.id))?.place || ''
+      place: getCharacterReportPlacement(bracket, p.id) || placements.find(entry => String(entry.playerId) === String(p.id))?.place || ''
     })).filter(p => p.characters.length > 0).sort((a, b) => placeRank(a.place) - placeRank(b.place));
     return NextResponse.json({ name: tournament.name || '', players }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

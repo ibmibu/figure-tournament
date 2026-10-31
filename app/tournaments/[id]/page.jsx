@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
+import { getCharacterReportPlacement } from '../../../lib/tournament-bracket-admin';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
 const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
@@ -246,17 +247,13 @@ export default function TournamentPage() {
     };
   }, [id, Boolean(tournament), Boolean(tournament?.bracket), tournament?.bracket?.complete, tournament?.stageActionRevision, currentUserId, savingBracket, declarationBusy, accessToken]);
 
-  // 大会終了後、条件を満たす参加者を一度だけキャラ報告ページへ案内する。
+  // Prompt for character reporting as soon as each placement is decided.
+  // Semifinal losers need not wait for the final match to finish.
   useEffect(() => {
-    if (!tournament?.bracket?.complete || !currentUserId || loading) return;
+    if (!tournament?.bracket || !currentUserId || loading) return;
     const player = (tournament.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === String(currentUserId));
     if (!player || tournament.characterDeclaration || tournament.characterReports?.[String(player.id)]) return;
-    const rounds = tournament.bracket.rounds || [];
-    const final = rounds.at(-1)?.[0];
-    const podium = new Set([final?.winnerId, ...[final?.player1, final?.player2].filter(Boolean).map(p => p.id)]);
-    if (rounds.length >= 2) for (const m of rounds.at(-2)) for (const p of [m.player1, m.player2]) if (p && m.winnerId && String(p.id) !== String(m.winnerId)) podium.add(p.id);
-    const wins = rounds.flat().filter(m => String(m.winnerId) === String(player.id) && m.player1 && m.player2 && m.resultType !== 'forfeit').length;
-    if (wins < 1 || ![...podium].some(v => String(v) === String(player.id))) return;
+    if (!getCharacterReportPlacement(tournament.bracket, player.id)) return;
     const key = 'figure-report-visited-' + id + '-' + currentUserId;
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
@@ -987,6 +984,15 @@ export default function TournamentPage() {
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
 
+    {tournament.bracket && !tournament.bracket.complete && !tournament.characterDeclaration && (() => {
+      const reportingPlayer = joinedPlayers.find(p => !p.isDemo && String(p.userId || p.id) === String(currentUserId));
+      const canReport = Boolean(reportingPlayer && getCharacterReportPlacement(tournament.bracket, reportingPlayer.id));
+      if (!canReport && !isOwner) return null;
+      return <div className="tournament-report-action">
+        {canReport && <a className="button-link" href={`/tournaments/${encodeURIComponent(id)}/report`}>キャラ報告を入力・編集</a>}
+        {isOwner && <a className="button-link" href={`/tournaments/${encodeURIComponent(id)}/reports`}>キャラ報告を見る</a>}
+      </div>;
+    })()}
     {(!tournament.bracket || showTournamentOverview) && tournament.bracket?.complete && <><section className="create-panel tournament-results-card"><h2>大会結果</h2><div className="tournament-results-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).filter(row => ['優勝','準優勝','3位','ベスト4'].includes(row.place)).map(row => { const player = joinedPlayers.find(p => String(p.id) === String(row.playerId)); return player ? <div className="tournament-result-item" key={String(row.playerId)}><strong>{row.place === 'ベスト4' ? '3位' : row.place}</strong><span>{player.name}</span></div> : null; })}</div></section><div className="tournament-report-action">{!tournament.characterDeclaration && joinedPlayers.some(p => !p.isDemo && String(p.userId || p.id) === String(currentUserId)) && <a className="button-link" href={`/tournaments/${encodeURIComponent(id)}/report`}>キャラ報告を編集</a>}{isOwner && !tournament.characterDeclaration && <a className="button-link" href={`/tournaments/${encodeURIComponent(id)}/reports`}>キャラ報告を見る</a>}</div></>}
     {(!tournament.bracket || showTournamentOverview) && <div className="tournament-bottom-grid">
     <section className="create-panel tournament-detail" id="tournament-overview">
