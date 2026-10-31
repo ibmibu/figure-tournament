@@ -6,9 +6,7 @@ import { join } from 'node:path';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const alt = 'アミコネ 大会案内';
-export const size = { width: 1200, height: 630 };
-export const contentType = 'image/png';
+const size = { width: 1200, height: 630 };
 
 const stageLabel = stages => (Array.isArray(stages) ? stages : []).filter(Boolean).join(' / ');
 
