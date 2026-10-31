@@ -766,11 +766,11 @@ export default function TournamentPage() {
     }
   }
 
-  // A changed link prompts Discord to fetch a fresh embed after a failed image.
-  // Version the URL without altering the tournament's actual identifier.
+  // Keep the public tournament URL clean. The OG image itself retains a
+  // content-versioned URL, while an optional ?v= can still bust Discord's
+  // cached page preview when a previously shared card needs refreshing.
   const tournamentShareUrl = () =>
-    'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id)
-    + '?v=og4-' + encodeURIComponent(String(tournament?.stageActionRevision ?? 0));
+    'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id);
   if (loading && !tournament) return <main className="page tournament-detail-page"><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
 
   if (!tournament) return <main className="page">

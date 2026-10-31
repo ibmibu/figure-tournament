@@ -43,6 +43,7 @@ export async function GET(_request, { params }) {
   let timeText = '--:--';
   let formatText = 'BO3';
   let stageRows = [];
+  let stageCount = 0;
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -62,13 +63,17 @@ export async function GET(_request, { params }) {
           } else dateText = String(t.date).replace('T', ' ');
         }
         if (t.stageRejects) {
+          const starters = Array.isArray(t.stageSettings?.starterStages) ? t.stageSettings.starterStages : [];
+          const counters = Array.isArray(t.stageSettings?.counterpickStages) ? t.stageSettings.counterpickStages : [];
+          stageCount = starters.length + counters.length;
           stageRows = [
-            ['スターター', stageLabel(t.stageSettings?.starterStages)],
-            ['カウンター', stageLabel(t.stageSettings?.counterpickStages)],
+            ['スターター', stageLabel(starters)],
+            ['カウンター', stageLabel(counters)],
           ].filter(row => row[1]);
         } else {
-          const stages = stageLabel(t.stages);
-          if (stages) stageRows = [['使用ステージ', stages]];
+          const stages = Array.isArray(t.stages) ? t.stages : [];
+          stageCount = stages.length;
+          if (stages.length) stageRows = [['使用ステージ', stageLabel(stages)]];
         }
       }
     }
@@ -88,24 +93,55 @@ export async function GET(_request, { params }) {
     console.error('Tournament OG Japanese font loading failed:', error);
   }
 
+  // Reserve a taller bottom strip for the stage names. The previous layout
+  // cropped long stage lists at maxHeight:55 and minHeight:85.
+  const stageFontSize = stageCount >= 10 ? 17 : stageCount >= 7 ? 19 : 22;
+  const stageFooterHeight = stageRows.length > 1 ? 154 : 130;
   const image = new ImageResponse(
-    <div style={{ width: '100%', height: '100%', background: '#ffffff', display: 'flex', flexDirection: 'column', fontFamily: 'Noto Sans JP', fontWeight: 900, padding: '40px 62px 40px', color: '#17233a' }}>
-      <div style={{ display: 'flex', alignItems: 'center', height: 115 }}>
+    <div style={{
+      width: '100%', height: '100%', background: '#ffffff',
+      display: 'flex', flexDirection: 'column',
+      fontFamily: 'Noto Sans JP', fontWeight: 900,
+      padding: '28px 62px 26px', color: '#17233a',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', height: 100, flexShrink: 0 }}>
         {logo ? <img src={logo} alt="アミコネ" width={430} height={75} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 60, fontWeight: 900 }}>アミコネ</div>}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center', borderLeft: '8px solid #6045a8', paddingLeft: 32, marginTop: 18, marginBottom: 18, gap: 20, minHeight: 0 }}>
-        <div style={{ display: 'flex', fontSize: name.length > 45 ? 27 : name.length > 27 ? 33 : 40, fontWeight: 900, lineHeight: 1.3, color: '#17233a', maxHeight: 85, overflow: 'hidden', overflowWrap: 'anywhere' }}>{name}</div>
-        <div style={{ display: 'flex', fontSize: 76, fontWeight: 900, lineHeight: 1.25 }}>{dateText}</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 34 }}>
-          <div style={{ display: 'flex', fontSize: 92, fontWeight: 800, color: '#6045a8', lineHeight: 1.1 }}>{timeText}</div>
-          <div style={{ display: 'flex', fontSize: 36, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
+      <div style={{
+        display: 'flex', flexDirection: 'column', flex: 1,
+        justifyContent: 'center', borderLeft: '8px solid #6045a8',
+        paddingLeft: 32, marginTop: 10, marginBottom: 10,
+        gap: 12, minHeight: 0,
+      }}>
+        <div style={{
+          display: 'flex', fontSize: name.length > 45 ? 26 : name.length > 27 ? 32 : 38,
+          fontWeight: 900, lineHeight: 1.3, color: '#17233a',
+          maxHeight: 92, overflow: 'hidden', overflowWrap: 'anywhere',
+        }}>{name}</div>
+        <div style={{ display: 'flex', fontSize: 70, fontWeight: 900, lineHeight: 1.2 }}>{dateText}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 30 }}>
+          <div style={{ display: 'flex', fontSize: 82, fontWeight: 800, color: '#6045a8', lineHeight: 1.05 }}>{timeText}</div>
+          <div style={{ display: 'flex', fontSize: 33, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, minHeight: 85 }}>
+      <div style={{
+        display: 'flex', flexDirection: 'column', gap: 8,
+        height: stageFooterHeight, flexShrink: 0,
+        justifyContent: 'flex-start', paddingTop: 7,
+      }}>
         {stageRows.map(([label, value]) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 16, fontSize: 25, lineHeight: 1.3 }}>
-            <div style={{ display: 'flex', flexShrink: 0, color: '#17233a', fontWeight: 800, width: 180 }}>{label}</div>
-            <div style={{ display: 'flex', flex: 1, color: '#17233a', fontWeight: 900, maxHeight: 55, overflow: 'hidden' }}>{value}</div>
+          <div key={label} style={{
+            display: 'flex', alignItems: 'flex-start',
+            gap: 16, fontSize: stageFontSize, lineHeight: 1.35,
+          }}>
+            <div style={{
+              display: 'flex', flexShrink: 0, color: '#17233a',
+              fontWeight: 800, width: 170,
+            }}>{label}</div>
+            <div style={{
+              display: 'flex', flex: 1, minWidth: 0, color: '#17233a',
+              fontWeight: 900, overflowWrap: 'anywhere', whiteSpace: 'normal',
+            }}>{value}</div>
           </div>
         ))}
         {!stageRows.length && <div style={{ display: 'flex', fontSize: 21, color: '#64748b' }}>ステージ情報未設定</div>}
