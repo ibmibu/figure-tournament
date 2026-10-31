@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
+// Tournament schedules are entered as Japan-local YYYY-MM-DDTHH:mm (no offset).
+// Interpret them consistently in JST, independent of Vercel's timezone.
+function toTime(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const normalized = value.trim().replace(' ', 'T');
+  const local = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/.test(normalized);
+  const iso = local ? (normalized.includes('T') ? normalized : normalized + 'T00:00:00') + '+09:00' : normalized;
+  const time = Date.parse(iso);
+  return Number.isFinite(time) ? time : null;
+}
+
+// Scheduled start is primary. Creation time only breaks ties or handles missing dates.
+function compareByScheduledStart(a, b) {
+  const startA = toTime(a.data?.date) ?? toTime(a.data?.createdAt) ?? toTime(a.created_at) ?? Number.MAX_SAFE_INTEGER;
+  const startB = toTime(b.data?.date) ?? toTime(b.data?.createdAt) ?? toTime(b.created_at) ?? Number.MAX_SAFE_INTEGER;
+  if (startA !== startB) return startA - startB;
+  const createdA = toTime(a.created_at) ?? toTime(a.data?.createdAt) ?? Number.MAX_SAFE_INTEGER;
+  const createdB = toTime(b.created_at) ?? toTime(b.data?.createdAt) ?? Number.MAX_SAFE_INTEGER;
+  return createdA - createdB || String(a.id).localeCompare(String(b.id));
+}
+
 // Only expose links for participants in public tournament brackets.
 export async function GET() {
   try {
@@ -11,7 +32,7 @@ export async function GET() {
     const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: rows, error } = await db.from('legacy_player_links').select('legacy_player_id,user_id');
     if (error) throw error;
-    const { data: tournaments, error: tournamentError } = await db.from('tournaments').select('id,data').order('created_at', { ascending: true });
+    const { data: tournaments, error: tournamentError } = await db.from('tournaments').select('id,data,created_at');
     if (tournamentError) throw tournamentError;
     const linkMap = new Map((rows || []).map(row => [String(row.user_id), String(row.legacy_player_id)]));
     // Only finalized brackets belong in the shared public record. Drafts and active events are excluded.
@@ -20,7 +41,10 @@ export async function GET() {
       const final = bracket?.rounds?.at(-1)?.[0];
       return bracket?.complete === true && final?.player1 && final?.player2 && final?.winnerId &&
         [final.player1, final.player2].some(player => String(player.id) === String(final.winnerId));
-    }).map(row => {
+    })
+      // Rating records receive tournament numbers in scheduled chronological order.
+      .sort(compareByScheduledStart)
+      .map(row => {
       const t = row.data || {};
       const participants = new Map();
       // Demo entrants count as 1500 toward tournament size, but not player stats.
