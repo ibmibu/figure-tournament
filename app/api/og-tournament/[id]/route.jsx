@@ -94,67 +94,73 @@ export async function GET(_request, { params }) {
     console.error('Tournament OG Japanese font loading failed:', error);
   }
 
-  // Allow two or more rows of whole stage names, without clipping the footer.
-  const stageFontSize = stageCount >= 12 ? 16 : stageCount >= 9 ? 18 : stageCount >= 7 ? 19 : 21;
-  const stageFooterHeight = stageRows.length > 1 ? 154 : 130;
+  // X overlays a title badge on the lower-left of link previews.
+  // Keep the bottom of the image clear and move stage details into the
+  // otherwise unused right side of the information area.
+  const stageFontSize = stageCount >= 12 ? 17 : stageCount >= 9 ? 18 : stageCount >= 7 ? 19 : 21;
   const image = new ImageResponse(
     <div style={{
       width: '100%', height: '100%', background: '#ffffff',
       display: 'flex', flexDirection: 'column',
       fontFamily: 'Noto Sans JP', fontWeight: 900,
-      padding: '28px 62px 26px', color: '#17233a',
+      padding: '28px 62px 112px', color: '#17233a',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', height: 100, flexShrink: 0 }}>
         {logo ? <img src={logo} alt="アミコネ" width={430} height={75} style={{ objectFit: 'contain', objectPosition: 'left center' }} /> : <div style={{ fontSize: 60, fontWeight: 900 }}>アミコネ</div>}
       </div>
       <div style={{
         display: 'flex', flexDirection: 'column', flex: 1,
-        justifyContent: 'center', borderLeft: '8px solid #6045a8',
-        paddingLeft: 32, marginTop: 10, marginBottom: 10,
-        gap: 12, minHeight: 0,
+        borderLeft: '8px solid #6045a8',
+        paddingLeft: 32, paddingTop: 42, marginTop: 10,
+        gap: 18, minHeight: 0,
       }}>
         <div style={{
           display: 'flex', fontSize: name.length > 45 ? 26 : name.length > 27 ? 32 : 38,
           fontWeight: 900, lineHeight: 1.3, color: '#17233a',
           maxHeight: 92, overflow: 'hidden', overflowWrap: 'anywhere',
         }}>{name}</div>
-        <div style={{ display: 'flex', fontSize: 70, fontWeight: 900, lineHeight: 1.2 }}>{dateText}</div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 30 }}>
-          <div style={{ display: 'flex', fontSize: 82, fontWeight: 800, color: '#6045a8', lineHeight: 1.05 }}>{timeText}</div>
-          <div style={{ display: 'flex', fontSize: 33, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
-        </div>
-      </div>
-      <div style={{
-        display: 'flex', flexDirection: 'column', gap: 8,
-        height: stageFooterHeight, flexShrink: 0,
-        justifyContent: 'flex-start', paddingTop: 7,
-      }}>
-        {stageRows.map(([label, stages]) => (
-          <div key={label} style={{
-            display: 'flex', alignItems: 'flex-start',
-            gap: 16, fontSize: stageFontSize, lineHeight: 1.35,
+        <div style={{
+          display: 'flex', flex: 1, alignItems: 'flex-start',
+          gap: 26, minHeight: 0,
+        }}>
+          <div style={{
+            display: 'flex', flexDirection: 'column', flex: '0 0 52%',
+            gap: 12, minWidth: 0,
           }}>
-            <div style={{
-              display: 'flex', flexShrink: 0, color: '#17233a',
-              fontWeight: 800, width: 170,
-            }}>{label}</div>
-            <div style={{
-              display: 'flex', flex: 1, minWidth: 0, flexWrap: 'wrap',
-              alignItems: 'flex-start', columnGap: 9, rowGap: 4,
-              color: '#17233a', fontWeight: 900,
-            }}>
-              {stages.map((stage, index) => (
-                <div key={index} style={{
-                  display: 'flex', flexShrink: 0,
-                  whiteSpace: 'nowrap', wordBreak: 'keep-all',
-                }}>
-                  {stage}{index < stages.length - 1 ? ' /' : ''}
-                </div>
-              ))}
+            <div style={{ display: 'flex', fontSize: 68, fontWeight: 900, lineHeight: 1.2 }}>{dateText}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 26 }}>
+              <div style={{ display: 'flex', fontSize: 80, fontWeight: 800, color: '#6045a8', lineHeight: 1.05 }}>{timeText}</div>
+              <div style={{ display: 'flex', fontSize: 32, fontWeight: 800, color: '#17233a' }}>{formatText}</div>
             </div>
           </div>
-        ))}
-        {!stageRows.length && <div style={{ display: 'flex', fontSize: 21, color: '#64748b' }}>ステージ情報未設定</div>}
+          <div style={{
+            display: 'flex', flex: 1, flexDirection: 'column',
+            gap: stageRows.length > 1 ? 12 : 8,
+            minWidth: 0, paddingTop: 5,
+          }}>
+            {stageRows.map(([label, stages]) => (
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div style={{ display: 'flex', fontSize: 18, fontWeight: 900, color: '#6045a8' }}>{label}</div>
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap',
+                  alignItems: 'flex-start', columnGap: 8, rowGap: 5,
+                  color: '#17233a', fontSize: stageFontSize,
+                  fontWeight: 900, lineHeight: 1.3, minWidth: 0,
+                }}>
+                  {stages.map((stage, index) => (
+                    <div key={index} style={{
+                      display: 'flex', flexShrink: 0,
+                      whiteSpace: 'nowrap', wordBreak: 'keep-all',
+                    }}>
+                      {stage}{index < stages.length - 1 ? ' /' : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {!stageRows.length && <div style={{ display: 'flex', fontSize: 19, color: '#64748b' }}>ステージ情報未設定</div>}
+          </div>
+        </div>
       </div>
     </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: japaneseFont ? [{ name: 'Noto Sans JP', data: japaneseFont, weight: 900, style: 'normal' }] : [] }
   );
