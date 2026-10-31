@@ -35,7 +35,7 @@ export async function generateMetadata({ params, searchParams }) {
   const tournamentUrl = baseUrl + '/tournaments/' + encodeURIComponent(id) +
     (sharedVersion ? '?v=' + encodeURIComponent(sharedVersion) : '');
   // An explicit PNG path and a new release version avoid stale failed fetches.
-  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id) + '.png?v=og4-' + imageVersion;
+  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id) + '.png?v=og5-' + imageVersion;
   return {
     title, description,
     openGraph: { title, description, type: 'website', url: tournamentUrl, siteName: 'アミコネ', images: [{ url: imageUrl, width: 1200, height: 630, type: 'image/png', alt: name + ' 大会サムネイル' }] },

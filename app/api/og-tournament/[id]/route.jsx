@@ -7,11 +7,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const size = { width: 1200, height: 630 };
 
-const stageLabel = stages => (Array.isArray(stages) ? stages : []).filter(Boolean).join(' / ');
+// Keep each stage name intact instead of wrapping Japanese text mid-word.
+const normalizeStages = stages => (Array.isArray(stages) ? stages : [])
+  .map(stage => String(stage || '').trim()).filter(Boolean);
 
-// The previous font path was not committed, so Japanese text could fail to
-// render and the English-only emergency card was shown instead.
-// Google Fonts supports request-time TTF subsets for precisely the glyphs used.
+// Load a font containing all text used in the card.
 async function loadJapaneseFont(text) {
   const glyphs = [...new Set(Array.from(String(text)))].join('');
   const base = 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@900&text=' + encodeURIComponent(glyphs);
@@ -63,17 +63,17 @@ export async function GET(_request, { params }) {
           } else dateText = String(t.date).replace('T', ' ');
         }
         if (t.stageRejects) {
-          const starters = Array.isArray(t.stageSettings?.starterStages) ? t.stageSettings.starterStages : [];
-          const counters = Array.isArray(t.stageSettings?.counterpickStages) ? t.stageSettings.counterpickStages : [];
+          const starters = normalizeStages(t.stageSettings?.starterStages);
+          const counters = normalizeStages(t.stageSettings?.counterpickStages);
           stageCount = starters.length + counters.length;
           stageRows = [
-            ['スターター', stageLabel(starters)],
-            ['カウンター', stageLabel(counters)],
-          ].filter(row => row[1]);
+            ['スターター', starters],
+            ['カウンター', counters],
+          ].filter(([, stages]) => stages.length);
         } else {
-          const stages = Array.isArray(t.stages) ? t.stages : [];
+          const stages = normalizeStages(t.stages);
           stageCount = stages.length;
-          if (stages.length) stageRows = [['使用ステージ', stageLabel(stages)]];
+          if (stages.length) stageRows = [['使用ステージ', stages]];
         }
       }
     }
@@ -87,15 +87,15 @@ export async function GET(_request, { params }) {
   let japaneseFont;
   try {
     const glyphText = [name, dateText, timeText, formatText,
-      ...stageRows.flat(), 'アミコネ', 'ステージ情報未設定'].join('');
+      ...stageRows.flatMap(([label, stages]) => [label, ...stages]),
+      'アミコネ', 'ステージ情報未設定'].join('');
     japaneseFont = await loadJapaneseFont(glyphText);
   } catch (error) {
     console.error('Tournament OG Japanese font loading failed:', error);
   }
 
-  // Reserve a taller bottom strip for the stage names. The previous layout
-  // cropped long stage lists at maxHeight:55 and minHeight:85.
-  const stageFontSize = stageCount >= 10 ? 17 : stageCount >= 7 ? 19 : 22;
+  // Allow two or more rows of whole stage names, without clipping the footer.
+  const stageFontSize = stageCount >= 12 ? 16 : stageCount >= 9 ? 18 : stageCount >= 7 ? 19 : 21;
   const stageFooterHeight = stageRows.length > 1 ? 154 : 130;
   const image = new ImageResponse(
     <div style={{
@@ -129,7 +129,7 @@ export async function GET(_request, { params }) {
         height: stageFooterHeight, flexShrink: 0,
         justifyContent: 'flex-start', paddingTop: 7,
       }}>
-        {stageRows.map(([label, value]) => (
+        {stageRows.map(([label, stages]) => (
           <div key={label} style={{
             display: 'flex', alignItems: 'flex-start',
             gap: 16, fontSize: stageFontSize, lineHeight: 1.35,
@@ -139,49 +139,35 @@ export async function GET(_request, { params }) {
               fontWeight: 800, width: 170,
             }}>{label}</div>
             <div style={{
-              display: 'flex', flex: 1, minWidth: 0, color: '#17233a',
-              fontWeight: 900, overflowWrap: 'anywhere', whiteSpace: 'normal',
-            }}>{value}</div>
+              display: 'flex', flex: 1, minWidth: 0, flexWrap: 'wrap',
+              alignItems: 'flex-start', columnGap: 9, rowGap: 4,
+              color: '#17233a', fontWeight: 900,
+            }}>
+              {stages.map((stage, index) => (
+                <div key={index} style={{
+                  display: 'flex', flexShrink: 0,
+                  whiteSpace: 'nowrap', wordBreak: 'keep-all',
+                }}>
+                  {stage}{index < stages.length - 1 ? ' /' : ''}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
         {!stageRows.length && <div style={{ display: 'flex', fontSize: 21, color: '#64748b' }}>ステージ情報未設定</div>}
       </div>
     </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: japaneseFont ? [{ name: 'Noto Sans JP', data: japaneseFont, weight: 900, style: 'normal' }] : [] }
   );
-  // Fully buffer the PNG before returning it. Some social preview fetchers
-  // require a complete binary response with an explicit content length.
-  async function pngResponse(source, variant) {
-    const buffer = new Uint8Array(await source.arrayBuffer());
-    const valid = buffer.length > 8 &&
-      [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => buffer[index] === byte);
-    if (!valid) throw new Error('OG generator returned an invalid PNG');
-    return new Response(buffer, {
-      status: 200,
-      headers: {
-        'Content-Type': 'image/png',
-        'Content-Length': String(buffer.length),
-        'Content-Disposition': 'inline; filename="tournament.png"',
-        'Cache-Control': 'public, max-age=300, s-maxage=300',
-        'X-Content-Type-Options': 'nosniff',
-        'X-OG-Variant': variant,
-      },
-    });
-  }
-  try {
-    return await pngResponse(image, 'tournament');
-  } catch (error) {
-    console.error('Tournament OG image rendering failed:', id, error);
-    // A failed dynamic render must still return an actual image, not an
-    // HTML error body that Discord caches as a broken embed.
-    const fallback = new ImageResponse(
-      <div style={{
-        width: '100%', height: '100%', display: 'flex',
-        alignItems: 'center', justifyContent: 'center',
-        background: '#ffffff', color: '#6045a8',
-        fontSize: 84, fontWeight: 800,
-      }}>AmiCone</div>,
-      { ...size }
-    );
-    return pngResponse(fallback, 'fallback');
-  }
+  // Return a complete PNG with an explicit content length for Discord/X.
+  // Do not hide rendering bugs behind the temporary English test image.
+  const png = new Uint8Array(await image.arrayBuffer());
+  return new Response(png, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Content-Length': String(png.length),
+      'Content-Disposition': 'inline; filename="tournament.png"',
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
 }
