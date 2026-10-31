@@ -2461,3 +2461,43 @@ footer span {
   color:#253149;
   box-shadow:none;
 }
+
+
+/* Achievement tournament titles: size the chips by their text instead of
+   forcing every title into a 9-column slot. Keep the mobile two-column list. */
+.stats-shell .achievementTournaments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+.stats-shell .achievementTournaments > .achievementTournament {
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+}
+.stats-shell .achievementTournaments > .achievementTournament > span {
+  display: block;
+  min-width: 0;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+@media (max-width: 560px) {
+  .stats-shell .achievementTournaments {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .stats-shell .achievementTournaments > .achievementTournament {
+    width: 100%;
+    align-items: center;
+  }
+}
