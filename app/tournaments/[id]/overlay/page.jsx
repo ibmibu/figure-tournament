@@ -18,6 +18,7 @@ export default function TournamentOverlay() {
     let channel;
     let controller;
     let debounce;
+    let holdTimer;
     let requestVersion = 0;
     const refresh = async () => {
       if (!active) return;
@@ -32,6 +33,11 @@ export default function TournamentOverlay() {
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
         if (active && version === requestVersion) {
           setData(result);
+          clearTimeout(holdTimer);
+          if (result.holdUntil) {
+            const remaining = Date.parse(result.holdUntil) - Date.now();
+            if (remaining > 0) holdTimer = setTimeout(refresh, remaining + 100);
+          }
           setLoadError('');
         }
       } catch (error) {
@@ -64,6 +70,7 @@ export default function TournamentOverlay() {
     return () => {
       active = false;
       clearTimeout(debounce);
+      clearTimeout(holdTimer);
       controller?.abort();
       if (channel) getSupabaseBrowserClient().removeChannel(channel);
     };
