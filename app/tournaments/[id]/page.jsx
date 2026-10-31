@@ -574,7 +574,9 @@ export default function TournamentPage() {
       };
     }
     bracket.complete = bracket.rounds[bracket.rounds.length - 1][0].winnerId != null;
-    const next = { ...tournament, bracket, status: bracket.complete ? '終了' : '対戦中', resultPlacements: bracket.complete ? bracketPlacements(bracket) : null, completedAt: bracket.complete ? new Date().toISOString() : null };
+    const isStreamResult = Boolean(match.winnerId) && String(tournament.streamMatchId ?? tournament.effectiveStreamMatchId ?? '') === String(match.id);
+    const streamHold = isStreamResult ? { streamHoldMatchId: match.id, streamHoldUntil: new Date(Date.now() + 60000).toISOString() } : {};
+    const next = { ...tournament, ...streamHold, bracket, status: bracket.complete ? '終了' : '対戦中', resultPlacements: bracket.complete ? bracketPlacements(bracket) : null, completedAt: bracket.complete ? new Date().toISOString() : null };
     await saveBracket(next);
     if (match.winnerId) setActiveMatchId('');
   }
@@ -981,7 +983,6 @@ export default function TournamentPage() {
 
 
         {logMatchId && <div className="bracket-admin-modal-backdrop" onClick={() => setLogMatchId('')}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="対戦操作ログ" onClick={e => e.stopPropagation()}><div className="bracket-admin-heading"><strong>対戦操作ログ</strong><button type="button" onClick={() => setLogMatchId('')}>閉じる ×</button></div><div className="bracket-admin-history-list">{(tournament.matchLogs || []).filter(entry => String(entry.matchId) === logMatchId).slice().reverse().map(entry => <div className="bracket-admin-log-entry" key={entry.id}><span className="bracket-admin-log-dot" /><div><div className="bracket-admin-log-meta"><time>{new Date(entry.at).toLocaleString('ja-JP')}</time>{isOwner && <button type="button" className="bracket-admin-rewind-mini" disabled={savingBracket} onClick={() => rewindMatchLog(logMatchId, entry.id)}>戻る</button>}</div><p><strong>{entry.actor}：</strong>{entry.action}</p></div></div>)}{!(tournament.matchLogs || []).some(entry => String(entry.matchId) === logMatchId) && <p>この対戦の操作ログはまだありません。</p>}</div></section></div>}
-        {tournament.bracket.complete && <><h3 id="tournament-standings">順位・結果</h3><ol className="joined-player-list">{(tournament.resultPlacements || bracketPlacements(tournament.bracket)).map((row, i) => { const player = joinedPlayers.find(p => p.id === row.playerId); return player ? <li key={row.playerId}><strong>{row.place}</strong>　{player.name}{player.isDemo ? '（デモ）' : ''}</li> : null; })}</ol></>}
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
       </section>}
 
