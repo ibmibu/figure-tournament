@@ -18,7 +18,7 @@ export async function generateMetadata({ params }) {
     }
   } catch {}
   const title = name + ' | アミコネ';
-  const imageUrl = baseUrl + '/tournaments/' + encodeURIComponent(id) + '/opengraph-image';
+  const imageUrl = baseUrl + '/api/og-tournament/' + encodeURIComponent(id);
   return {
     title, description,
     openGraph: { title, description, type: 'website', url: baseUrl + '/tournaments/' + encodeURIComponent(id), siteName: 'アミコネ', images: [{ url: imageUrl, width: 1200, height: 630 }] },
