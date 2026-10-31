@@ -119,7 +119,7 @@ export default function StatsPage() {
         writeTabSnapshot('stats-created', result.tournaments || []);
       }).catch(error => setNewDataError(error.message));
   }, []);
-  const availableTags = [...new Set(['人形劇', ...createdTournaments.flatMap(t => t.seriesTags || [])])].sort((a,b) => a.localeCompare(b, 'ja'));
+  const availableTags = [...new Set(['人形劇', ...createdTournaments.flatMap(t => t.seriesTags || []).map(tag => String(tag).trim()).filter(Boolean)])].sort((a,b) => a.localeCompare(b, 'ja'));
   const data = useMemo(() => {
     if (!archiveData) return null;
     const includeArchive = seriesTag === 'all' || seriesTag === '人形劇';
@@ -133,18 +133,23 @@ export default function StatsPage() {
     const players = new Map(archivePlayers.map(p => [canonicalAccountId(p.id), { ...p, id: canonicalAccountId(p.id) }]));
     const records = archiveRecords.map(r => ({ ...r, winnerId: canonicalAccountId(r.winnerId), loserId: canonicalAccountId(r.loserId) }));
     const tournaments = [...archiveTournaments];
-    selectedNew.forEach(t => {
-      const number = maxArchiveNumber + uniqueNew.findIndex(item => String(item.id) === String(t.id)) + 1;
+    // Within each tag the tournament sequence is independent: unrelated tags
+    // must not create gaps or advance the season / inactivity counter.
+    selectedNew.forEach((t, index) => {
+      const number = maxArchiveNumber + index + 1;
       tournaments.push({ number, name: t.name, players: t.players.length, participantIds: [...new Set([...t.players.map(p => canonicalAccountId(p.id)), ...(t.demoTierIds || [])])], id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], isNewTournament: true });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
         if (!players.has(id)) players.set(id, { id, name: player.name });
       }
+      const eventPlayerNames = new Map(t.players.map(p => [canonicalAccountId(p.id), p.name]));
       for (const match of t.matches) {
         const winnerId = canonicalAccountId(match.winnerId);
         const loserId = canonicalAccountId(match.loserId);
         if (winnerId === loserId) continue;
-        records.push({ tournamentNumber: number, winnerId, loserId });
+        records.push({ tournamentNumber: number, winnerId, loserId,
+          winner: eventPlayerNames.get(winnerId) || players.get(winnerId)?.name || '',
+          loser: eventPlayerNames.get(loserId) || players.get(loserId)?.name || '' });
       }
     });
     const stats = {};
@@ -559,9 +564,10 @@ export default function StatsPage() {
     };
   }, [data]);
 
+  // Tier labels are specific to 人形劇; rating results still apply to every tag.
   const tournamentTierScores = useMemo(
-    () => calculateTournamentTierScores(data, getEloResult),
-    [data, getEloResult]
+    () => seriesTag === '人形劇' ? calculateTournamentTierScores(data, getEloResult) : {},
+    [data, getEloResult, seriesTag]
   );
 
   const tournamentChampions = useMemo(() => {
@@ -597,7 +603,7 @@ export default function StatsPage() {
     : 0;
 
   const currentSeason = maxTournament > 0
-    ? String(Math.floor(maxTournament / 25) + 1)
+    ? String(Math.floor((maxTournament - 1) / 25) + 1)
     : '1';
 
   const selectedSeason = season === 'current'
@@ -694,7 +700,7 @@ export default function StatsPage() {
         tournamentsByNumber.set(number, tournament);
       }
     }
-    {
+    if (seriesTag === '人形劇' || seriesTag === 'all') {
       for (const report of MANUAL_CHARACTER_REPORTS) {
         // playerId なしの既存手動データは「いぶ」専用。playerId ありは指定選手だけに適用。
         if (report.playerId
@@ -719,7 +725,7 @@ export default function StatsPage() {
         if (characters.length > 0) manualReportsByTournament.set(number, characters);
       }
     }
-    for (const tournament of (characterComments || [])) {
+    for (const tournament of ((seriesTag === '人形劇' || seriesTag === 'all') ? (characterComments || []) : [])) {
       // 過去大会を手動登録している場合、その大会のコメントは集計対象から外す。
       if (manualReportsByTournament.has(Number(tournament.number))) continue;
       const usedInTournament = new Set();
@@ -767,11 +773,14 @@ export default function StatsPage() {
     // New events use the submitted post-tournament reports, never comment parsing.
     // Recompute from the current server snapshot so a later ID link or report update
     // cannot double-count the same tournament.
+    // Reuse the exact tag-local tournament numbers from the rating dataset.
+    const tournamentNumbersById = new Map((data.tournaments || [])
+      .filter(t => t.isNewTournament)
+      .map(t => [String(t.id), Number(t.number)]));
     const allNew = [...new Map(createdTournaments.filter(t => t.id != null).map(t => [String(t.id), t])).values()];
-    const maxArchiveNumber = (archiveData?.tournaments || []).reduce((max, t) => Math.max(max, Number(t.number) || 0), 0);
     for (const tournament of allNew) {
-      if (!(seriesTag === 'all' || (tournament.seriesTags || []).includes(seriesTag))) continue;
-      const number = maxArchiveNumber + allNew.findIndex(t => String(t.id) === String(tournament.id)) + 1;
+      const number = tournamentNumbersById.get(String(tournament.id));
+      if (number == null) continue;
       const report = (tournament.characterReports || []).find(r => canonicalAccountId(r.playerId) === targetCanonicalId);
       if (!report) continue;
       const used = new Set((report.characters || []).map(name => String(name || '').trim()).filter(Boolean));
@@ -796,10 +805,10 @@ export default function StatsPage() {
       const unbeaten = [...participants].filter((id) => !losers.has(id));
       if (unbeaten.length === 1) champions.set(number, unbeaten[0]);
     }
-    for (const tournament of createdTournaments) {
-      if (!(seriesTag === 'all' || (tournament.seriesTags || []).includes(seriesTag))) continue;
-      const number = maxArchiveNumber + allNew.findIndex(t => String(t.id) === String(tournament.id)) + 1;
-      if (number > maxArchiveNumber && tournament.championId != null) champions.set(number, canonicalAccountId(tournament.championId));
+    for (const tournament of data.tournaments || []) {
+      if (tournament.isNewTournament && tournament.championId != null) {
+        champions.set(Number(tournament.number), canonicalAccountId(tournament.championId));
+      }
     }
     const playerId = targetCanonicalId;
     const soloAchievements = [...reportedByTournament.entries()]
@@ -1167,7 +1176,7 @@ export default function StatsPage() {
           </div>
         </section>
 
-        <section className="seriesTagSelector"><label htmlFor="seriesTagSelect">大会タグ</label><select id="seriesTagSelect" value={seriesTag} onChange={e => {setSeriesTag(e.target.value);setSeason('current');setMatrixSeason('current');}}><option value="all">すべて</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></section>
+        <section className="seriesTagSelector"><label htmlFor="seriesTagSelect">大会タグ</label><select id="seriesTagSelect" value={seriesTag} onChange={e => {setSeriesTag(e.target.value);setSeason('current');setMatrixSeason('current');setRateChartPlayers([]);}}><option value="all">すべて</option>{availableTags.map(tag => <option key={tag} value={tag}>{tag}</option>)}</select></section>
 
         <section className="card matrixCard">
           <div className="sectionHead">
@@ -1511,7 +1520,7 @@ export default function StatsPage() {
           )}
         </section>
 
-        {seriesTag === '人形劇' && (
+        {seriesTag !== 'all' && (
         <section className="card">
           <div className="sectionHead">
             <div>
@@ -1746,7 +1755,7 @@ export default function StatsPage() {
         </section>
         )}
 
-        {seriesTag === '人形劇' && (
+        {seriesTag !== 'all' && (
         <section className="card matchesCard">
           <button
             className="collapse"
@@ -1815,7 +1824,7 @@ export default function StatsPage() {
         </section>
         )}
 
-        {(seriesTag === '人形劇' || seriesTag === 'all') && (
+        {(seriesTag === 'all' || availableTags.includes(seriesTag)) && (
         <section className="card">
           <div className="sectionHead">
             <div>
