@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { findParticipantOverlay } from '../../../../lib/overlay-participant-match';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,10 +9,38 @@ export async function GET(request) {
     const params = new URL(request.url).searchParams;
     const id = params.get('id');
     const owner = params.get('owner');
-    if ((!id && !owner) || (id && id.length > 128) || (owner && !/^[0-9a-f-]{36}$/i.test(owner))) return NextResponse.json({ error: 'オーバーレイの指定が不正です。' }, { status: 400 });
+    const player = params.get('player');
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if ((!id && !owner && !player) || (id && id.length > 128) ||
+        (owner && !uuid.test(owner)) || (player && !uuid.test(player)) ||
+        Number(Boolean(id)) + Number(Boolean(owner)) + Number(Boolean(player)) !== 1) {
+      return NextResponse.json({ error: 'オーバーレイの指定が不正です。' }, { status: 400 });
+    }
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
     let row;
-    if (owner) {
+    let personalMatch = null;
+    if (player) {
+      // Query only tournaments the account entered, never every private
+      // tournament. OBS receives only the public match names and scores.
+      const { data: rows, error } = await db.from('tournaments')
+        .select('id,data,created_at')
+        .contains('data', { joinedPlayers: [{ userId: player }] })
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      let selected = findParticipantOverlay(rows, player);
+      if (!selected && !rows?.length) {
+        // Earlier linked accounts can have id without userId.
+        const fallback = await db.from('tournaments')
+          .select('id,data,created_at')
+          .contains('data', { joinedPlayers: [{ id: player }] })
+          .order('created_at', { ascending: false }).limit(100);
+        if (fallback.error) throw fallback.error;
+        selected = findParticipantOverlay(fallback.data, player);
+      }
+      row = selected?.row;
+      personalMatch = selected?.item || null;
+    } else if (owner) {
       // Supabase JSON containment filters the owner without exposing private tournament data.
       const { data: rows, error } = await db.from('tournaments').select('data').contains('data', { ownerUserId: owner }).limit(100);
       if (error) throw error;
@@ -38,11 +67,13 @@ export async function GET(request) {
     const held = holdUntil > Date.now()
       ? matches.find(m => String(m.id) === String(t.streamHoldMatchId) && m.winnerId && m.player1 && m.player2)
       : null;
-    const selected = held || (explicit
+    const selected = player ? personalMatch?.match : held || (explicit
       ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2)
       : organizerMatch);
     if (!selected) return NextResponse.json({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found', ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
-    const roundIndex = rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
+    const roundIndex = player && personalMatch
+      ? personalMatch.roundIndex
+      : rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
     const score = selected.matchState?.score || {};
     const match = {
       player1: selected.player1.name || '',
@@ -53,7 +84,9 @@ export async function GET(request) {
       bestOf: Number(t.bestOf) === 5 ? 5 : 3,
       finished: Boolean(selected.winnerId),
     };
-    return NextResponse.json({ name: t.name || '', match, holdUntil: held ? t.streamHoldUntil : null, ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ name: t.name || '', match,
+      holdUntil: player ? null : held ? t.streamHoldUntil : null,
+      ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Overlay score read failed', error);
     return NextResponse.json({ error: 'スコアを取得できませんでした。' }, { status: 500 });
