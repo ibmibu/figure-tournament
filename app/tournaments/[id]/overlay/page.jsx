@@ -3,20 +3,27 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../../lib/supabase/client';
 import OverlayScoreboardArtwork from '../../../../components/OverlayScoreboardArtwork';
-import { normalizeOverlayDesign } from '../../../../lib/overlay-scoreboard';
+import { DEFAULT_OVERLAY_DESIGN, normalizeOverlayDesign } from '../../../../lib/overlay-scoreboard';
 
 export default function TournamentOverlay() {
   const params = useParams();
   const id = String(params?.id || '');
   const [owner, setOwner] = useState('');
-  useEffect(() => { setOwner(new URLSearchParams(window.location.search).get('owner') || ''); }, []);
+  const [player, setPlayer] = useState('');
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setOwner(params.get('owner') || '');
+    setPlayer(params.get('player') || '');
+  }, []);
   const [data, setData] = useState(null);
+  const [matchLoaded, setMatchLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [design, setDesign] = useState(null);
+  const [designReady, setDesignReady] = useState(false);
   const [debug, setDebug] = useState(false);
   useEffect(() => { setDebug(new URLSearchParams(window.location.search).has('debug')); }, []);
   useEffect(() => {
-    if (!owner && !id) return;
+    if (!owner && !player && !id) return;
     let active = true;
     let channel;
     let controller;
@@ -29,13 +36,16 @@ export default function TournamentOverlay() {
       controller?.abort();
       controller = new AbortController();
       try {
-        const response = await fetch('/api/tournaments/overlay?' + (owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id)), {
+        const source = player ? 'player=' + encodeURIComponent(player)
+          : owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id);
+        const response = await fetch('/api/tournaments/overlay?' + source, {
           cache: 'no-store', signal: controller.signal,
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
         if (active && version === requestVersion) {
           setData(result);
+          setMatchLoaded(true);
           clearTimeout(holdTimer);
           if (result.holdUntil) {
             const remaining = Date.parse(result.holdUntil) - Date.now();
@@ -44,7 +54,10 @@ export default function TournamentOverlay() {
           setLoadError('');
         }
       } catch (error) {
-        if (active && version === requestVersion && error.name !== 'AbortError') setLoadError(error.message || '通信に失敗しました。');
+        if (active && version === requestVersion && error.name !== 'AbortError') {
+          setLoadError(error.message || '通信に失敗しました。');
+          setMatchLoaded(true);
+        }
       }
     };
     const scheduleRefresh = () => {
@@ -55,10 +68,10 @@ export default function TournamentOverlay() {
     // never private tournament JSON. Its trigger must be installed in Supabase.
     try {
       const supabase = getSupabaseBrowserClient();
-      channel = supabase.channel('obs-overlay-' + (owner || id))
+      channel = supabase.channel('obs-overlay-' + (player || owner || id))
         .on('postgres_changes', {
           event: '*', schema: 'public', table: 'tournament_change_signals',
-          ...(id && !owner ? { filter: 'tournament_id=eq.' + id } : {}),
+          ...(id && !owner && !player ? { filter: 'tournament_id=eq.' + id } : {}),
         }, scheduleRefresh)
         .subscribe(status => {
           // A fresh read on subscription/reconnection catches missed changes.
@@ -77,11 +90,11 @@ export default function TournamentOverlay() {
       controller?.abort();
       if (channel) getSupabaseBrowserClient().removeChannel(channel);
     };
-  }, [id, owner]);
+  }, [id, owner, player]);
   // Design lives on the organizer account, not on an individual tournament.
   // Refresh independently of the match stream so edits appear in OBS without
   // touching participants, brackets, scores, or any match-result updates.
-  const designOwner = owner || data?.ownerId || '';
+  const designOwner = player || owner || data?.ownerId || '';
   useEffect(() => {
     if (!designOwner) return;
     let active = true;
@@ -91,15 +104,20 @@ export default function TournamentOverlay() {
         const response = await fetch('/api/overlay-design?owner=' + encodeURIComponent(designOwner), { cache: 'no-store' });
         if (!response.ok) throw new Error('overlay design HTTP ' + response.status);
         const result = await response.json();
-        if (active) setDesign(result.design?.version === 1 ? normalizeOverlayDesign(result.design) : null);
+        if (active) {
+          setDesign(result.design?.version === 1 ? normalizeOverlayDesign(result.design) : null);
+          setDesignReady(true);
+        }
       } catch (error) {
         // Preserve the previous visible overlay if settings cannot be reached.
         console.warn('OBS overlay design refresh failed:', error);
+        if (active) setDesignReady(true);
       } finally {
         if (active) timer = setTimeout(loadDesign, 15000);
       }
     };
     setDesign(null);
+    setDesignReady(false);
     loadDesign();
     return () => { active = false; clearTimeout(timer); };
   }, [designOwner]);
@@ -111,9 +129,16 @@ export default function TournamentOverlay() {
     score1: 0, score2: 0, round: 'GRAND FINAL', bestOf: 3,
   };
   const roundLabel = match?.round === 'GRAND FINAL' ? '決勝戦' : match?.round === 'SEMI FINAL' ? '準決勝' : String(match?.round || '').replace(/^ROUND (\d+)$/, (_, n) => n + '回戦');
-  if (design) return <main className="obs-overlay-root" style={{ width: 1920, height: 1080, overflow: 'hidden' }}>
+  // Prevent the old 960px fallback and placeholder names flashing before
+  // either the selected match or the saved design has finished loading.
+  if (!matchLoaded || (designOwner && !designReady)) return <main className="obs-overlay-root"
+    style={{ width: 1920, height: 1080, background: 'transparent' }}>
+    <style jsx global>{`html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important}`}</style>
+  </main>;
+  if (design || player) return <main className="obs-overlay-root" style={{ width: 1920, height: 1080, overflow: 'hidden' }}>
     {debug && <div style={{ position: 'absolute', top: 200, left: 20, color: '#fff', background: '#333', fontSize: 18, zIndex: 10 }}>OBS診断：{loadError || '配信表示中'} / 大会ID：{id}</div>}
-    <OverlayScoreboardArtwork config={design} match={match} title={isPreview ? 'プレビュー（大会未設定）' : data.name} />
+    <OverlayScoreboardArtwork config={design || DEFAULT_OVERLAY_DESIGN} match={match}
+      title={isPreview ? (player ? 'プレビュー（対戦待ち）' : 'プレビュー（大会未設定）') : data.name} />
     <style jsx global>{`html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important}`}</style>
   </main>;
   return <main className="obs-overlay-root">
