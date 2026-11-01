@@ -295,7 +295,7 @@ export default function MyOverlayPage() {
             この保存先をOBSで使用する
           </button>}
         </div>
-        {error && <p className="form-error" role="alert">{error}</p>
+        {error && <p className="form-error" role="alert">{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
           <strong style={{ fontSize: 12 }}>1920 × 1080</strong>
           <span style={{ fontSize: 12, color: dirty ? '#8c6121' : '#74717e' }}>{loading ? '読み込み中…' : dirty ? '未保存の変更があります' : '保存済み'}</span>
