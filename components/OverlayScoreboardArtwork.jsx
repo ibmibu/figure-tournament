@@ -36,12 +36,12 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
       border: '1px solid #b7a8df', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 3, lineHeight: 1,
     }}>
-      <span style={{ fontSize: 18, fontWeight: 800 }}>{roundLabel || '試合中'}</span>
-      <span style={{ fontSize: 15, fontWeight: 800 }}>BO{m.bestOf || 3}</span>
+      <span style={{ fontSize: d.roundFontSize, fontWeight: 800 }}>{roundLabel || '試合中'}</span>
+      <span style={{ fontSize: d.boFontSize, fontWeight: 800 }}>BO{m.bestOf || 3}</span>
     </div>
     <div data-overlay-part="title" style={{
       ...position('title'), background: d.titleBg, color: d.titleText, textAlign: 'center',
-      fontSize: 17, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: d.titleFontSize, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', padding: '0 12px',
     }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{title || '大会名'}</span></div>
   </div>;

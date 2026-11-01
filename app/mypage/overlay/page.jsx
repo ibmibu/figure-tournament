@@ -6,19 +6,21 @@ import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import OverlayScoreboardArtwork from '../../../components/OverlayScoreboardArtwork';
 import {
   DEFAULT_OVERLAY_DESIGN, normalizeOverlayDesign, overlayPartPosition, moveOverlayPart,
-  setOverlayMirror, OVERLAY_WIDTH,
+  setOverlayMirror, overlayPartSize, OVERLAY_WIDTH, OVERLAY_HEIGHT,
 } from '../../../lib/overlay-scoreboard';
 
-const PARTS = [
-  ['name1', '左・名前'], ['score1', '左・スコア'], ['name2', '右・名前'],
-  ['score2', '右・スコア'], ['round', '回戦・BO'], ['title', '大会名'],
+const CATEGORIES = [
+  ['name', '名前', 'name1'],
+  ['score', 'スコア', 'score1'],
+  ['round', '回戦・BO', 'round'],
+  ['title', '大会名', 'title'],
 ];
-const COLOR_FIELDS = [
-  ['nameBg', '名前欄 背景'], ['nameText', '名前 文字'], ['nameBorder', '名前 枠線'],
-  ['scoreBg', 'スコア 背景'], ['scoreText', 'スコア 文字'],
-  ['metaBg', '回戦 背景'], ['metaText', '回戦 文字'],
-  ['titleBg', '大会名 背景'], ['titleText', '大会名 文字'],
-];
+const COLOR_GROUPS = {
+  name: [['nameBg', '背景色'], ['nameText', '文字色'], ['nameBorder', '枠線色']],
+  score: [['scoreBg', '背景色'], ['scoreText', '文字色']],
+  round: [['metaBg', '背景色'], ['metaText', '文字色']],
+  title: [['titleBg', '背景色'], ['titleText', '文字色']],
+};
 const field = { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, fontSize: 13, fontWeight: 700 };
 const smallButton = (active = false) => ({
   borderRadius: 0, background: active ? '#eee8fb' : '#fff', border: '1px solid ' + (active ? '#6045a8' : '#d8d5e0'),
@@ -156,7 +158,9 @@ export default function MyOverlayPage() {
     } catch (e) { setError(e.message || '保存できませんでした。'); }
     finally { setSaving(false); }
   }
+  const selectedCategory = selected.startsWith('name') ? 'name' : selected.startsWith('score') ? 'score' : selected;
   const chosenPosition = overlayPartPosition(design, selected);
+  const chosenSize = overlayPartSize(design, selected);
   const changeChosen = (coordinate, value) => setDesign(prev => {
     const pos = overlayPartPosition(prev, selected);
     return moveOverlayPart(prev, selected, coordinate === 'x' ? value : pos.x, coordinate === 'y' ? value : pos.y);
@@ -198,56 +202,93 @@ export default function MyOverlayPage() {
         </div>
         <p className="setting-help" style={{ marginTop: 10 }}>クリックでパーツ選択。ドラッグで移動。選択したまま矢印キーで1pxずつ、Shift＋矢印キーで10pxずつ移動できます。</p>
 
+        <label style={{ ...field, flexDirection: 'row', alignItems: 'center', marginTop: 17, gap: 9 }}>
+          <input type="checkbox" checked={design.mirror}
+            onChange={e => { setDesign(prev => setOverlayMirror(prev, e.target.checked)); setSaveMessage(''); }} />
+          名前とスコアは左右対称で移動（初期設定：ON）
+        </label>
+
         <div style={{ borderTop: '1px solid #e6e4eb', paddingTop: 20, marginTop: 24 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>パーツと配置</h3>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {PARTS.map(([key, label]) => <button type="button" key={key} onClick={() => setSelected(key)} style={smallButton(selected === key)}>{label}</button>)}
+          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>パーツ別の設定</h3>
+          <div role="tablist" aria-label="編集するパーツの種類"
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 6 }}>
+            {CATEGORIES.map(([key, label, firstPart]) => <button type="button" role="tab"
+              id={'overlay-tab-' + key} aria-selected={selectedCategory === key}
+              aria-controls="overlay-settings-panel" key={key}
+              disabled={loading} onClick={() => setSelected(firstPart)}
+              style={{ ...smallButton(selectedCategory === key), padding: '10px 4px', fontSize: 12, whiteSpace: 'normal', minWidth: 0 }}>
+              {label}
+            </button>)}
           </div>
-          <label style={{ ...field, flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-            <input type="checkbox" checked={design.mirror} onChange={e => { setDesign(prev => setOverlayMirror(prev, e.target.checked)); setSaveMessage(''); }} />
-            左右対称に動かす（基本ON）
-          </label>
-          <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
-            <label style={field}>X座標
-              <input type="number" min="0" max="1920" value={chosenPosition.x} onChange={e => changeChosen('x', Number(e.target.value))} style={{ width: 115 }} />
-            </label>
-            <label style={field}>Y座標
-              <input type="number" min="0" max="1080" value={chosenPosition.y} onChange={e => changeChosen('y', Number(e.target.value))} style={{ width: 115 }} />
-            </label>
-          </div>
-        </div>
 
-        <div style={{ borderTop: '1px solid #e6e4eb', paddingTop: 20, marginTop: 22 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>名前欄</h3>
-          <label style={{ ...field, flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-            <input type="checkbox" checked={design.roundedNames} onChange={e => edit('roundedNames', e.target.checked)} />角丸にする
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
-            <ScaleField label="横幅" value={design.nameWidth} min={100} max={700} onChange={v => edit('nameWidth', v)} />
-            <ScaleField label="高さ" value={design.nameHeight} min={30} max={160} onChange={v => edit('nameHeight', v)} />
-            <ScaleField label="文字サイズ" value={design.nameFontSize} min={12} max={68} onChange={v => edit('nameFontSize', v)} />
-          </div>
-        </div>
+          <div id="overlay-settings-panel" role="tabpanel" aria-labelledby={'overlay-tab-' + selectedCategory}
+            style={{ marginTop: 20 }}>
+            {(selectedCategory === 'name' || selectedCategory === 'score') && <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+                <strong style={{ fontSize: 13 }}>調整する側</strong>
+                <button type="button" onClick={() => setSelected(selectedCategory + '1')} style={smallButton(selected.endsWith('1'))}>左</button>
+                <button type="button" onClick={() => setSelected(selectedCategory + '2')} style={smallButton(selected.endsWith('2'))}>右</button>
+                {design.mirror && <span className="setting-help">反対側も自動で連動します</span>}
+              </div>
+            </>}
 
-        <div style={{ borderTop: '1px solid #e6e4eb', paddingTop: 20, marginTop: 22 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>スコア欄</h3>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            {[['circle','丸'],['rounded','角丸四角'],['square','正方形']].map(([value,label]) =>
-              <button type="button" key={value} style={smallButton(design.scoreShape === value)} onClick={() => edit('scoreShape', value)}>{label}</button>)}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
-            <ScaleField label="大きさ" value={design.scoreSize} min={30} max={150} onChange={v => edit('scoreSize', v)} />
-            <ScaleField label="文字サイズ" value={design.scoreFontSize} min={16} max={90} onChange={v => edit('scoreFontSize', v)} />
-            <ScaleField label="名前枠線の太さ" value={design.borderWidth} min={0} max={12} onChange={v => edit('borderWidth', v)} />
-          </div>
-        </div>
+            <h4 style={{ fontSize: 13, margin: '0 0 12px' }}>位置</h4>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <label style={field}>X座標（px）
+                <input type="number" min="0" max={OVERLAY_WIDTH - chosenSize.width}
+                  value={chosenPosition.x} onChange={e => changeChosen('x', Number(e.target.value))} style={{ width: 120 }} />
+              </label>
+              <label style={field}>Y座標（px）
+                <input type="number" min="0" max={OVERLAY_HEIGHT - chosenSize.height}
+                  value={chosenPosition.y} onChange={e => changeChosen('y', Number(e.target.value))} style={{ width: 120 }} />
+              </label>
+            </div>
 
-        <div style={{ borderTop: '1px solid #e6e4eb', paddingTop: 20, marginTop: 22 }}>
-          <h3 style={{ fontSize: 15, margin: '0 0 12px' }}>カラー</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
-            {COLOR_FIELDS.map(([key,label]) => <label key={key} style={{ ...field, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <span>{label}</span><input type="color" value={design[key]} onChange={e => edit(key, e.target.value)} style={{ width: 48, height: 34, padding: 1 }} />
-            </label>)}
+            <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>形・サイズ</h4>
+            {selectedCategory === 'name' && <>
+              <label style={{ ...field, flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <input type="checkbox" checked={design.roundedNames}
+                  onChange={e => edit('roundedNames', e.target.checked)} />角丸にする
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
+                <ScaleField label="横幅" value={design.nameWidth} min={100} max={700} onChange={v => edit('nameWidth', v)} />
+                <ScaleField label="高さ" value={design.nameHeight} min={30} max={160} onChange={v => edit('nameHeight', v)} />
+                <ScaleField label="文字サイズ" value={design.nameFontSize} min={12} max={68} onChange={v => edit('nameFontSize', v)} />
+                <ScaleField label="枠線の太さ" value={design.borderWidth} min={0} max={12} onChange={v => edit('borderWidth', v)} />
+              </div>
+            </>}
+            {selectedCategory === 'score' && <>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {[['circle','丸'],['rounded','角丸四角'],['square','正方形']].map(([value,label]) =>
+                  <button type="button" key={value} style={smallButton(design.scoreShape === value)}
+                    onClick={() => edit('scoreShape', value)}>{label}</button>)}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
+                <ScaleField label="大きさ" value={design.scoreSize} min={30} max={150} onChange={v => edit('scoreSize', v)} />
+                <ScaleField label="文字サイズ" value={design.scoreFontSize} min={16} max={90} onChange={v => edit('scoreFontSize', v)} />
+              </div>
+            </>}
+            {selectedCategory === 'round' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
+              <ScaleField label="横幅" value={design.roundWidth} min={70} max={400} onChange={v => edit('roundWidth', v)} />
+              <ScaleField label="高さ" value={design.roundHeight} min={35} max={150} onChange={v => edit('roundHeight', v)} />
+              <ScaleField label="回戦の文字サイズ" value={design.roundFontSize} min={11} max={50} onChange={v => edit('roundFontSize', v)} />
+              <ScaleField label="BOの文字サイズ" value={design.boFontSize} min={11} max={50} onChange={v => edit('boFontSize', v)} />
+            </div>}
+            {selectedCategory === 'title' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
+              <ScaleField label="横幅" value={design.titleWidth} min={130} max={900} onChange={v => edit('titleWidth', v)} />
+              <ScaleField label="高さ" value={design.titleHeight} min={24} max={130} onChange={v => edit('titleHeight', v)} />
+              <ScaleField label="文字サイズ" value={design.titleFontSize} min={11} max={55} onChange={v => edit('titleFontSize', v)} />
+            </div>}
+
+            <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>カラー</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 14 }}>
+              {COLOR_GROUPS[selectedCategory].map(([key, label]) =>
+                <label key={key} style={{ ...field, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <span>{label}</span>
+                  <input type="color" value={design[key]} onChange={e => edit(key, e.target.value)}
+                    style={{ width: 48, height: 34, padding: 1 }} />
+                </label>)}
+            </div>
           </div>
         </div>
 
