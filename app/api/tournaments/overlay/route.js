@@ -41,15 +41,53 @@ export async function GET(request) {
       row = selected?.row;
       personalMatch = selected?.item || null;
     } else if (owner) {
-      // Supabase JSON containment filters the owner without exposing private tournament data.
-      const { data: rows, error } = await db.from('tournaments').select('data').contains('data', { ownerUserId: owner }).limit(100);
-      if (error) throw error;
-      const eligible = (rows || []).filter(r => r.data?.bracket && (r.data.status === '対戦中' || r.data.status === '終了'));
-      // Prefer a currently running tournament; otherwise retain the most recent completed one.
-      // A future tournament must not replace the last final score before it starts.
-      const newest = items => items.sort((a, b) => Date.parse(b.data?.createdAt || 0) - Date.parse(a.data?.createdAt || 0))[0];
-      row = newest(eligible.filter(r => r.data.status === '対戦中' && !r.data.bracket.complete))
-        || newest(eligible.filter(r => r.data.status === '終了' || r.data.bracket.complete));
+      // One account URL works for both organizer and participant.
+      // A currently running tournament that this account organizes wins;
+      // otherwise an active match the account is playing takes precedence.
+      // Older ?owner= links therefore continue working without OBS changes.
+      const [ownedResult, enteredResult] = await Promise.all([
+        db.from('tournaments').select('data,created_at')
+          .contains('data', { ownerUserId: owner })
+          .order('created_at', { ascending: false }).limit(100),
+        db.from('tournaments').select('data,created_at')
+          .contains('data', { joinedPlayers: [{ userId: owner }] })
+          .order('created_at', { ascending: false }).limit(100),
+      ]);
+      if (ownedResult.error) throw ownedResult.error;
+      if (enteredResult.error) throw enteredResult.error;
+
+      const organizerRows = (ownedResult.data || []).filter(r =>
+        r.data?.bracket?.rounds?.length &&
+        (r.data.status === '対戦中' || r.data.status === '終了' || r.data.bracket.complete));
+      const dateOf = r => Date.parse(r?.data?.createdAt || r?.created_at || '') || 0;
+      const latest = list => [...list].sort((a, b) => dateOf(b) - dateOf(a))[0] || null;
+      const currentOrganizer = latest(organizerRows.filter(r =>
+        r.data.status === '対戦中' && !r.data.bracket.complete));
+      let participant = findParticipantOverlay(enteredResult.data, owner);
+      if (!participant && !enteredResult.data?.length) {
+        // Historic registrations may use the account UUID in id alone.
+        const legacy = await db.from('tournaments').select('data,created_at')
+          .contains('data', { joinedPlayers: [{ id: owner }] })
+          .order('created_at', { ascending: false }).limit(100);
+        if (legacy.error) throw legacy.error;
+        participant = findParticipantOverlay(legacy.data, owner);
+      }
+
+      if (currentOrganizer) {
+        row = currentOrganizer;
+      } else if (participant?.priority > 1) {
+        row = participant.row;
+        personalMatch = participant.item;
+      } else {
+        const finishedOrganizer = latest(organizerRows);
+        if (participant && (!finishedOrganizer ||
+            dateOf(participant.row) > dateOf(finishedOrganizer))) {
+          row = participant.row;
+          personalMatch = participant.item;
+        } else {
+          row = finishedOrganizer;
+        }
+      }
     } else {
       const result = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
       if (result.error) throw result.error;
@@ -67,11 +105,11 @@ export async function GET(request) {
     const held = holdUntil > Date.now()
       ? matches.find(m => String(m.id) === String(t.streamHoldMatchId) && m.winnerId && m.player1 && m.player2)
       : null;
-    const selected = player ? personalMatch?.match : held || (explicit
+    const selected = personalMatch ? personalMatch.match : held || (explicit
       ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2)
       : organizerMatch);
     if (!selected) return NextResponse.json({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found', ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
-    const roundIndex = player && personalMatch
+    const roundIndex = personalMatch
       ? personalMatch.roundIndex
       : rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
     const score = selected.matchState?.score || {};
@@ -85,7 +123,7 @@ export async function GET(request) {
       finished: Boolean(selected.winnerId),
     };
     return NextResponse.json({ name: t.name || '', match,
-      holdUntil: player ? null : held ? t.streamHoldUntil : null,
+      holdUntil: personalMatch ? null : held ? t.streamHoldUntil : null,
       ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Overlay score read failed', error);
