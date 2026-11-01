@@ -1,6 +1,6 @@
 'use client';
 
-import { normalizeOverlayDesign, overlayPartPosition, overlayPartSize, OVERLAY_WIDTH, OVERLAY_HEIGHT } from '../lib/overlay-scoreboard';
+import { normalizeOverlayDesign, overlayPartPosition, overlayPartSize, overlayImageUrl, OVERLAY_WIDTH, OVERLAY_HEIGHT } from '../lib/overlay-scoreboard';
 
 export default function OverlayScoreboardArtwork({ config, match, title, selected = '', editable = false }) {
   const d = normalizeOverlayDesign(config);
@@ -14,8 +14,15 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
       outline: editable && selected === key ? '3px solid #ffbb44' : 'none',
       outlineOffset: 3, cursor: editable ? 'move' : 'default', userSelect: 'none' };
   };
+  const partBackground = (key, fallback) => {
+    const url = overlayImageUrl(d, key);
+    return url
+      ? { backgroundColor: 'transparent', backgroundImage: 'url("' + url + '")',
+          backgroundSize: '100% 100%', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+      : { backgroundColor: fallback };
+  };
   const nameStyle = key => ({
-    ...position(key), background: d.nameBg, color: d.nameText,
+    ...position(key), ...partBackground(key, d.nameBg), color: d.nameText,
     border: `${d.borderWidth}px solid ${d.nameBorder}`, borderRadius: d.roundedNames ? 14 : 0,
     padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: key === 'name1' ? 'flex-end' : 'flex-start',
     fontSize: d.nameFontSize, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden',
@@ -23,7 +30,8 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
   });
   const scoreStyle = key => ({
     ...position(key), display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: d.scoreBg, color: d.scoreText, borderRadius: d.scoreShape === 'circle' ? '50%' : d.scoreShape === 'rounded' ? 12 : 0,
+    ...partBackground(key, d.scoreBg), color: d.scoreText, borderRadius: d.scoreShape === 'circle' ? '50%' : d.scoreShape === 'rounded' ? 12 : 0,
+    overflow: 'hidden',
     fontSize: d.scoreFontSize, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
   });
   return <div style={{ position: 'relative', width: OVERLAY_WIDTH, height: OVERLAY_HEIGHT, background: 'transparent', fontFamily: 'Arial, "Noto Sans JP", sans-serif', color: '#222' }}>
@@ -32,7 +40,7 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
     <div data-overlay-part="score1" style={scoreStyle('score1')}>{m.score1}</div>
     <div data-overlay-part="score2" style={scoreStyle('score2')}>{m.score2}</div>
     <div data-overlay-part="round" style={{
-      ...position('round'), background: d.metaBg, color: d.metaText,
+      ...position('round'), ...partBackground('round', d.metaBg), color: d.metaText,
       border: '1px solid #b7a8df', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: 3, lineHeight: 1,
     }}>
@@ -40,7 +48,7 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
       <span style={{ fontSize: d.boFontSize, fontWeight: 800 }}>BO{m.bestOf || 3}</span>
     </div>
     <div data-overlay-part="title" style={{
-      ...position('title'), background: d.titleBg, color: d.titleText, textAlign: 'center',
+      ...position('title'), ...partBackground('title', d.titleBg), color: d.titleText, textAlign: 'center',
       fontSize: d.titleFontSize, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
       overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', padding: '0 12px',
     }}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{title || '大会名'}</span></div>
