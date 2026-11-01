@@ -356,7 +356,7 @@ export default function MyOverlayPage() {
               </label>
             </div>
 
-            <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>形・サイズ</h4>
+            {(selectedCategory === 'name' || selectedCategory === 'score') && <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>形</h4>}
             {selectedCategory === 'name' && <>
               <div role="group" aria-label="名前欄の形" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                 {[['square', '四角'], ['rounded', '角丸'], ['parallelogram', '平行四辺形']].map(([value, label]) =>
@@ -367,12 +367,13 @@ export default function MyOverlayPage() {
               <div role="group" aria-label="名前の文字揃え" style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>文字揃え</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[['inner', '内側（スコア側）'], ['outer', '外側'], ['center', '中央']].map(([value, label]) =>
+                  {[['inner', '内側'], ['outer', '外側'], ['center', '中央']].map(([value, label]) =>
                     <button type="button" key={value} style={smallButton(design.nameAlign === value)}
                       aria-pressed={design.nameAlign === value}
                       onClick={() => edit('nameAlign', value)}>{label}</button>)}
                 </div>
               </div>
+              <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>サイズ</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
                 <ScaleField label="横幅" value={design.nameWidth} min={100} max={700} onChange={v => edit('nameWidth', v)} />
                 <ScaleField label="高さ" value={design.nameHeight} min={30} max={160} onChange={v => edit('nameHeight', v)} />
@@ -386,11 +387,13 @@ export default function MyOverlayPage() {
                   <button type="button" key={value} style={smallButton(design.scoreShape === value)}
                     onClick={() => edit('scoreShape', value)}>{label}</button>)}
               </div>
+              <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>サイズ</h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
                 <ScaleField label="大きさ" value={design.scoreSize} min={30} max={150} onChange={v => edit('scoreSize', v)} />
                 <ScaleField label="文字サイズ" value={design.scoreFontSize} min={16} max={90} onChange={v => edit('scoreFontSize', v)} />
               </div>
             </>}
+            {(selectedCategory === 'round' || selectedCategory === 'title') && <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>サイズ</h4>}
             {selectedCategory === 'round' && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
               <ScaleField label="横幅" value={design.roundWidth} min={70} max={400} onChange={v => edit('roundWidth', v)} />
               <ScaleField label="高さ" value={design.roundHeight} min={35} max={150} onChange={v => edit('roundHeight', v)} />
