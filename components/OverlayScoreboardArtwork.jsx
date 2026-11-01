@@ -23,8 +23,10 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
   };
   // Left leans the opposite way to the previous version. Right is its mirror.
   // Clip the shape, not the text, so labels and scores remain upright.
-  const parallelogramMask = (key, height, maxCut) => {
-    const cut = Math.min(maxCut, Math.round(height * 0.3));
+  const parallelogramMask = (key, height) => {
+    // Use the same edge angle for name and score. A fixed max cut on the
+    // smaller score box made the adjacent slopes visibly disagree.
+    const cut = Math.round(height * 0.3);
     return key.endsWith('1')
       ? `polygon(0 0, calc(100% - ${cut}px) 0, 100% 100%, ${cut}px 100%)`
       : `polygon(${cut}px 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)`;
@@ -41,7 +43,9 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
     fontSize: d.nameFontSize, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden',
     lineHeight: 1,
   });
-  const nameShapeMask = key => parallelogramMask(key, d.nameHeight, 26);
+  const nameShapeMask = (key, inner = false) => parallelogramMask(
+    key, inner ? Math.max(0, d.nameHeight - d.borderWidth * 2) : d.nameHeight,
+  );
   const nameContent = (key, name) => <>
     {angledName && <>
       <div aria-hidden="true" style={{
@@ -50,7 +54,7 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
       }} />
       <div aria-hidden="true" style={{
         position: 'absolute', inset: d.borderWidth, pointerEvents: 'none',
-        ...partBackground(key, d.nameBg), clipPath: nameShapeMask(key),
+        ...partBackground(key, d.nameBg), clipPath: nameShapeMask(key, true),
       }} />
     </>}
     <span style={{
@@ -61,7 +65,7 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
   const scoreStyle = key => ({
     ...position(key), display: 'flex', alignItems: 'center', justifyContent: 'center',
     ...partBackground(key, d.scoreBg), color: d.scoreText, borderRadius: d.scoreShape === 'circle' ? '50%' : d.scoreShape === 'rounded' ? 12 : 0,
-    clipPath: d.scoreShape === 'parallelogram' ? parallelogramMask(key, d.scoreSize, 14) : 'none',
+    clipPath: d.scoreShape === 'parallelogram' ? parallelogramMask(key, d.scoreSize) : 'none',
     overflow: 'hidden',
     fontSize: d.scoreFontSize, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
   });
