@@ -21,6 +21,14 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
           backgroundSize: '100% 100%', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
       : { backgroundColor: fallback };
   };
+  // Left leans the opposite way to the previous version. Right is its mirror.
+  // Clip the shape, not the text, so labels and scores remain upright.
+  const parallelogramMask = (key, height, maxCut) => {
+    const cut = Math.min(maxCut, Math.round(height * 0.3));
+    return key.endsWith('1')
+      ? `polygon(0 0, calc(100% - ${cut}px) 0, 100% 100%, ${cut}px 100%)`
+      : `polygon(${cut}px 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)`;
+  };
   const angledName = d.nameShape === 'parallelogram';
   const nameStyle = key => ({
     ...position(key), ...(angledName ? { backgroundColor: 'transparent' } : partBackground(key, d.nameBg)),
@@ -33,13 +41,7 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
     fontSize: d.nameFontSize, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden',
     lineHeight: 1,
   });
-  const nameShapeMask = key => {
-    const cut = Math.min(26, Math.round(d.nameHeight * 0.32));
-    // Outward/opposite slants keep the right and left player panels mirrored.
-    return key === 'name1'
-      ? `polygon(${cut}px 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)`
-      : `polygon(0 0, calc(100% - ${cut}px) 0, 100% 100%, ${cut}px 100%)`;
-  };
+  const nameShapeMask = key => parallelogramMask(key, d.nameHeight, 26);
   const nameContent = (key, name) => <>
     {angledName && <>
       <div aria-hidden="true" style={{
@@ -59,6 +61,7 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
   const scoreStyle = key => ({
     ...position(key), display: 'flex', alignItems: 'center', justifyContent: 'center',
     ...partBackground(key, d.scoreBg), color: d.scoreText, borderRadius: d.scoreShape === 'circle' ? '50%' : d.scoreShape === 'rounded' ? 12 : 0,
+    clipPath: d.scoreShape === 'parallelogram' ? parallelogramMask(key, d.scoreSize, 14) : 'none',
     overflow: 'hidden',
     fontSize: d.scoreFontSize, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
   });

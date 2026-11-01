@@ -386,7 +386,7 @@ export default function MyOverlayPage() {
             </>}
             {selectedCategory === 'score' && <>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                {[['circle','丸'],['rounded','角丸四角'],['square','正方形']].map(([value,label]) =>
+                {[['circle','丸'],['rounded','角丸四角'],['square','正方形'],['parallelogram','平行四辺形']].map(([value,label]) =>
                   <button type="button" key={value} style={smallButton(design.scoreShape === value)}
                     onClick={() => edit('scoreShape', value)}>{label}</button>)}
               </div>
