@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import OverlayScoreboardArtwork from '../../../components/OverlayScoreboardArtwork';
 import {
   DEFAULT_OVERLAY_DESIGN, normalizeOverlayDesign, overlayPartPosition, moveOverlayPart,
-  setOverlayMirror, overlayPartSize, OVERLAY_WIDTH, OVERLAY_HEIGHT,
+  setOverlayMirror, overlayPartSize, overlayImageUrl, OVERLAY_WIDTH, OVERLAY_HEIGHT,
 } from '../../../lib/overlay-scoreboard';
 
 const CATEGORIES = [
@@ -41,6 +41,10 @@ export default function MyOverlayPage() {
   const [saveMessage, setSaveMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(1);
+  const [activeSlot, setActiveSlot] = useState(1);
+  const [slots, setSlots] = useState([null, null, null]);
   const [design, setDesign] = useState(() => normalizeOverlayDesign(DEFAULT_OVERLAY_DESIGN));
   const [saved, setSaved] = useState(() => normalizeOverlayDesign(DEFAULT_OVERLAY_DESIGN));
   const [selected, setSelected] = useState('name1');
@@ -68,7 +72,14 @@ export default function MyOverlayPage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'デザインを読み込めませんでした。');
         if (!active) return;
-        const next = normalizeOverlayDesign(result.design || DEFAULT_OVERLAY_DESIGN);
+        const storedSlots = Array.isArray(result.slots) && result.slots.length === 3
+          ? result.slots.map(item => item ? normalizeOverlayDesign(item) : null)
+          : [result.design ? normalizeOverlayDesign(result.design) : null, null, null];
+        const slot = [1, 2, 3].includes(result.activeSlot) ? result.activeSlot : 1;
+        const next = normalizeOverlayDesign(storedSlots[slot - 1] || DEFAULT_OVERLAY_DESIGN);
+        setSlots(storedSlots);
+        setSelectedSlot(slot);
+        setActiveSlot(slot);
         setDesign(next);
         setSaved(next);
       } catch (e) {
@@ -137,8 +148,89 @@ export default function MyOverlayPage() {
       pos.y + (key === 'ArrowUp' ? -delta : key === 'ArrowDown' ? delta : 0)));
     setSaveMessage('');
   }
+  function chooseSlot(slot) {
+    if (slot === selectedSlot || uploading || saving) return;
+    if (dirty && !window.confirm('このスロットの未保存の変更を破棄して切り替えますか？')) return;
+    const next = normalizeOverlayDesign(slots[slot - 1] || DEFAULT_OVERLAY_DESIGN);
+    setSelectedSlot(slot);
+    setDesign(next);
+    setSaved(next);
+    setSaveMessage('');
+    setError('');
+  }
+
+  async function useSavedSlot() {
+    if (dirty || !slots[selectedSlot - 1] || saving) return;
+    setSaving(true);
+    setError('');
+    setSaveMessage('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('ログインし直してください。');
+      const response = await fetch('/api/overlay-design', {
+        method: 'PATCH', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + data.session.access_token },
+        body: JSON.stringify({ slot: selectedSlot }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'デザインを切り替えられませんでした。');
+      setActiveSlot(result.activeSlot);
+      setSaveMessage('保存先' + selectedSlot + 'をOBSで使用するデザインに切り替えました。');
+    } catch (e) { setError(e.message || '切り替えに失敗しました。'); }
+    finally { setSaving(false); }
+  }
+
+  async function uploadPartImage(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || uploading || saving) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 12 * 1024 * 1024) {
+      setError('PNG・JPEG・WebP形式で12MB以下の画像を選んでください。');
+      return;
+    }
+    const part = selectedCategory;
+    const targetSlot = selectedSlot;
+    setUploading(true);
+    setError('');
+    setSaveMessage('');
+    try {
+      const bitmap = await createImageBitmap(file);
+      const ratio = Math.min(1, 1024 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * ratio));
+      canvas.height = Math.max(1, Math.round(bitmap.height * ratio));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('画像を変換できませんでした。');
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close?.();
+      const toWebp = quality => new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality));
+      let converted = await toWebp(0.85);
+      if (converted && converted.size > 1048576) converted = await toWebp(0.65);
+      if (!converted || converted.type !== 'image/webp' || converted.size > 1048576) {
+        throw new Error('画像の変換後サイズが大きすぎます。別の画像を試してください。');
+      }
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      if (!data.session?.access_token) throw new Error('ログインし直してください。');
+      const body = new FormData();
+      body.append('slot', String(targetSlot));
+      body.append('category', part);
+      body.append('file', converted, part + '.webp');
+      const response = await fetch('/api/overlay-image', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + data.session.access_token }, body,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '画像を保存できませんでした。');
+      setDesign(prev => normalizeOverlayDesign({
+        ...prev, images: { ...prev.images, [part]: result.path },
+      }));
+      setSaveMessage('画像を読み込みました。「デザインを保存」でこのスロットに反映してください。');
+    } catch (e) {
+      setError(e.message || '画像を読み込めませんでした。');
+    } finally { setUploading(false); }
+  }
+
   async function save() {
-    if (!ownerId || saving || loading) return;
+    if (!ownerId || saving || loading || uploading) return;
     setSaving(true);
     setError('');
     setSaveMessage('');
@@ -148,13 +240,15 @@ export default function MyOverlayPage() {
       const response = await fetch('/api/overlay-design', {
         method: 'PUT', headers: {
           'Content-Type': 'application/json', Authorization: 'Bearer ' + data.session.access_token,
-        }, body: JSON.stringify({ design }), cache: 'no-store',
+        }, body: JSON.stringify({ design, slot: selectedSlot }), cache: 'no-store',
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'デザインを保存できませんでした。');
       setSaved(result.design);
       setDesign(result.design);
-      setSaveMessage('保存しました。OBSの表示にも反映されます。');
+      setSlots(result.slots);
+      setActiveSlot(result.activeSlot);
+      setSaveMessage('保存先' + selectedSlot + 'に保存し、OBSにも反映しました。');
     } catch (e) { setError(e.message || '保存できませんでした。'); }
     finally { setSaving(false); }
   }
@@ -185,7 +279,23 @@ export default function MyOverlayPage() {
       <section className="my-results my-color-panel" style={{ marginTop: 24 }} aria-labelledby="scoreboard-editor-heading">
         <h2 id="scoreboard-editor-heading">スコアボードエディター</h2>
         <p className="setting-help">1920×1080の配信画面を縮小表示しています。パーツをドラッグして配置してください。背景の暗色とガイド線はOBSには表示されません。</p>
-        {error && <p className="form-error" role="alert">{error}</p>}
+        <div style={{ borderTop: '1px solid #e6e4eb', marginTop: 18, paddingTop: 17 }}>
+          <h3 style={{ fontSize: 15, margin: '0 0 10px' }}>デザインの保存先</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 8 }}>
+            {[1, 2, 3].map(slot => <button key={slot} type="button"
+              onClick={() => chooseSlot(slot)} disabled={loading || uploading || saving}
+              style={{ ...smallButton(selectedSlot === slot), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 }}>
+              <strong>保存先 {slot}</strong>
+              <span style={{ fontSize: 11 }}>{slot === activeSlot ? 'OBSで使用中' : slots[slot - 1] ? '保存済み' : '未登録'}</span>
+            </button>)}
+          </div>
+          <p className="setting-help" style={{ marginTop: 9 }}>選択した保存先を編集できます。「デザインを保存」でOBSにも適用します。未保存のデザインは切り替え時に確認します。</p>
+          {selectedSlot !== activeSlot && slots[selectedSlot - 1] && !dirty && <button type="button"
+            style={{ ...smallButton(), marginTop: 10 }} disabled={saving || uploading} onClick={useSavedSlot}>
+            この保存先をOBSで使用する
+          </button>}
+        </div>
+        {error && <p className="form-error" role="alert">{error}</p>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
           <strong style={{ fontSize: 12 }}>1920 × 1080</strong>
           <span style={{ fontSize: 12, color: dirty ? '#8c6121' : '#74717e' }}>{loading ? '読み込み中…' : dirty ? '未保存の変更があります' : '保存済み'}</span>
@@ -289,12 +399,33 @@ export default function MyOverlayPage() {
                     style={{ width: 48, height: 34, padding: 1 }} />
                 </label>)}
             </div>
+            <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>背景画像</h4>
+            <p className="setting-help" style={{ marginBottom: 10 }}>
+              このカテゴリの背景に好きな画像を設定できます。文字やスコアは画像の上に表示されます。
+              左右の名前・スコアには同じ画像を使います。PNG・JPEG・WebP対応（透過PNGも可）。
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+              <label style={{ ...field, cursor: 'pointer' }}>
+                <span>画像を選択</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadPartImage}
+                  disabled={loading || saving || uploading} style={{ maxWidth: '100%', fontSize: 12 }} />
+              </label>
+              {uploading && <span role="status" className="setting-help">画像を読み込み中…</span>}
+              {design.images?.[selectedCategory] && <>
+                <img src={overlayImageUrl(design, selectedCategory)} alt="設定した背景画像"
+                  style={{ width: 120, height: 60, objectFit: 'contain', background: '#ebebef', border: '1px solid #d8d5e0' }} />
+                <button type="button" disabled={uploading || saving} onClick={() => {
+                  setDesign(prev => normalizeOverlayDesign({ ...prev, images: { ...prev.images, [selectedCategory]: '' } }));
+                  setSaveMessage('');
+                }}>画像を外す</button>
+              </>}
+            </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 24, paddingTop: 18, borderTop: '1px solid #e6e4eb' }}>
-          <button type="button" disabled={loading || saving} onClick={() => { setDesign(normalizeOverlayDesign(DEFAULT_OVERLAY_DESIGN)); setSaveMessage(''); }}>初期配置に戻す</button>
-          <button type="button" className="submit" disabled={loading || saving || !ownerId || !dirty} onClick={save}>{saving ? '保存中…' : 'デザインを保存'}</button>
+          <button type="button" disabled={loading || saving || uploading} onClick={() => { setDesign(normalizeOverlayDesign(DEFAULT_OVERLAY_DESIGN)); setSaveMessage(''); }}>初期配置に戻す</button>
+          <button type="button" className="submit" disabled={loading || saving || uploading || !ownerId || (!dirty && Boolean(slots[selectedSlot - 1]))} onClick={save}>{saving ? '保存中…' : 'デザインを保存'}</button>
         </div>
         {saveMessage && <p className="form-success" role="status" style={{ marginTop: 12 }}>{saveMessage}</p>}
         <p className="setting-help" style={{ marginTop: 10 }}>保存した設定はこのアカウントのOBS URLに反映されます。名前欄とスコア欄は分離して動かせます。</p>
