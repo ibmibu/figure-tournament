@@ -36,6 +36,7 @@ function ScaleField({ label, value, min, max, step = 1, onChange, unit = 'px' })
 export default function MyOverlayPage() {
   const [ownerId, setOwnerId] = useState('');
   const [url, setUrl] = useState('');
+  const [participantUrl, setParticipantUrl] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
@@ -66,6 +67,7 @@ export default function MyOverlayPage() {
         }
         setOwnerId(session.user.id);
         setUrl(window.location.origin + '/overlay?owner=' + encodeURIComponent(session.user.id));
+        setParticipantUrl(window.location.origin + '/overlay?player=' + encodeURIComponent(session.user.id));
         const response = await fetch('/api/overlay-design', {
           headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
         });
@@ -103,10 +105,12 @@ export default function MyOverlayPage() {
     return () => { observer?.disconnect(); window.removeEventListener('resize', update); };
   }, [loading]);
 
-  async function copyUrl() {
+  async function copyUrl(kind) {
+    const chosen = kind === 'participant' ? participantUrl : url;
+    if (!chosen) return;
     try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
+      await navigator.clipboard.writeText(chosen);
+      setCopied(kind);
       setError('');
     } catch { setError('URLをコピーできませんでした。'); }
   }
@@ -265,16 +269,26 @@ export default function MyOverlayPage() {
       <Link className="my-colors-back" href="/mypage">← マイページに戻る</Link>
       <section className="my-results my-color-panel" style={{ marginTop: 24 }}>
         <h2>スコアボードのURL</h2>
-        <p className="setting-help">主催者アカウント専用のURLです。OBSに一度登録すれば、大会が変わっても変更する必要はありません。</p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
-          <input aria-label="OBSオーバーレイURL" readOnly value={url} placeholder="読み込み中…" style={{ flex: '1 1 260px', minWidth: 0 }} onFocus={e => e.target.select()} />
-          <button type="button" className="submit" disabled={!ownerId} onClick={copyUrl}>{copied ? 'コピーしました' : 'URLをコピー'}</button>
+        <p className="setting-help">OBSに登録するURLを選べます。どちらも保存したスコアボードのデザインを使います。</p>
+        <h3 style={{ margin: '18px 0 8px', fontSize: 14 }}>主催者用（配信台の試合）</h3>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input aria-label="主催者用OBS URL" readOnly value={url} placeholder="読み込み中…"
+            style={{ flex: '1 1 260px', minWidth: 0 }} onFocus={e => e.target.select()} />
+          <button type="button" className="submit" disabled={!url} onClick={() => copyUrl('organizer')}>
+            {copied === 'organizer' ? 'コピーしました' : 'URLをコピー'}
+          </button>
         </div>
+        <h3 style={{ margin: '18px 0 8px', fontSize: 14 }}>参加者用（自分の対戦カード）</h3>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input aria-label="参加者用OBS URL" readOnly value={participantUrl} placeholder="読み込み中…"
+            style={{ flex: '1 1 260px', minWidth: 0 }} onFocus={e => e.target.select()} />
+          <button type="button" className="submit" disabled={!participantUrl} onClick={() => copyUrl('participant')}>
+            {copied === 'participant' ? 'コピーしました' : 'URLをコピー'}
+          </button>
+        </div>
+        <p className="setting-help" style={{ marginTop: 8 }}>参加中の試合がある場合は、その対戦カードとスコアを表示します。対戦がないときはサンプルを表示します。</p>
         <h2 style={{ marginTop: 28 }}>OBSのブラウザソース設定</h2>
-        <p className="setting-help">「ソースを追加」→「ブラウザ」に上のURLを設定してください。</p>
         <p><strong>幅：1920 px　高さ：1080 px</strong></p>
-        <p className="setting-help" style={{ fontWeight: 700, color: '#a54820' }}>重要：カスタムデザインは1920×1080の座標で表示します。OBSのブラウザソースが旧設定の960×90のままだと、右側が切れて大きくズレます。</p>
-        <p className="setting-help" style={{ marginTop: 8 }}>既存ソースを使う場合は、OBSでブラウザソースの「プロパティ」から幅1920・高さ1080に変更し、その後ソースの「変換 → 変換をリセット」を実行してください。必要なら「画面に合わせる」で再配置します。OBSの背景は透明です。</p>
       </section>
 
       <section className="my-results my-color-panel" style={{ marginTop: 24 }} aria-labelledby="scoreboard-editor-heading">
