@@ -273,7 +273,8 @@ export default function MyOverlayPage() {
         <h2 style={{ marginTop: 28 }}>OBSのブラウザソース設定</h2>
         <p className="setting-help">「ソースを追加」→「ブラウザ」に上のURLを設定してください。</p>
         <p><strong>幅：1920 px　高さ：1080 px</strong></p>
-        <p className="setting-help">設定を保存した後は、OBSのブラウザソースも1920×1080にしてください。背景は透明です。従来のデザインを使っている間は960×90のままでも表示できます。</p>
+        <p className="setting-help" style={{ fontWeight: 700, color: '#a54820' }}>重要：カスタムデザインは1920×1080の座標で表示します。OBSのブラウザソースが旧設定の960×90のままだと、右側が切れて大きくズレます。</p>
+        <p className="setting-help" style={{ marginTop: 8 }}>既存ソースを使う場合は、OBSでブラウザソースの「プロパティ」から幅1920・高さ1080に変更し、その後ソースの「変換 → 変換をリセット」を実行してください。必要なら「画面に合わせる」で再配置します。OBSの背景は透明です。</p>
       </section>
 
       <section className="my-results my-color-panel" style={{ marginTop: 24 }} aria-labelledby="scoreboard-editor-heading">
