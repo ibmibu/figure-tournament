@@ -364,6 +364,15 @@ export default function MyOverlayPage() {
                     aria-pressed={design.nameShape === value}
                     onClick={() => edit('nameShape', value)}>{label}</button>)}
               </div>
+              <div role="group" aria-label="名前の文字揃え" style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>文字揃え</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[['inner', '内側（スコア側）'], ['outer', '外側'], ['center', '中央']].map(([value, label]) =>
+                    <button type="button" key={value} style={smallButton(design.nameAlign === value)}
+                      aria-pressed={design.nameAlign === value}
+                      onClick={() => edit('nameAlign', value)}>{label}</button>)}
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
                 <ScaleField label="横幅" value={design.nameWidth} min={100} max={700} onChange={v => edit('nameWidth', v)} />
                 <ScaleField label="高さ" value={design.nameHeight} min={30} max={160} onChange={v => edit('nameHeight', v)} />

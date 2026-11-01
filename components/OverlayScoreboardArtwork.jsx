@@ -39,7 +39,10 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
     borderRadius: !angledName && d.nameShape === 'rounded' ? 14 : 0,
     padding: angledName ? '0 28px' : '0 12px',
     display: 'flex', alignItems: 'center',
-    justifyContent: key === 'name1' ? 'flex-end' : 'flex-start',
+    justifyContent: d.nameAlign === 'center' ? 'center'
+      : d.nameAlign === 'inner'
+        ? (key === 'name1' ? 'flex-end' : 'flex-start')
+        : (key === 'name1' ? 'flex-start' : 'flex-end'),
     fontSize: d.nameFontSize, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden',
     lineHeight: 1,
   });
