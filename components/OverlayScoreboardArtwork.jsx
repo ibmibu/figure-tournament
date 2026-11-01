@@ -21,13 +21,41 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
           backgroundSize: '100% 100%', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
       : { backgroundColor: fallback };
   };
+  const angledName = d.nameShape === 'parallelogram';
   const nameStyle = key => ({
-    ...position(key), ...partBackground(key, d.nameBg), color: d.nameText,
-    border: `${d.borderWidth}px solid ${d.nameBorder}`, borderRadius: d.roundedNames ? 14 : 0,
-    padding: '0 12px', display: 'flex', alignItems: 'center', justifyContent: key === 'name1' ? 'flex-end' : 'flex-start',
+    ...position(key), ...(angledName ? { backgroundColor: 'transparent' } : partBackground(key, d.nameBg)),
+    color: d.nameText,
+    border: angledName ? 'none' : `${d.borderWidth}px solid ${d.nameBorder}`,
+    borderRadius: !angledName && d.nameShape === 'rounded' ? 14 : 0,
+    padding: angledName ? '0 28px' : '0 12px',
+    display: 'flex', alignItems: 'center',
+    justifyContent: key === 'name1' ? 'flex-end' : 'flex-start',
     fontSize: d.nameFontSize, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden',
     lineHeight: 1,
   });
+  const nameShapeMask = key => {
+    const cut = Math.min(26, Math.round(d.nameHeight * 0.32));
+    // Outward/opposite slants keep the right and left player panels mirrored.
+    return key === 'name1'
+      ? `polygon(${cut}px 0, 100% 0, calc(100% - ${cut}px) 100%, 0 100%)`
+      : `polygon(0 0, calc(100% - ${cut}px) 0, 100% 100%, ${cut}px 100%)`;
+  };
+  const nameContent = (key, name) => <>
+    {angledName && <>
+      <div aria-hidden="true" style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundColor: d.nameBorder, clipPath: nameShapeMask(key),
+      }} />
+      <div aria-hidden="true" style={{
+        position: 'absolute', inset: d.borderWidth, pointerEvents: 'none',
+        ...partBackground(key, d.nameBg), clipPath: nameShapeMask(key),
+      }} />
+    </>}
+    <span style={{
+      position: 'relative', zIndex: 1, overflow: 'hidden',
+      textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    }}>{name}</span>
+  </>;
   const scoreStyle = key => ({
     ...position(key), display: 'flex', alignItems: 'center', justifyContent: 'center',
     ...partBackground(key, d.scoreBg), color: d.scoreText, borderRadius: d.scoreShape === 'circle' ? '50%' : d.scoreShape === 'rounded' ? 12 : 0,
@@ -35,8 +63,8 @@ export default function OverlayScoreboardArtwork({ config, match, title, selecte
     fontSize: d.scoreFontSize, fontWeight: 900, fontVariantNumeric: 'tabular-nums', lineHeight: 1,
   });
   return <div style={{ position: 'relative', width: OVERLAY_WIDTH, height: OVERLAY_HEIGHT, background: 'transparent', fontFamily: 'Arial, "Noto Sans JP", sans-serif', color: '#222' }}>
-    <div data-overlay-part="name1" style={nameStyle('name1')}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.player1}</span></div>
-    <div data-overlay-part="name2" style={nameStyle('name2')}><span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.player2}</span></div>
+    <div data-overlay-part="name1" style={nameStyle('name1')}>{nameContent('name1', m.player1)}</div>
+    <div data-overlay-part="name2" style={nameStyle('name2')}>{nameContent('name2', m.player2)}</div>
     <div data-overlay-part="score1" style={scoreStyle('score1')}>{m.score1}</div>
     <div data-overlay-part="score2" style={scoreStyle('score2')}>{m.score2}</div>
     <div data-overlay-part="round" style={{

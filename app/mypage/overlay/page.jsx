@@ -371,10 +371,12 @@ export default function MyOverlayPage() {
 
             <h4 style={{ fontSize: 13, margin: '24px 0 12px' }}>形・サイズ</h4>
             {selectedCategory === 'name' && <>
-              <label style={{ ...field, flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <input type="checkbox" checked={design.roundedNames}
-                  onChange={e => edit('roundedNames', e.target.checked)} />角丸にする
-              </label>
+              <div role="group" aria-label="名前欄の形" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                {[['square', '四角'], ['rounded', '角丸'], ['parallelogram', '平行四辺形']].map(([value, label]) =>
+                  <button type="button" key={value} style={smallButton(design.nameShape === value)}
+                    aria-pressed={design.nameShape === value}
+                    onClick={() => edit('nameShape', value)}>{label}</button>)}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16 }}>
                 <ScaleField label="横幅" value={design.nameWidth} min={100} max={700} onChange={v => edit('nameWidth', v)} />
                 <ScaleField label="高さ" value={design.nameHeight} min={30} max={160} onChange={v => edit('nameHeight', v)} />
