@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../../lib/supabase/client';
+import OverlayScoreboardArtwork from '../../../../components/OverlayScoreboardArtwork';
+import { normalizeOverlayDesign } from '../../../../lib/overlay-scoreboard';
 
 export default function TournamentOverlay() {
   const params = useParams();
@@ -10,6 +12,7 @@ export default function TournamentOverlay() {
   useEffect(() => { setOwner(new URLSearchParams(window.location.search).get('owner') || ''); }, []);
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [design, setDesign] = useState(null);
   const [debug, setDebug] = useState(false);
   useEffect(() => { setDebug(new URLSearchParams(window.location.search).has('debug')); }, []);
   useEffect(() => {
@@ -75,6 +78,31 @@ export default function TournamentOverlay() {
       if (channel) getSupabaseBrowserClient().removeChannel(channel);
     };
   }, [id, owner]);
+  // Design lives on the organizer account, not on an individual tournament.
+  // Refresh independently of the match stream so edits appear in OBS without
+  // touching participants, brackets, scores, or any match-result updates.
+  const designOwner = owner || data?.ownerId || '';
+  useEffect(() => {
+    if (!designOwner) return;
+    let active = true;
+    let timer;
+    const loadDesign = async () => {
+      try {
+        const response = await fetch('/api/overlay-design?owner=' + encodeURIComponent(designOwner), { cache: 'no-store' });
+        if (!response.ok) throw new Error('overlay design HTTP ' + response.status);
+        const result = await response.json();
+        if (active) setDesign(result.design?.version === 1 ? normalizeOverlayDesign(result.design) : null);
+      } catch (error) {
+        // Preserve the previous visible overlay if settings cannot be reached.
+        console.warn('OBS overlay design refresh failed:', error);
+      } finally {
+        if (active) timer = setTimeout(loadDesign, 15000);
+      }
+    };
+    setDesign(null);
+    loadDesign();
+    return () => { active = false; clearTimeout(timer); };
+  }, [designOwner]);
   // Show a clearly labeled sample whenever no stream match is assigned,
   // so OBS placement can be adjusted before the tournament starts.
   const isPreview = !data?.match;
@@ -83,6 +111,11 @@ export default function TournamentOverlay() {
     score1: 0, score2: 0, round: 'GRAND FINAL', bestOf: 3,
   };
   const roundLabel = match?.round === 'GRAND FINAL' ? '決勝戦' : match?.round === 'SEMI FINAL' ? '準決勝' : String(match?.round || '').replace(/^ROUND (\d+)$/, (_, n) => n + '回戦');
+  if (design) return <main className="obs-overlay-root" style={{ width: 1920, height: 1080, overflow: 'hidden' }}>
+    {debug && <div style={{ position: 'absolute', top: 200, left: 20, color: '#fff', background: '#333', fontSize: 18, zIndex: 10 }}>OBS診断：{loadError || '配信表示中'} / 大会ID：{id}</div>}
+    <OverlayScoreboardArtwork config={design} match={match} title={isPreview ? 'プレビュー（大会未設定）' : data.name} />
+    <style jsx global>{`html,body{background:transparent!important;margin:0!important;padding:0!important;overflow:hidden!important}`}</style>
+  </main>;
   return <main className="obs-overlay-root">
     {debug && <div style={{ color: '#fff', background: '#333', padding: 12, fontSize: 16 }}>OBS診断：{loadError || (data === null ? '読み込み中' : match ? '配信台の対戦を取得しました' : data.status === 'unassigned' ? '配信台が未設定です' : '配信台の対戦が見つかりません')} / 大会ID：{id}</div>}
     <div className="obs-scoreboard">

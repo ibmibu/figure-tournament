@@ -41,7 +41,7 @@ export async function GET(request) {
     const selected = held || (explicit
       ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2)
       : organizerMatch);
-    if (!selected) return NextResponse.json({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found' }, { headers: { 'Cache-Control': 'no-store' } });
+    if (!selected) return NextResponse.json({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found', ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
     const roundIndex = rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
     const score = selected.matchState?.score || {};
     const match = {
@@ -53,7 +53,7 @@ export async function GET(request) {
       bestOf: Number(t.bestOf) === 5 ? 5 : 3,
       finished: Boolean(selected.winnerId),
     };
-    return NextResponse.json({ name: t.name || '', match, holdUntil: held ? t.streamHoldUntil : null }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ name: t.name || '', match, holdUntil: held ? t.streamHoldUntil : null, ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Overlay score read failed', error);
     return NextResponse.json({ error: 'スコアを取得できませんでした。' }, { status: 500 });
