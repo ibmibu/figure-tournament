@@ -766,11 +766,22 @@ export default function TournamentPage() {
     }
   }
 
-  // Keep the public tournament URL clean. The OG image itself retains a
-  // content-versioned URL, while an optional ?v= can still bust Discord's
-  // cached page preview when a previously shared card needs refreshing.
-  const tournamentShareUrl = () =>
-    'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id);
+  // Keep ordinary links clean. X caches link previews by the shared URL,
+  // so use a stable version of the visible OG details for the X share button.
+  // Bump the og6 prefix when the OG image layout changes again.
+  const tournamentShareUrl = (forX = false) => {
+    const url = 'https://figure-tournament.vercel.app/tournaments/' + encodeURIComponent(id);
+    if (!forX) return url;
+    const details = JSON.stringify([
+      tournament?.name, tournament?.date, tournament?.format, tournament?.bestOf,
+      tournament?.stageRejects, tournament?.stageSettings, tournament?.stages,
+    ]);
+    let hash = 2166136261;
+    for (let i = 0; i < details.length; i += 1) {
+      hash = Math.imul(hash ^ details.charCodeAt(i), 16777619);
+    }
+    return url + '?v=og6-' + (hash >>> 0).toString(36);
+  };
   if (loading && !tournament) return <main className="page tournament-detail-page"><section className="intro"><p>大会情報を読み込み中…</p></section></main>;
 
   if (!tournament) return <main className="page">
@@ -1025,7 +1036,7 @@ export default function TournamentPage() {
               </form>
         )}
         {!tournament.bracket && joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && <p className="setting-help overview-join-status">参加済み</p>}
-        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl())}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
+        <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl(true))}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
       </div>
 
       <div className="detail-grid">
