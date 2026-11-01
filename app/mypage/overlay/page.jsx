@@ -22,6 +22,39 @@ const COLOR_GROUPS = {
   title: [['titleBg', '背景色'], ['titleText', '文字色']],
 };
 const field = { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, fontSize: 13, fontWeight: 700 };
+const PREVIEW_DB_NAME = 'amicone-scoreboard-preview';
+const PREVIEW_STORE = 'backgrounds';
+// Preview images are browser-local, not part of the saved OBS design or
+// Supabase Storage. IndexedDB allows large screenshots without localStorage quota.
+function openPreviewImageDb() {
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(PREVIEW_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(PREVIEW_STORE)) {
+        request.result.createObjectStore(PREVIEW_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('背景画像の保存先を開けませんでした。'));
+  });
+}
+async function previewImageStore(method, value) {
+  const db = await openPreviewImageDb();
+  try {
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(PREVIEW_STORE, method === 'get' ? 'readonly' : 'readwrite');
+      const store = tx.objectStore(PREVIEW_STORE);
+      const request = method === 'get' ? store.get('preview-background')
+        : method === 'put' ? store.put(value, 'preview-background') : store.delete('preview-background');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error('背景画像を保存できませんでした。'));
+      tx.onabort = () => reject(tx.error || new Error('背景画像の保存に失敗しました。'));
+    });
+  } finally {
+    db.close();
+  }
+}
+
 const smallButton = (active = false) => ({
   borderRadius: 0, background: active ? '#eee8fb' : '#fff', border: '1px solid ' + (active ? '#6045a8' : '#d8d5e0'),
   color: active ? '#503592' : '#292533', padding: '8px 12px',
@@ -49,8 +82,14 @@ export default function MyOverlayPage() {
   const [saved, setSaved] = useState(() => normalizeOverlayDesign(DEFAULT_OVERLAY_DESIGN));
   const [selected, setSelected] = useState('name1');
   const [scale, setScale] = useState(0.45);
+  const [previewBackground, setPreviewBackground] = useState('');
+  const [previewBackgroundName, setPreviewBackgroundName] = useState('');
+  const [previewBackgroundFit, setPreviewBackgroundFit] = useState('cover');
+  const [previewBackgroundNotice, setPreviewBackgroundNotice] = useState('');
   const previewRef = useRef(null);
   const dragRef = useRef(null);
+  const previewBackgroundUrlRef = useRef('');
+  const previewBackgroundTouchedRef = useRef(false);
   const dirty = JSON.stringify(design) !== JSON.stringify(saved);
 
   useEffect(() => {
@@ -102,6 +141,70 @@ export default function MyOverlayPage() {
     window.addEventListener('resize', update);
     return () => { observer?.disconnect(); window.removeEventListener('resize', update); };
   }, [loading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    previewImageStore('get').then(record => {
+      if (!record?.blob || cancelled || previewBackgroundTouchedRef.current) return;
+      const url = URL.createObjectURL(record.blob);
+      if (cancelled || previewBackgroundTouchedRef.current) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      if (previewBackgroundUrlRef.current) URL.revokeObjectURL(previewBackgroundUrlRef.current);
+      previewBackgroundUrlRef.current = url;
+      setPreviewBackground(url);
+      setPreviewBackgroundName(record.name || '保存した背景画像');
+    }).catch(() => {
+      // Editor still works when private browsing disables browser storage.
+    });
+    try {
+      const fit = window.localStorage.getItem('amicone-scoreboard-preview-fit');
+      if (fit === 'cover' || fit === 'contain') setPreviewBackgroundFit(fit);
+    } catch { /* browser storage can be disabled */ }
+    return () => {
+      cancelled = true;
+      if (previewBackgroundUrlRef.current) URL.revokeObjectURL(previewBackgroundUrlRef.current);
+      previewBackgroundUrlRef.current = '';
+    };
+  }, []);
+
+  async function choosePreviewBackground(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 15 * 1024 * 1024) {
+      setPreviewBackgroundNotice('PNG・JPEG・WebP形式、15MB以下の画像を選んでください。');
+      return;
+    }
+    previewBackgroundTouchedRef.current = true;
+    const url = URL.createObjectURL(file);
+    if (previewBackgroundUrlRef.current) URL.revokeObjectURL(previewBackgroundUrlRef.current);
+    previewBackgroundUrlRef.current = url;
+    setPreviewBackground(url);
+    setPreviewBackgroundName(file.name);
+    setPreviewBackgroundNotice('');
+    try {
+      await previewImageStore('put', { blob: file, name: file.name });
+    } catch {
+      setPreviewBackgroundNotice('画像は表示できていますが、このブラウザへの保存に失敗しました。再読み込みすると消える場合があります。');
+    }
+  }
+  async function clearPreviewBackground() {
+    previewBackgroundTouchedRef.current = true;
+    if (previewBackgroundUrlRef.current) URL.revokeObjectURL(previewBackgroundUrlRef.current);
+    previewBackgroundUrlRef.current = '';
+    setPreviewBackground('');
+    setPreviewBackgroundName('');
+    setPreviewBackgroundNotice('');
+    try { await previewImageStore('delete'); }
+    catch { setPreviewBackgroundNotice('保存済みの背景画像を削除できませんでした。'); }
+  }
+  function changePreviewBackgroundFit(value) {
+    setPreviewBackgroundFit(value);
+    try { window.localStorage.setItem('amicone-scoreboard-preview-fit', value); }
+    catch { /* fit remains effective for this session */ }
+  }
 
   async function copyUrl() {
     if (!url) return;
@@ -302,10 +405,37 @@ export default function MyOverlayPage() {
           <strong style={{ fontSize: 12 }}>1920 × 1080</strong>
           <span style={{ fontSize: 12, color: dirty ? '#8c6121' : '#74717e' }}>{loading ? '読み込み中…' : dirty ? '未保存の変更があります' : '保存済み'}</span>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '10px 0 14px' }}>
+          <label style={{ ...field, gap: 4 }}>
+            <span>プレビューの背景画像</span>
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={choosePreviewBackground}
+              disabled={loading} style={{ maxWidth: '100%', fontSize: 12 }} />
+          </label>
+          {previewBackground && <>
+            <label style={{ ...field, gap: 4 }}>
+              <span>表示方法</span>
+              <select value={previewBackgroundFit}
+                onChange={e => changePreviewBackgroundFit(e.target.value)}
+                style={{ padding: '6px 8px', background: '#fff', border: '1px solid #cbd5e1' }}>
+                <option value="cover">画面いっぱい</option>
+                <option value="contain">画像全体</option>
+              </select>
+            </label>
+            <button type="button" onClick={clearPreviewBackground} style={{ ...smallButton(), alignSelf: 'flex-end' }}>背景を削除</button>
+          </>}
+        </div>
+        {previewBackgroundName && <p className="setting-help" style={{ marginBottom: 6 }}>背景：{previewBackgroundName}</p>}
+        {previewBackgroundNotice && <p role="status" className="setting-help" style={{ marginBottom: 6 }}>{previewBackgroundNotice}</p>}
+        <p className="setting-help" style={{ marginBottom: 10 }}>背景画像はこのブラウザのプレビューにのみ保存され、OBSや他のユーザーには表示されません。</p>
         <div ref={previewRef} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd}
           onPointerCancel={pointerEnd} onKeyDown={nudge} tabIndex={0} aria-label="スコアボード編集キャンバス。パーツをドラッグまたは矢印キーで移動できます"
           style={{ position: 'relative', width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', touchAction: 'none', background: '#1b2430', outlineOffset: 3, border: '1px solid #4b5563' }}>
           {!loading && <div style={{ position: 'absolute', width: 1920, height: 1080, left: 0, top: 0, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
+            {previewBackground && <div aria-hidden="true" style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              backgroundImage: `url("${previewBackground}")`,
+              backgroundPosition: 'center', backgroundRepeat: 'no-repeat', backgroundSize: previewBackgroundFit,
+            }} />}
             <div style={{ position: 'absolute', left: 960, height: 1080, width: 1, borderLeft: '2px dashed #67768c', opacity: 0.5, pointerEvents: 'none' }} />
             <div style={{ position: 'absolute', top: 540, width: 1920, borderTop: '2px dashed #67768c', opacity: 0.25, pointerEvents: 'none' }} />
             <OverlayScoreboardArtwork config={design} selected={selected} editable
