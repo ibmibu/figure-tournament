@@ -42,7 +42,7 @@ export async function POST(request) {
       if (action === 'rewind-match') {
         const logId = winnerId;
         const log = (existing.matchLogs || []).find(item => item.id === logId && String(item.matchId) === String(matchId));
-        if (!log?.before?.bracket) throw new Error('巻き戻す履歴が見つかりません。');
+        if (!(log?.before?.match || log?.before?.bracket)) throw new Error('巻き戻す履歴が見つかりません。');
         const entries = existing.matchLogs || [];
         const index = entries.findIndex(item => item.id === log.id);
         if (index < 0) throw new Error('巻き戻す履歴が見つかりません。');
