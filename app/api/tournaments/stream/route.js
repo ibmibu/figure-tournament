@@ -25,7 +25,26 @@ export async function POST(request) {
         return NextResponse.json({ error: '配信台に設定できる対戦ではありません。' }, { status: 400 });
       }
       const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0 ? current.stageActionRevision : null;
-      const updated = { ...current, streamMatchId: matchId, streamMatchManual: true, stageActionRevision: (revision ?? 0) + 1 };
+      // A match may have auto-initialized before the organizer assigned it to
+      // the stream table. Switch it to host-controlled scoring only if no
+      // game/score/report has been recorded yet; never change an active match.
+      const bracket = current.bracket ? structuredClone(current.bracket) : null;
+      if (!current.stageRejects && matchId && bracket?.rounds) {
+        const selected = bracket.rounds.flat().find(m => String(m.id) === String(matchId));
+        const state = selected?.matchState;
+        if (state && !selected.winnerId &&
+            Number(state.score?.[selected.player1.id] || 0) === 0 &&
+            Number(state.score?.[selected.player2.id] || 0) === 0 &&
+            !(state.games || []).length && !state.pendingResult &&
+            !state.disputedAt && state.reportMode !== 'stream') {
+          state.reportMode = 'stream';
+          state.currentGame = null;
+          state.gameNumber = 1;
+          state.score = { [selected.player1.id]: 0, [selected.player2.id]: 0 };
+          state.games = [];
+        }
+      }
+      const updated = { ...current, ...(bracket ? { bracket } : {}), streamMatchId: matchId, streamMatchManual: true, stageActionRevision: (revision ?? 0) + 1 };
       let update = db.from('tournaments').update({ data: withStatsSnapshot(updated) }).eq('id', id);
       update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
       const { data: changed, error } = await update.select('id');
