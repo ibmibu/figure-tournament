@@ -1991,3 +1991,50 @@ body .tournament-detail-page .bracket-admin-log-dot{
     width:100%;min-width:0;
   }
 }
+
+
+/* Compact score-control layout (proposal B): only single-digit scores. */
+.tournament-detail-page .set-score-editor {
+  display:grid;grid-template-columns:minmax(0,1fr) 30px minmax(0,1fr);
+  align-items:center;gap:8px;width:100%;max-width:440px;margin:12px auto;
+}
+.tournament-detail-page .set-score-player {
+  min-width:0;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:14px 8px;background:#f8f9fc;border:1px solid #e4e6ee;
+  border-radius:12px;
+}
+.tournament-detail-page .set-score-player-name {
+  font-size:14px;font-weight:750;color:#202a43;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.tournament-detail-page .set-score-digit {
+  display:grid;place-items:center;width:58px;height:58px;
+  border:1px solid #dce0e9;border-radius:10px;
+  background:white;color:#172643;font-size:31px;line-height:1;
+  font-variant-numeric:tabular-nums;
+}
+.tournament-detail-page .set-score-vs {text-align:center;color:#8491a5;font-size:11px;font-weight:800}
+.tournament-detail-page .set-score-stepper {display:flex;gap:8px}
+.tournament-detail-page .set-score-stepper button {
+  width:40px;height:38px;min-width:0;padding:0;border:1px solid #cdd6e5;
+  border-radius:9px;background:#fff!important;color:#24324c!important;
+  font-size:22px;font-weight:600;line-height:1;box-shadow:none;
+}
+.tournament-detail-page .set-score-stepper button:disabled {opacity:.28;cursor:default}
+.tournament-detail-page .set-score-primary {
+  display:block;margin:12px auto 0;max-width:440px;width:100%;
+  border:0;border-radius:9px;padding:13px 16px;background:#24344e!important;
+  color:#fff!important;font-weight:800;
+}
+.tournament-detail-page .set-score-pending {
+  max-width:440px;margin:12px auto;padding:12px;
+  border:1px solid #dce3ef;background:#f7faff;border-radius:10px;
+}
+.tournament-detail-page .set-score-pending p {margin:0 0 9px}
+.tournament-detail-page .set-score-pending-actions {display:flex;gap:8px}
+.tournament-detail-page .set-score-pending-actions button {flex:1 1 0;min-width:0}
+@media (max-width:420px) {
+  .tournament-detail-page .set-score-editor {grid-template-columns:minmax(0,1fr) 24px minmax(0,1fr);gap:4px}
+  .tournament-detail-page .set-score-player {padding:12px 4px}
+  .tournament-detail-page .set-score-stepper button {width:36px}
+}
