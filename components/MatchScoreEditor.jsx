@@ -5,6 +5,7 @@
 export default function MatchScoreEditor({
   firstName, secondName, firstScore, secondScore, target = 2,
   onFirstChange, onSecondChange, disabled = false, readOnly = false,
+  disableIncrease = false, disableDecrease = false,
 }) {
   const renderPlayer = (name, score, setScore) => (
     <div className="set-score-player">
@@ -12,10 +13,10 @@ export default function MatchScoreEditor({
       <strong className="set-score-digit" aria-label={name + 'の勝利数'}>{Number(score) || 0}</strong>
       {!readOnly && <div className="set-score-stepper">
         <button type="button" aria-label={name + 'のスコアを減らす'}
-          disabled={disabled || Number(score) <= 0}
+          disabled={disabled || disableDecrease || Number(score) <= 0}
           onClick={() => setScore(Math.max(0, Number(score) - 1))}>−</button>
         <button type="button" aria-label={name + 'のスコアを増やす'}
-          disabled={disabled || Number(score) >= target}
+          disabled={disabled || disableIncrease || Number(score) >= target}
           onClick={() => setScore(Math.min(target, Number(score) + 1))}>＋</button>
       </div>}
     </div>

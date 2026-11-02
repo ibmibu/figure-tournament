@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findParticipantOverlay } from '../../../../lib/overlay-participant-match';
+import { getMatchReportMode, liveSetScores } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 
@@ -112,7 +113,10 @@ export async function GET(request) {
     const roundIndex = personalMatch
       ? personalMatch.roundIndex
       : rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
-    const score = selected.matchState?.score || {};
+    // A set awaiting approval still needs its actual live score in OBS.
+    // Keep tournament advancement based on confirmed matchState.score only.
+    const score = getMatchReportMode(t, selected) === 'set' && !selected.winnerId
+      ? liveSetScores(selected) : selected.matchState?.score || {};
     const match = {
       player1: selected.player1.name || '',
       player2: selected.player2.name || '',
