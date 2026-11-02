@@ -1196,23 +1196,15 @@ export default function TournamentPage() {
                 <p className="setting-help">1ゲーム終了するごとに勝者を押してください。OBSのスコアにも反映されます。</p>
                 <div className="set-score-pending-actions">
                   <button type="button" disabled={savingBracket}
-                    onClick={() => {
-                      if (window.confirm(selectedAdminMatch.player1.name + ' のゲーム勝利を記録しますか？')) {
-                        submitSetAction(selectedAdminMatch, 'stream-game', {
-                          winnerId: selectedAdminMatch.player1.id,
-                          gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
-                        });
-                      }
-                    }}>{selectedAdminMatch.player1.name} 勝利</button>
+                    onClick={() => submitSetAction(selectedAdminMatch, 'stream-game', {
+                      winnerId: selectedAdminMatch.player1.id,
+                      gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
+                    })}>{selectedAdminMatch.player1.name} 勝利</button>
                   <button type="button" disabled={savingBracket}
-                    onClick={() => {
-                      if (window.confirm(selectedAdminMatch.player2.name + ' のゲーム勝利を記録しますか？')) {
-                        submitSetAction(selectedAdminMatch, 'stream-game', {
-                          winnerId: selectedAdminMatch.player2.id,
-                          gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
-                        });
-                      }
-                    }}>{selectedAdminMatch.player2.name} 勝利</button>
+                    onClick={() => submitSetAction(selectedAdminMatch, 'stream-game', {
+                      winnerId: selectedAdminMatch.player2.id,
+                      gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
+                    })}>{selectedAdminMatch.player2.name} 勝利</button>
                 </div>
               </div>}
             {!tournament.stageRejects && getMatchReportMode(tournament, selectedAdminMatch) === 'set' &&
