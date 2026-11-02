@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
 import { getCharacterReportPlacement } from '../../../lib/tournament-bracket-admin';
-import { getMatchReportMode } from '../../../lib/tournament-set-result';
+import { getMatchReportMode, liveSetScores, SCORE_INCREMENT_COOLDOWN_MS } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
@@ -38,7 +38,7 @@ export default function TournamentPage() {
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
   const [adminScore, setAdminScore] = useState({ first: 0, second: 0 });
-  const [draftSetScore, setDraftSetScore] = useState({ matchId: '', first: 0, second: 0 });
+  const [scoreClock, setScoreClock] = useState(() => Date.now());
   const [showAdminLog, setShowAdminLog] = useState(false);
   const [logMatchId, setLogMatchId] = useState('');
   const [rejectSelection, setRejectSelection] = useState([]);
@@ -603,6 +603,13 @@ export default function TournamentPage() {
 
   // All no-strike result changes go through one server-validated API.
   // A timed-out POST may have committed, so never automatically submit twice.
+  // Keep the remaining shared cooldown visible on both devices.
+  useEffect(() => {
+    if (!tournament?.bracket || tournament.stageRejects || !activeMatchId) return;
+    const timer = setInterval(() => setScoreClock(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, [Boolean(tournament?.bracket), tournament?.stageRejects, activeMatchId]);
+
   async function submitSetAction(match, action, extras = {}) {
     if (!match || savingBracket) return;
     setSavingBracket(true);
@@ -648,6 +655,9 @@ export default function TournamentPage() {
         // Keep the score-management dialog open between games so the
         // organizer can record the next game with one tap.
         if (matchFinished) setAdminMatchSelection(null);
+      } else if (action === 'score-adjust') {
+        // A provisional score update never finalizes a match.
+        setNotice('');
       } else if (action === 'submit') setNotice('結果を申告しました。相手の確認を待っています。');
       else if (action === 'dispute') setNotice('結果に異議を出しました。相手に再入力を依頼してください。');
       else { setNotice('対戦結果を確定しました。'); setAdminMatchSelection(null); }
@@ -1010,6 +1020,8 @@ export default function TournamentPage() {
           const settings = tournament.stageSettings || {};
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
+          const liveDisplay = !tournament.stageRejects && getMatchReportMode(tournament, match) === 'set'
+            ? liveSetScores(match) : state?.score || {};
           const viewingPlayerId = String(currentUserId || '');
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
           const rejectTurnId = state?.gameNumber === 1
@@ -1026,7 +1038,7 @@ export default function TournamentPage() {
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span></div>}
 
             <div className="game-top">
-              <div className="current-score">{state?.score?.[p1Id] || 0}<span> - </span>{state?.score?.[match.player2.id] || 0}</div>
+              <div className="current-score">{liveDisplay[p1Id] || 0}<span> - </span>{liveDisplay[match.player2.id] || 0}</div>
             </div>
             <div className="player-strip">
               <div><small>PLAYER 1</small><a href={`/stats?player=${encodeURIComponent(match.player1.name)}`} className="match-player-stats-link">{match.player1.name}</a></div>
@@ -1044,21 +1056,30 @@ export default function TournamentPage() {
               const meId = String(currentUserId || '');
               const isMyPending = pending && String(pending.submittedBy) === meId;
               const target = Number(tournament.bestOf) === 5 ? 3 : 2;
-              const firstScore = draftSetScore.matchId === match.id
-                ? draftSetScore.first : Number(state?.score?.[match.player1.id] || 0);
-              const secondScore = draftSetScore.matchId === match.id
-                ? draftSetScore.second : Number(state?.score?.[match.player2.id] || 0);
-              const editFirst = next => setDraftSetScore({
-                matchId: match.id, first: next, second: secondScore,
+              const live = liveSetScores(match);
+              const firstScore = live[match.player1.id];
+              const secondScore = live[match.player2.id];
+              const lastPlusAt = Date.parse(state?.lastScoreIncrementAt || '') || 0;
+              const cooldownLeft = Math.max(0, Math.ceil(
+                (lastPlusAt + SCORE_INCREMENT_COOLDOWN_MS - scoreClock) / 1000));
+              const canAdd = !cooldownLeft && firstScore < target && secondScore < target;
+              const version = Number(state?.scoreVersion || 0);
+              const editFirst = next => submitSetAction(match, 'score-adjust', {
+                scorePlayerId: match.player1.id, scoreDelta: next > firstScore ? 1 : -1,
+                scoreVersion: version,
               });
-              const editSecond = next => setDraftSetScore({
-                matchId: match.id, first: firstScore, second: next,
+              const editSecond = next => submitSetAction(match, 'score-adjust', {
+                scorePlayerId: match.player2.id, scoreDelta: next > secondScore ? 1 : -1,
+                scoreVersion: version,
               });
               if (mode === 'stream') return <div className="set-score-pending" role="status">
                 <strong>配信台の対戦</strong>
                 <p style={{ marginTop: 8, marginBottom: 0 }}>スコアは主催者がゲームごとに入力します。選手の操作は不要です。</p>
               </div>;
-              if (!state) return <p className="setting-help">対戦を準備しています…</p>;
+              if (!state) return <div className="set-score-pending">
+                <p className="setting-help">対戦を準備しています…</p>
+                <button type="button" disabled={savingBracket} onClick={() => startMatch(ri, mi)}>準備を再試行</button>
+              </div>;
               if (pending) return <div className="set-score-pending" role="status">
                 <h3 className="match-result-heading">セット結果の確認</h3>
                 <MatchScoreEditor
@@ -1076,14 +1097,17 @@ export default function TournamentPage() {
                     </div></>}
               </div>;
               return <div className="set-score-pending">
-                <h3 className="match-result-heading">セット終了後のスコアを入力</h3>
+                <h3 className="match-result-heading">対戦スコアボード</h3>
                 {state.disputedAt && <p className="form-error">申告に異議がありました。正しい結果を再入力してください。</p>}
                 <MatchScoreEditor
                   firstName={match.player1.name} secondName={match.player2.name}
                   firstScore={firstScore} secondScore={secondScore}
                   target={target} onFirstChange={editFirst} onSecondChange={editSecond}
-                  disabled={savingBracket}/>
-                <p className="setting-help">BO{Number(tournament.bestOf) === 5 ? 5 : 3}のセット終了後、どちらか1人が報告。相手が確認すると確定します。</p>
+                  disabled={savingBracket} disableIncrease={!canAdd}/>
+                {cooldownLeft > 0
+                  ? <p className="setting-help" role="status">次の加点まで <strong>{cooldownLeft}秒</strong>（減点はいつでも可能）</p>
+                  : <p className="setting-help">加点可能・スコアは両選手とOBSに同期します。</p>}
+                <p className="setting-help">1ゲーム終了ごとにどちらかが加点。BO{Number(tournament.bestOf) === 5 ? 5 : 3}終了後に片方が申告し、相手が承認して確定します。</p>
                 <button type="button" className="set-score-primary" disabled={savingBracket ||
                   !((firstScore === target && secondScore < target) ||
                     (secondScore === target && firstScore < target))}
@@ -1269,7 +1293,7 @@ export default function TournamentPage() {
           return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}${isStreamMatch ? ' match-streaming' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
             
             {isStreamMatch && <span className="bracket-stream-badge">● 配信台</span>}
-            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) ? (player?.name || "") : ""}{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) && player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? (state?.score?.[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
+            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) ? (player?.name || "") : ""}{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) && player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? ((!tournament.stageRejects && getMatchReportMode(tournament, match) === 'set' && !match.winnerId ? liveSetScores(match) : state?.score || {})[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
 
 
             {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && (() => {
