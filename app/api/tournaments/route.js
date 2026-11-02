@@ -255,7 +255,7 @@ export async function GET(request) {
       };
     });
     return NextResponse.json({ tournaments }, {
-      headers: summaryMode
+      headers: summaryMode && !searchParams.has('refresh')
         ? { 'Cache-Control': 'public, s-maxage=8, stale-while-revalidate=20' }
         : { 'Cache-Control': 'no-store' },
     });

@@ -43,12 +43,13 @@ export default function Home() {
       if (cached) { setTournaments(cached); setLoading(false); }
     }
 
-    const refresh = async () => {
+    const refresh = async (manual = false) => {
       if (!active || inFlight) return;
       inFlight = true;
       setRefreshing(true);
       try {
-        const response = await fetch('/api/tournaments?view=summary', { cache: 'no-store' });
+        const url = manual ? '/api/tournaments?view=summary&refresh=' + Date.now() : '/api/tournaments?view=summary';
+        const response = await fetch(url, { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会データを読み込めませんでした。');
         const latest = result.tournaments || [];
@@ -67,7 +68,7 @@ export default function Home() {
       }
     };
 
-    refreshRef.current = refresh;
+    refreshRef.current = () => refresh(true);
     void refresh();
     return () => {
       active = false;
