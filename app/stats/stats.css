@@ -2545,3 +2545,75 @@ footer span {
     grid-template-columns: minmax(0, 63%) minmax(0, 1fr);
   }
 }
+
+
+/* Tournament history: align every row to the longest visible tournament
+   title, up to a responsive maximum. Previously a fixed 60-70% title column
+   pushed the Tier/rating/winner too far right for short names (人形劇#135).
+   Subgrid shares the *same* track sizing across the whole filtered list. */
+.stats-shell .tournamentList {
+  display: grid;
+  grid-template-columns: fit-content(430px) max-content minmax(0, 1fr) max-content;
+  column-gap: 10px;
+}
+.stats-shell .tournamentList .tournamentRow {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  column-gap: inherit;
+  min-width: 0;
+}
+.stats-shell .tournamentList .tournamentTitle,
+.stats-shell .tournamentList .tournamentTitle.noTier {
+  display: grid;
+  grid-column: 1 / 4;
+  grid-template-columns: subgrid;
+  align-items: center;
+  column-gap: inherit;
+  width: auto;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+}
+.stats-shell .tournamentList .tournamentTitle > b,
+.stats-shell .tournamentList .tournamentTitle.noTier > b {
+  grid-column: 1;
+  min-width: 0;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  line-height: 1.45;
+}
+.stats-shell .tournamentList .tournamentTier { grid-column: 2; }
+.stats-shell .tournamentList .tournamentChampion {
+  grid-column: 3;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats-shell .tournamentList .tournamentTitle.noTier > .tournamentChampion,
+.stats-shell .tournamentList .tournamentTitle > b + .tournamentChampion {
+  grid-column: 2 / 4;
+  min-width: 0;
+}
+.stats-shell .tournamentList .tournamentMeta {
+  grid-column: 4;
+  justify-self: end;
+  min-width: 0;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .stats-shell .tournamentList {
+    grid-template-columns: fit-content(220px) max-content minmax(0, 1fr) max-content;
+    column-gap: 7px;
+  }
+}
+@media (max-width: 380px) {
+  .stats-shell .tournamentList {
+    grid-template-columns: fit-content(190px) max-content minmax(0, 1fr) max-content;
+    column-gap: 6px;
+  }
+}
