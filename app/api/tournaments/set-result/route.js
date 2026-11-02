@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
 import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
-import { advanceMatch, getMatchReportMode, initializeScoreState, scoreTarget, validateFinalScore } from '../../../../lib/tournament-set-result';
+import { advanceMatch, adjustLiveSetScore, getMatchReportMode, initializeScoreState, liveSetScores, scoreTarget, validateFinalScore } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 const client = key => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, {
@@ -17,8 +17,9 @@ export async function POST(request) {
     if (!token) return fail('ログインが必要です。', 401);
     const { data: { user }, error: authError } = await client(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).auth.getUser(token);
     if (authError || !user) return fail('ログインし直してください。', 401);
-    const { id, matchId, action, firstScore, secondScore, winnerId, gameNumber } = await request.json();
-    if (!id || !matchId || !['submit', 'confirm', 'dispute', 'owner-confirm', 'stream-game'].includes(action))
+    const { id, matchId, action, firstScore, secondScore, winnerId, gameNumber,
+      scorePlayerId, scoreDelta, scoreVersion } = await request.json();
+    if (!id || !matchId || !['submit', 'confirm', 'dispute', 'owner-confirm', 'stream-game', 'score-adjust'].includes(action))
       return fail('操作内容が不正です。');
     const db = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -77,12 +78,27 @@ export async function POST(request) {
         } else {
           updated = { ...current, bracket };
         }
+      } else if (action === 'score-adjust') {
+        try {
+          adjustLiveSetScore(current, match, scorePlayerId, scoreDelta, scoreVersion);
+        } catch (error) {
+          return fail(error.message || 'スコアを更新できませんでした。', 409);
+        }
+        label = (scoreDelta === 1 ? '暫定スコア加点：' : '暫定スコア訂正：') +
+          [match.player1, match.player2].find(p => String(p.id) === String(scorePlayerId))?.name;
+        updated = { ...current, bracket };
       } else if (action === 'submit') {
-        validateFinalScore(current, firstScore, secondScore);
-        if (state.pendingResult && String(state.pendingResult.submittedBy) !== String(user.id))
-          return fail('相手からの結果報告があります。先に確認してください。', 409);
+        if (state.pendingResult) return fail('この試合は結果の確認待ちです。', 409);
+        // Submitted scores must match the live scoreboard. No separate
+        // unverified score entry can skip the shared 10-second guard.
+        const live = liveSetScores(match);
+        const currentFirst = live[p1], currentSecond = live[p2];
+        validateFinalScore(current, currentFirst, currentSecond);
+        if (firstScore !== currentFirst || secondScore !== currentSecond)
+          return fail('スコアが更新されています。最新のスコアを確認してください。', 409);
         state.pendingResult = {
-          firstScore, secondScore, submittedBy: user.id, submittedAt: new Date().toISOString(),
+          firstScore: currentFirst, secondScore: currentSecond,
+          submittedBy: user.id, submittedAt: new Date().toISOString(),
         };
         state.disputedAt = null;
         label = 'セット結果を申告：' + match.player1.name + ' ' + firstScore + '-' + secondScore + ' ' + match.player2.name;
