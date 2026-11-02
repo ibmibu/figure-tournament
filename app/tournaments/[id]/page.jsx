@@ -625,6 +625,7 @@ export default function TournamentPage() {
         if (!response.ok) throw new Error(body.error || 'スコアを保存できませんでした。');
       } finally { clearTimeout(timer); }
       const owner = localStorage.getItem(OWNER_KEY) || '';
+      let matchFinished = false;
       const refreshController = new AbortController();
       const refreshTimer = setTimeout(() => refreshController.abort(), 10000);
       try {
@@ -635,12 +636,18 @@ export default function TournamentPage() {
         });
         if (response.ok) {
           const body = await response.json();
-          if (body.tournament) applyTournamentSnapshot(body.tournament);
+          if (body.tournament) {
+            applyTournamentSnapshot(body.tournament);
+            matchFinished = Boolean(body.tournament.bracket?.rounds?.flat().find(
+              entry => String(entry.id) === String(match.id))?.winnerId);
+          }
         }
       } finally { clearTimeout(refreshTimer); }
       if (action === 'stream-game') {
         setNotice('配信台のスコアを更新しました。');
-        setAdminMatchSelection(null);
+        // Keep the score-management dialog open between games so the
+        // organizer can record the next game with one tap.
+        if (matchFinished) setAdminMatchSelection(null);
       } else if (action === 'submit') setNotice('結果を申告しました。相手の確認を待っています。');
       else if (action === 'dispute') setNotice('結果に異議を出しました。相手に再入力を依頼してください。');
       else { setNotice('対戦結果を確定しました。'); setAdminMatchSelection(null); }
