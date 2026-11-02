@@ -34,6 +34,8 @@ export default function TournamentPage() {
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
+  const [showScoreEditor, setShowScoreEditor] = useState(false);
+  const [adminScore, setAdminScore] = useState({ first: 0, second: 0 });
   const [showAdminLog, setShowAdminLog] = useState(false);
   const [logMatchId, setLogMatchId] = useState('');
   const [rejectSelection, setRejectSelection] = useState([]);
@@ -671,6 +673,49 @@ export default function TournamentPage() {
     finally { setSavingBracket(false); }
   }
 
+  async function correctMatchScore(match) {
+    if (!tournament?.isOwner || savingBracket || !match?.player1 || !match?.player2) return;
+    const first = Number(adminScore.first), second = Number(adminScore.second);
+    const target = Number(tournament.bestOf) === 5 ? 3 : 2;
+    if (!Number.isInteger(first) || !Number.isInteger(second) ||
+        first < 0 || second < 0 || first > target || second > target ||
+        (first === target && second === target)) {
+      setError('BO形式に合うスコアを指定してください。');
+      return;
+    }
+    if (!window.confirm(`${match.player1.name} ${first} - ${second} ${match.player2.name} に修正しますか？\nこの試合のステージ選択・勝敗報告は再設定されます。勝者が変わった場合、関係する後続の結果も更新されます。`)) return;
+    setSavingBracket(true);
+    setError('');
+    setNotice('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('主催者としてログインしてください。');
+      const response = await fetch('/api/tournaments/admin-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ id, matchId: match.id, action: 'score', firstScore: first, secondScore: second, ownerToken: ownerId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        if (response.status === 409) {
+          await loadTournament();
+        }
+        throw new Error(result.error || 'スコアを修正できませんでした。');
+      }
+      applyTournamentSnapshot(result.tournament);
+      setAdminMatchSelection(null);
+      setShowScoreEditor(false);
+      setShowForfeitChoices(false);
+      setActiveMatchId('');
+      setNotice('スコアを修正しました。');
+    } catch (error) {
+      setError(error.message || 'スコアを修正できませんでした。');
+    } finally {
+      setSavingBracket(false);
+    }
+  }
+
   async function setStreamMatch(matchId) {
     if (!tournament?.isOwner || savingBracket) return;
     setSavingBracket(true);
@@ -950,6 +995,41 @@ export default function TournamentPage() {
               {!selectedAdminMatch.winnerId && <button type="button" disabled={savingBracket} onClick={() => setShowForfeitChoices(value => !value)}>{showForfeitChoices ? '不戦勝設定を閉じる' : '不戦勝にする'}</button>}
               {String(streamMatchId) === String(selectedAdminMatch.id) ? <button type="button" disabled={savingBracket} onClick={() => setStreamMatch(null)}>配信台を解除</button> : !selectedAdminMatch.winnerId ? <button type="button" disabled={savingBracket} onClick={() => setStreamMatch(selectedAdminMatch.id)}>配信台に設定</button> : null}
             </div>
+            <div className="bracket-admin-actions" style={{ marginTop: 10 }}>
+              <button type="button" disabled={savingBracket} onClick={() => {
+                if (showScoreEditor) {
+                  setShowScoreEditor(false);
+                } else {
+                  setAdminScore({
+                    first: Number(selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player1.id] || 0),
+                    second: Number(selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player2.id] || 0),
+                  });
+                  setShowForfeitChoices(false);
+                  setShowScoreEditor(true);
+                }
+              }}>{showScoreEditor ? 'スコア修正を閉じる' : 'スコアを修正'}</button>
+            </div>
+            {showScoreEditor && <div className="bracket-admin-forfeit" style={{ marginTop: 10 }}>
+              <p>試合のスコアを入力してください（BO{Number(tournament.bestOf) === 5 ? 5 : 3}）。</p>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', margin: '12px 0' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: '1 1 120px' }}>
+                  <strong>{selectedAdminMatch.player1.name}</strong>
+                  <input type="number" inputMode="numeric" min="0" max={Number(tournament.bestOf) === 5 ? 3 : 2} step="1"
+                    value={adminScore.first} disabled={savingBracket} aria-label={selectedAdminMatch.player1.name + 'のスコア'}
+                    onChange={event => setAdminScore(prev => ({ ...prev, first: event.target.value }))} />
+                </label>
+                <strong style={{ alignSelf: 'center' }}>−</strong>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: '1 1 120px' }}>
+                  <strong>{selectedAdminMatch.player2.name}</strong>
+                  <input type="number" inputMode="numeric" min="0" max={Number(tournament.bestOf) === 5 ? 3 : 2} step="1"
+                    value={adminScore.second} disabled={savingBracket} aria-label={selectedAdminMatch.player2.name + 'のスコア'}
+                    onChange={event => setAdminScore(prev => ({ ...prev, second: event.target.value }))} />
+                </label>
+              </div>
+              <p style={{ fontSize: 12 }}>勝利本数に達すると勝者を確定します。修正するとこの試合のステージ・報告状況はリセットされます。</p>
+              <button type="button" disabled={savingBracket || adminScore.first === '' || adminScore.second === ''}
+                onClick={() => correctMatchScore(selectedAdminMatch)}>{savingBracket ? '保存中…' : 'スコアを保存'}</button>
+            </div>}
             {showForfeitChoices && !selectedAdminMatch.winnerId && <div className="bracket-admin-forfeit">
               <p>不戦勝にする選手を選択してください。</p>
               <div className="bracket-admin-actions">
@@ -981,7 +1061,7 @@ export default function TournamentPage() {
           const canStartMatch = !state && (isOwner || isOwnMatch) && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete;
           const canSelect = isOwner || canStartMatch;
           const handleSelect = () => {
-            if (isOwner) { setAdminMatchSelection({ roundIndex: ri, matchIndex: mi }); setShowForfeitChoices(false); }
+            if (isOwner) { setAdminMatchSelection({ roundIndex: ri, matchIndex: mi }); setShowForfeitChoices(false); setShowScoreEditor(false); }
             else if (canStartMatch) startMatch(ri, mi);
           };
           const isAdminSelected = isOwner && adminMatchSelection?.roundIndex === ri && adminMatchSelection?.matchIndex === mi;
