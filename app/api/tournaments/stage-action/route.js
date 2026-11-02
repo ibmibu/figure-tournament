@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
 import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
+import { getMatchReportMode } from '../../../../lib/tournament-set-result';
 export const dynamic = 'force-dynamic';
 const client = key => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const fail = (error, status = 400) => NextResponse.json({ error }, { status });
@@ -34,6 +35,7 @@ export async function POST(request) {
         if (!match.matchState) {
           const firstPlayerId = Math.random() < 0.5 ? match.player1.id : match.player2.id;
           match.matchState = {
+            reportMode: getMatchReportMode(original, match),
             gameNumber: 1, score: { [match.player1.id]: 0, [match.player2.id]: 0 },
             games: [], currentGame: { firstPlayerId, rejects: [], rejectVotes: {},
               stage: original.stageRejects ? null : 'なし',
@@ -42,6 +44,7 @@ export async function POST(request) {
           };
         } else return NextResponse.json({ ok: true });
       } else {
+        if (!original.stageRejects) return fail('ステージ拒否なしの大会はセット結果を報告してください。', 409);
         const state = match.matchState;
         if (!state || state.complete || !state.currentGame || state.currentGame.stage) return fail('ゲームが更新されています。', 409);
         const game = state.currentGame;

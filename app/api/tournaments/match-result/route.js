@@ -70,6 +70,7 @@ export async function POST(request) {
       if (error) throw error;
       if (!row) return fail('大会が見つかりません。', 404);
       const current = repairPrematureAdvances(row.data);
+      if (!current.stageRejects) return fail('この大会ではセット結果を報告してください。', 409);
       const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0 ? current.stageActionRevision : null;
       const actorId = user.id;
       const bracket = structuredClone(current.bracket);
