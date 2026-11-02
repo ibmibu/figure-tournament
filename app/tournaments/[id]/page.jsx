@@ -52,11 +52,17 @@ export default function TournamentPage() {
   const [boardError, setBoardError] = useState('');
   const tournamentSnapshotRef = useRef('');
   const tournamentEtagRef = useRef('');
+  const liveEtagRef = useRef('');
+  const avatarMapRef = useRef({});
   const boardSnapshotRef = useRef('');
   const boardInFlightRef = useRef(false);
   const autoStartAttemptRef = useRef(new Set());
 
   function applyTournamentSnapshot(next) {
+    // Live polling omits the base64 avatar collection; retain the map fetched
+    // on the initial full read. This avoids refreshing N images every 2-5s.
+    if (next?.participantAvatars) avatarMapRef.current = next.participantAvatars;
+    else if (next) next = { ...next, participantAvatars: avatarMapRef.current };
     const signature = JSON.stringify(next);
     if (signature === tournamentSnapshotRef.current) return;
     const previous = tournamentSnapshotRef.current;
@@ -185,8 +191,21 @@ export default function TournamentPage() {
       try {
         const owner = localStorage.getItem(OWNER_KEY) || '';
         const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers });
-        if (!response.ok || cancelled) return;
+        // After the bracket starts, the players' roster is fixed. Read only
+        // the live match state, not all participants' base64 profile avatars.
+        // Keep polling the full view while registration is still open.
+        const live = Boolean(tournament?.bracket);
+        if (live && liveEtagRef.current) headers['If-None-Match'] = liveEtagRef.current;
+        const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}` + (live ? '&view=live' : '');
+        const response = await fetch(url, { cache: 'no-store', headers });
+        if (cancelled) return;
+        if (response.status === 304) {
+          lastSync = Date.now();
+          return;
+        }
+        if (!response.ok) return;
+        const etag = response.headers.get('etag');
+        if (live && etag) liveEtagRef.current = etag;
         const result = await response.json();
         if (!cancelled && result.tournament) {
           applyTournamentSnapshot(result.tournament);
