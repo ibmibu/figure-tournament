@@ -1,7 +1,7 @@
 import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { updateBracketMatch, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
+import { updateBracketMatch, correctBracketScore, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 import { appendMatchLog, rewindMatchPath } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
@@ -20,8 +20,8 @@ export async function POST(request) {
     const { data: { user }, error: authError } = await auth.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ error: 'ログインの有効期限が切れています。' }, { status: 401 });
 
-    const { id, matchId, action, winnerId, ownerToken } = await request.json();
-    if (!id || !['reset', 'forfeit', 'undo', 'rewind-match'].includes(action) || (!['undo'].includes(action) && !matchId)) {
+    const { id, matchId, action, winnerId, ownerToken, firstScore, secondScore } = await request.json();
+    if (!id || !['reset', 'forfeit', 'undo', 'rewind-match', 'score'].includes(action) || (!['undo'].includes(action) && !matchId)) {
       return NextResponse.json({ error: '操作内容が正しくありません。' }, { status: 400 });
     }
     const admin = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -65,11 +65,15 @@ export async function POST(request) {
           adminLog: [...(existing.adminLog || []), { at: new Date().toISOString(), label: `巻き戻し：${latest.label}` }].slice(-100),
         };
       } else {
-        updated = updateBracketMatch(existing, String(matchId), action, winnerId);
+        updated = action === 'score'
+          ? correctBracketScore(existing, String(matchId), firstScore, secondScore)
+          : updateBracketMatch(existing, String(matchId), action, winnerId);
         const match = (existing.bracket?.rounds || []).flat().find(item => String(item.id) === String(matchId));
-        const label = action === 'reset'
+        const label = action === 'score'
+          ? `スコア修正：${match?.player1?.name || '?'} ${firstScore} - ${secondScore} ${match?.player2?.name || '?'}`
+          : action === 'reset'
           ? `結果リセット：${match?.player1?.name || '?'} VS ${match?.player2?.name || '?'}`
-          : `不戦勝：${[match?.player1, match?.player2].find(p => String(p?.id) === String(winnerId))?.name || '?'}`;
+          : `不戦勝：${[match?.player1, match.player2].find(p => String(p?.id) === String(winnerId))?.name || '?'}`;
         const at = new Date().toISOString();
         updated.adminHistory = [...history, {
           at, label,
