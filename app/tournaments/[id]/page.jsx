@@ -4,6 +4,8 @@ import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
 import { getCharacterReportPlacement } from '../../../lib/tournament-bracket-admin';
+import { getMatchReportMode } from '../../../lib/tournament-set-result';
+import MatchScoreEditor from '../../../components/MatchScoreEditor';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
 const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
@@ -36,6 +38,7 @@ export default function TournamentPage() {
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
   const [adminScore, setAdminScore] = useState({ first: 0, second: 0 });
+  const [draftSetScore, setDraftSetScore] = useState({ matchId: '', first: 0, second: 0 });
   const [showAdminLog, setShowAdminLog] = useState(false);
   const [logMatchId, setLogMatchId] = useState('');
   const [rejectSelection, setRejectSelection] = useState([]);
@@ -598,6 +601,56 @@ export default function TournamentPage() {
     } finally { setSavingBracket(false); }
   }
 
+  // All no-strike result changes go through one server-validated API.
+  // A timed-out POST may have committed, so never automatically submit twice.
+  async function submitSetAction(match, action, extras = {}) {
+    if (!match || savingBracket) return;
+    setSavingBracket(true);
+    setError('');
+    setNotice('');
+    try {
+      const { data } = await getSupabaseBrowserClient().auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error('ログインが必要です。');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 18000);
+      try {
+        const response = await fetch('/api/tournaments/set-result', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ id, matchId: match.id, action, ...extras }),
+          signal: controller.signal,
+        });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'スコアを保存できませんでした。');
+      } finally { clearTimeout(timer); }
+      const owner = localStorage.getItem(OWNER_KEY) || '';
+      const refreshController = new AbortController();
+      const refreshTimer = setTimeout(() => refreshController.abort(), 10000);
+      try {
+        const response = await fetch('/api/tournaments?id=' + encodeURIComponent(id) +
+          '&ownerToken=' + encodeURIComponent(owner) + '&view=live', {
+          cache: 'no-store', headers: { Authorization: 'Bearer ' + token },
+          signal: refreshController.signal,
+        });
+        if (response.ok) {
+          const body = await response.json();
+          if (body.tournament) applyTournamentSnapshot(body.tournament);
+        }
+      } finally { clearTimeout(refreshTimer); }
+      if (action === 'stream-game') {
+        setNotice('配信台のスコアを更新しました。');
+        setAdminMatchSelection(null);
+      } else if (action === 'submit') setNotice('結果を申告しました。相手の確認を待っています。');
+      else if (action === 'dispute') setNotice('結果に異議を出しました。相手に再入力を依頼してください。');
+      else { setNotice('対戦結果を確定しました。'); setAdminMatchSelection(null); }
+    } catch (e) {
+      setError(e?.name === 'AbortError'
+        ? '通信が時間切れになりました。保存されている可能性があるため、スコアを確認してから再操作してください。'
+        : e.message || 'スコアを保存できませんでした。');
+    } finally { setSavingBracket(false); }
+  }
+
   async function recordMatchGame(roundIndex, matchIndex, winnerId, confirmedBracket = null) {
     const bracket = confirmedBracket || JSON.parse(JSON.stringify(tournament.bracket));
     const match = bracket.rounds[roundIndex][matchIndex];
@@ -978,6 +1031,63 @@ export default function TournamentPage() {
               const code = isStreaming ? '' : opponent?.friendCode;
               return code ? <div className="match-opponent-friend-code"><span>対戦相手のフレンドコード</span><strong>{code}</strong></div> : null;
             })()}
+            {!tournament.stageRejects ? (() => {
+              const mode = getMatchReportMode(tournament, match);
+              const pending = state?.pendingResult;
+              const meId = String(currentUserId || '');
+              const isMyPending = pending && String(pending.submittedBy) === meId;
+              const target = Number(tournament.bestOf) === 5 ? 3 : 2;
+              const firstScore = draftSetScore.matchId === match.id
+                ? draftSetScore.first : Number(state?.score?.[match.player1.id] || 0);
+              const secondScore = draftSetScore.matchId === match.id
+                ? draftSetScore.second : Number(state?.score?.[match.player2.id] || 0);
+              const editFirst = next => setDraftSetScore({
+                matchId: match.id, first: next, second: secondScore,
+              });
+              const editSecond = next => setDraftSetScore({
+                matchId: match.id, first: firstScore, second: next,
+              });
+              if (mode === 'stream') return <div className="set-score-pending" role="status">
+                <strong>配信台の対戦</strong>
+                <p style={{ marginTop: 8, marginBottom: 0 }}>スコアは主催者がゲームごとに入力します。選手の操作は不要です。</p>
+              </div>;
+              if (!state) return <p className="setting-help">対戦を準備しています…</p>;
+              if (pending) return <div className="set-score-pending" role="status">
+                <h3 className="match-result-heading">セット結果の確認</h3>
+                <MatchScoreEditor
+                  firstName={match.player1.name} secondName={match.player2.name}
+                  firstScore={pending.firstScore} secondScore={pending.secondScore}
+                  target={target} readOnly />
+                {isMyPending
+                  ? <p>結果を申告しました。相手選手の確認を待っています。</p>
+                  : <><p>相手から申告された結果を確認してください。</p>
+                    <div className="set-score-pending-actions">
+                      <button type="button" className="bracket-admin-reset" disabled={savingBracket}
+                        onClick={() => submitSetAction(match, 'dispute')}>結果が違う</button>
+                      <button type="button" disabled={savingBracket}
+                        onClick={() => submitSetAction(match, 'confirm')}>承認する</button>
+                    </div></>}
+              </div>;
+              return <div className="set-score-pending">
+                <h3 className="match-result-heading">セット終了後のスコアを入力</h3>
+                {state.disputedAt && <p className="form-error">申告に異議がありました。正しい結果を再入力してください。</p>}
+                <MatchScoreEditor
+                  firstName={match.player1.name} secondName={match.player2.name}
+                  firstScore={firstScore} secondScore={secondScore}
+                  target={target} onFirstChange={editFirst} onSecondChange={editSecond}
+                  disabled={savingBracket}/>
+                <p className="setting-help">BO{Number(tournament.bestOf) === 5 ? 5 : 3}のセット終了後、どちらか1人が報告。相手が確認すると確定します。</p>
+                <button type="button" className="set-score-primary" disabled={savingBracket ||
+                  !((firstScore === target && secondScore < target) ||
+                    (secondScore === target && firstScore < target))}
+                  onClick={() => {
+                    if (window.confirm(match.player1.name + ' ' + firstScore + ' - ' +
+                      secondScore + ' ' + match.player2.name + ' で申告しますか？')) {
+                      submitSetAction(match, 'submit', { firstScore, secondScore });
+                    }
+                  }}>このスコアを申告</button>
+              </div>;
+            })() : <>
             {state && <div className="match-next-action" role="status" aria-live="polite">
               {!game?.stage
                 ? <><strong>{rejectsDone ? (canActFor(chooserId) ? 'あなたの番：ステージを選択' : '相手のステージ選択待ち') : (canActFor(rejectTurnId) ? 'あなたの番：ステージを拒否' : '相手のステージ拒否待ち')}</strong><span>第{state.gameNumber}ゲーム</span></>
@@ -1007,6 +1117,7 @@ export default function TournamentPage() {
                   {game?.results?.[String(p1Id)] && game?.results?.[String(match.player2.id)] && game.results[String(p1Id)]===game.results[String(match.player2.id)] && <p className="form-error">勝敗報告が一致していません。WIN / LOSEを確認してください。</p>}
                 </> : <p className="setting-help">選手の勝敗報告を待っています…</p>}
               </>}
+            </>}
             </>}
           </section>;
         })()}
@@ -1063,25 +1174,60 @@ export default function TournamentPage() {
             </div>
             {showScoreEditor && <div className="bracket-admin-forfeit" style={{ marginTop: 10 }}>
               <p>試合のスコアを入力してください（BO{Number(tournament.bestOf) === 5 ? 5 : 3}）。</p>
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', margin: '12px 0' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: '1 1 120px' }}>
-                  <strong>{selectedAdminMatch.player1.name}</strong>
-                  <input type="number" inputMode="numeric" min="0" max={Number(tournament.bestOf) === 5 ? 3 : 2} step="1"
-                    value={adminScore.first} disabled={savingBracket} aria-label={selectedAdminMatch.player1.name + 'のスコア'}
-                    onChange={event => setAdminScore(prev => ({ ...prev, first: event.target.value }))} />
-                </label>
-                <strong style={{ alignSelf: 'center' }}>−</strong>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, flex: '1 1 120px' }}>
-                  <strong>{selectedAdminMatch.player2.name}</strong>
-                  <input type="number" inputMode="numeric" min="0" max={Number(tournament.bestOf) === 5 ? 3 : 2} step="1"
-                    value={adminScore.second} disabled={savingBracket} aria-label={selectedAdminMatch.player2.name + 'のスコア'}
-                    onChange={event => setAdminScore(prev => ({ ...prev, second: event.target.value }))} />
-                </label>
-              </div>
+              <MatchScoreEditor
+                firstName={selectedAdminMatch.player1.name} secondName={selectedAdminMatch.player2.name}
+                firstScore={adminScore.first} secondScore={adminScore.second}
+                target={Number(tournament.bestOf) === 5 ? 3 : 2}
+                onFirstChange={first => setAdminScore(prev => ({ ...prev, first }))}
+                onSecondChange={second => setAdminScore(prev => ({ ...prev, second }))}
+                disabled={savingBracket} />
               <p style={{ fontSize: 12 }}>勝利本数に達すると勝者を確定します。修正するとこの試合のステージ・報告状況はリセットされます。</p>
               <button type="button" disabled={savingBracket || adminScore.first === '' || adminScore.second === ''}
                 onClick={() => correctMatchScore(selectedAdminMatch)}>{savingBracket ? '保存中…' : 'スコアを保存'}</button>
             </div>}
+            {!tournament.stageRejects && getMatchReportMode(tournament, selectedAdminMatch) === 'stream' && !selectedAdminMatch.winnerId &&
+              <div className="set-score-pending">
+                <strong>配信台のゲーム結果を記録</strong>
+                <MatchScoreEditor
+                  firstName={selectedAdminMatch.player1.name} secondName={selectedAdminMatch.player2.name}
+                  firstScore={selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player1.id] || 0}
+                  secondScore={selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player2.id] || 0}
+                  target={Number(tournament.bestOf) === 5 ? 3 : 2} readOnly />
+                <p className="setting-help">1ゲーム終了するごとに勝者を押してください。OBSのスコアにも反映されます。</p>
+                <div className="set-score-pending-actions">
+                  <button type="button" disabled={savingBracket}
+                    onClick={() => {
+                      if (window.confirm(selectedAdminMatch.player1.name + ' のゲーム勝利を記録しますか？')) {
+                        submitSetAction(selectedAdminMatch, 'stream-game', {
+                          winnerId: selectedAdminMatch.player1.id,
+                          gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
+                        });
+                      }
+                    }}>{selectedAdminMatch.player1.name} 勝利</button>
+                  <button type="button" disabled={savingBracket}
+                    onClick={() => {
+                      if (window.confirm(selectedAdminMatch.player2.name + ' のゲーム勝利を記録しますか？')) {
+                        submitSetAction(selectedAdminMatch, 'stream-game', {
+                          winnerId: selectedAdminMatch.player2.id,
+                          gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
+                        });
+                      }
+                    }}>{selectedAdminMatch.player2.name} 勝利</button>
+                </div>
+              </div>}
+            {!tournament.stageRejects && getMatchReportMode(tournament, selectedAdminMatch) === 'set' &&
+              selectedAdminMatch.matchState?.pendingResult && <div className="set-score-pending">
+                <strong>セット結果・確認待ち</strong>
+                <MatchScoreEditor
+                  firstName={selectedAdminMatch.player1.name} secondName={selectedAdminMatch.player2.name}
+                  firstScore={selectedAdminMatch.matchState.pendingResult.firstScore}
+                  secondScore={selectedAdminMatch.matchState.pendingResult.secondScore}
+                  target={Number(tournament.bestOf) === 5 ? 3 : 2} readOnly />
+                <p className="setting-help">相手の確認待ちです。進行が止まった場合のみ、結果を確認して代理確定してください。</p>
+                <button type="button" disabled={savingBracket}
+                  onClick={() => window.confirm('主催者としてこのセット結果を代理確定しますか？') &&
+                    submitSetAction(selectedAdminMatch, 'owner-confirm')}>主催者が代理確定</button>
+              </div>}
             {showForfeitChoices && !selectedAdminMatch.winnerId && <div className="bracket-admin-forfeit">
               <p>不戦勝にする選手を選択してください。</p>
               <div className="bracket-admin-actions">
