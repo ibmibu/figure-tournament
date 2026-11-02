@@ -1197,8 +1197,8 @@ export default function TournamentPage() {
                   setShowScoreEditor(false);
                 } else {
                   setAdminScore({
-                    first: Number(selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player1.id] || 0),
-                    second: Number(selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player2.id] || 0),
+                    first: Number(selectedAdminMatch.matchState?.liveScore?.[selectedAdminMatch.player1.id] ?? selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player1.id] ?? 0),
+                    second: Number(selectedAdminMatch.matchState?.liveScore?.[selectedAdminMatch.player2.id] ?? selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player2.id] ?? 0),
                   });
                   setShowForfeitChoices(false);
                   setShowScoreEditor(true);
