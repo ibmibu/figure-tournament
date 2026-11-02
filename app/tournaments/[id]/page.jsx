@@ -536,24 +536,36 @@ export default function TournamentPage() {
       const { data } = await getSupabaseBrowserClient().auth.getSession();
       const token = data.session?.access_token;
       if (!token) throw new Error('勝敗報告にはログインが必要です。');
-      const response = await fetch('/api/tournaments/match-result', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result }),
-      });
-      const body = await response.json();
+      // Never leave the scoreboard permanently locked on an unanswered POST.
+      // Aborting locally does not prove the server did not save the vote.
+      const reportController = new AbortController();
+      const reportTimer = setTimeout(() => reportController.abort(), 18000);
+      let response, body;
+      try {
+        response = await fetch('/api/tournaments/match-result', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id, matchId: match.id, gameNumber: match.matchState.gameNumber, result }),
+          signal: reportController.signal,
+        });
+        body = await response.json();
+      } finally { clearTimeout(reportTimer); }
       if (!response.ok) {
         if (response.status === 409) {
           // The other player may have advanced the game first. Refresh the
           // authoritative snapshot; never blindly replay a stale result.
           const owner = localStorage.getItem(OWNER_KEY) || '';
-          const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
-            cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
-          });
-          if (latest.ok) {
-            const snapshot = await latest.json();
-            if (snapshot.tournament) applyTournamentSnapshot(snapshot.tournament);
-          }
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 9000);
+          try {
+            const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live`, {
+              cache: 'no-store', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal,
+            });
+            if (latest.ok) {
+              const snapshot = await latest.json();
+              if (snapshot.tournament) applyTournamentSnapshot(snapshot.tournament);
+            }
+          } finally { clearTimeout(timer); }
         }
         throw new Error(response.status === 409
           ? '他の報告が先に反映されました。最新の対戦状況を確認してください。'
@@ -561,8 +573,29 @@ export default function TournamentPage() {
       }
       // Preserve the current stream assignment if the result response omits it.\n      setTournament(prev => ({ ...body.tournament, isOwner: prev?.isOwner, streamMatchId: body.tournament.streamMatchId !== undefined ? body.tournament.streamMatchId : (prev?.streamMatchId ?? null), effectiveStreamMatchId: body.tournament.effectiveStreamMatchId !== undefined ? body.tournament.effectiveStreamMatchId : (body.tournament.streamMatchId !== undefined ? body.tournament.streamMatchId : (prev?.effectiveStreamMatchId ?? prev?.streamMatchId ?? null)) }));
 
-    } catch (e) { setError(e.message || '勝敗報告に失敗しました。'); }
-    finally { setSavingBracket(false); }
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        // A timed-out write can commit on the server: refresh once without
+        // accidentally submitting a second identical vote.
+        try {
+          const { data } = await getSupabaseBrowserClient().auth.getSession();
+          const owner = localStorage.getItem(OWNER_KEY) || '';
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 8000);
+          try {
+            const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live`, {
+              cache: 'no-store', signal: controller.signal,
+              headers: data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {},
+            });
+            if (latest.ok) {
+              const snapshot = await latest.json();
+              if (snapshot.tournament) applyTournamentSnapshot(snapshot.tournament);
+            }
+          } finally { clearTimeout(timer); }
+        } catch {}
+        setError('勝敗報告の通信が時間切れになりました。保存済みの可能性があるため、最新のスコアを確認してから操作してください。');
+      } else setError(e.message || '勝敗報告に失敗しました。');
+    } finally { setSavingBracket(false); }
   }
 
   async function recordMatchGame(roundIndex, matchIndex, winnerId, confirmedBracket = null) {
