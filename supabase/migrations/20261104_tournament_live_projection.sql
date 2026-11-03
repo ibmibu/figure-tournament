@@ -12,6 +12,7 @@ AS
 SELECT
   id,
   created_at,
+  owner_token,
   jsonb_build_object(
     'id', data->'id',
     'name', data->'name',
@@ -32,7 +33,12 @@ SELECT
     'characterDeclarations', data->'characterDeclarations',
     'characterReports', data->'characterReports',
     'streamUrl', data->'streamUrl',
-    'streamFriendCode', data->'streamFriendCode'
+    'streamFriendCode', data->'streamFriendCode',
+    'seriesTags', data->'seriesTags',
+    'organizerName', data->'organizerName',
+    'createdAt', data->'createdAt',
+    'completedAt', data->'completedAt',
+    'description', data->'description'
   ) AS live_data
 FROM public.tournaments;
 
