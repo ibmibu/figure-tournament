@@ -6,8 +6,9 @@ export default function MatchScoreEditor({
   firstName, secondName, firstScore, secondScore, target = 2,
   onFirstChange, onSecondChange, disabled = false, readOnly = false,
   disableIncrease = false, disableDecrease = false, hideNames = false,
+  disableFirstIncrease = false, disableSecondIncrease = false,
 }) {
-  const renderPlayer = (name, score, setScore) => (
+  const renderPlayer = (name, score, setScore, disableThisIncrease) => (
     <div className="set-score-player">
       {!hideNames && <span className="set-score-player-name" title={name}>{name}</span>}
       <strong className="set-score-digit" aria-label={name + 'の勝利数'}>{Number(score) || 0}</strong>
@@ -16,14 +17,14 @@ export default function MatchScoreEditor({
           disabled={disabled || disableDecrease || Number(score) <= 0}
           onClick={() => setScore(Math.max(0, Number(score) - 1))}>−</button>
         <button type="button" aria-label={name + 'のスコアを増やす'}
-          disabled={disabled || disableIncrease || Number(score) >= target}
+          disabled={disabled || disableIncrease || disableThisIncrease || Number(score) >= target}
           onClick={() => setScore(Math.min(target, Number(score) + 1))}>＋</button>
       </div>}
     </div>
   );
   return <div className="set-score-editor">
-    {renderPlayer(firstName, firstScore, onFirstChange)}
+    {renderPlayer(firstName, firstScore, onFirstChange, disableFirstIncrease)}
     <span className="set-score-vs" aria-hidden="true">VS</span>
-    {renderPlayer(secondName, secondScore, onSecondChange)}
+    {renderPlayer(secondName, secondScore, onSecondChange, disableSecondIncrease)}
   </div>;
 }
