@@ -124,20 +124,38 @@ function errorResponse(error, fallback) {
   );
 }
 
-// Coalesce concurrent reads for the same tournament within one server instance.
-// No TTL: subsequent polls always reach the database, preserving match freshness.
+// Coalesce concurrent reads and briefly reuse the raw database row within
+// one server instance. Redaction is still performed separately for each caller;
+// never cache the user-specific response or authorization decision here.
 const tournamentReads = new Map();
-async function readTournamentRow(supabase, id) {
-  let pending = tournamentReads.get(id);
-  if (!pending) {
-    pending = supabase.from('tournaments')
-      .select('id,data,owner_token,created_at').eq('id', id).maybeSingle();
-    tournamentReads.set(id, pending);
-    Promise.resolve(pending).finally(() => {
-      if (tournamentReads.get(id) === pending) tournamentReads.delete(id);
-    }).catch(() => {});
+const TOURNAMENT_ROW_TTL_MS = 1500;
+async function readTournamentRow(supabase, id, bypassCache = false) {
+  const now = Date.now();
+  const cached = tournamentReads.get(id);
+  if (!bypassCache && cached && (cached.pending || cached.expires > now)) {
+    return cached.pending || cached.result;
   }
-  return pending;
+  const entry = { pending: null, result: null, expires: 0 };
+  const pending = Promise.resolve(supabase.from('tournaments')
+    .select('id,data,owner_token,created_at').eq('id', id).maybeSingle());
+  entry.pending = pending;
+  tournamentReads.set(id, entry);
+  try {
+    const result = await pending;
+    if (tournamentReads.get(id) === entry) {
+      entry.pending = null;
+      if (!result.error) {
+        entry.result = result;
+        entry.expires = Date.now() + TOURNAMENT_ROW_TTL_MS;
+      } else {
+        tournamentReads.delete(id);
+      }
+    }
+    return result;
+  } catch (error) {
+    if (tournamentReads.get(id) === entry) tournamentReads.delete(id);
+    throw error;
+  }
 }
 
 
@@ -179,7 +197,7 @@ export async function GET(request) {
     const id = searchParams.get('id');
     const legacyOwnerToken = searchParams.get('ownerToken') || '';
     if (id) {
-      const { data, error } = await readTournamentRow(supabase, id);
+      const { data, error } = await readTournamentRow(supabase, id, searchParams.has('fresh'));
       if (error) throw error;
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
       const tournament = publicTournament(data, user, legacyOwnerToken);
