@@ -129,6 +129,13 @@ function errorResponse(error, fallback) {
 // never cache the user-specific response or authorization decision here.
 const tournamentReads = new Map();
 const TOURNAMENT_ROW_TTL_MS = 1500;
+const FINISHED_TOURNAMENT_ROW_TTL_MS = 60000;
+const MAX_TOURNAMENT_ROW_CACHE_ENTRIES = 200;
+function isFinishedTournamentRow(row) {
+  const tournament = row?.data || {};
+  return tournament.bracket?.complete === true ||
+    ['終了', '終了済み', '大会終了'].includes(tournament.status);
+}
 async function readTournamentRow(supabase, id, bypassCache = false) {
   const now = Date.now();
   const cached = tournamentReads.get(id);
@@ -146,7 +153,19 @@ async function readTournamentRow(supabase, id, bypassCache = false) {
       entry.pending = null;
       if (!result.error) {
         entry.result = result;
-        entry.expires = Date.now() + TOURNAMENT_ROW_TTL_MS;
+        entry.expires = Date.now() + (isFinishedTournamentRow(result.data)
+          ? FINISHED_TOURNAMENT_ROW_TTL_MS : TOURNAMENT_ROW_TTL_MS);
+        // Bound memory usage in long-lived server instances.
+        if (tournamentReads.size > MAX_TOURNAMENT_ROW_CACHE_ENTRIES) {
+          for (const [key, value] of tournamentReads) {
+            if (!value.pending && value.expires <= Date.now()) tournamentReads.delete(key);
+          }
+          while (tournamentReads.size > MAX_TOURNAMENT_ROW_CACHE_ENTRIES) {
+            const oldestKey = tournamentReads.keys().next().value;
+            if (oldestKey === undefined) break;
+            tournamentReads.delete(oldestKey);
+          }
+        }
       } else {
         tournamentReads.delete(id);
       }
