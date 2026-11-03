@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
 import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
-import { advanceMatch, adjustLiveSetScore, getMatchReportMode, initializeScoreState, liveSetScores, scoreTarget, validateFinalScore } from '../../../../lib/tournament-set-result';
+import { advanceMatch, adjustLiveSetScore, getMatchReportMode, initializeScoreState, liveSetScores, scoreTarget, setLiveSetScores, validateFinalScore } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 const client = key => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, {
@@ -18,8 +18,8 @@ export async function POST(request) {
     const { data: { user }, error: authError } = await client(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY).auth.getUser(token);
     if (authError || !user) return fail('ログインし直してください。', 401);
     const { id, matchId, action, firstScore, secondScore, winnerId, gameNumber,
-      scorePlayerId, scoreDelta, scoreVersion } = await request.json();
-    if (!id || !matchId || !['submit', 'confirm', 'dispute', 'owner-confirm', 'stream-game', 'score-adjust'].includes(action))
+      scorePlayerId, scoreDelta, scoreVersion, scoreFirst, scoreSecond } = await request.json();
+    if (!id || !matchId || !['submit', 'confirm', 'dispute', 'owner-confirm', 'stream-game', 'score-adjust', 'score-set'].includes(action))
       return fail('操作内容が不正です。');
     const db = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -78,14 +78,19 @@ export async function POST(request) {
         } else {
           updated = { ...current, bracket };
         }
-      } else if (action === 'score-adjust') {
+      } else if (action === 'score-adjust' || action === 'score-set') {
         try {
-          adjustLiveSetScore(current, match, scorePlayerId, scoreDelta, scoreVersion, user.id);
+          if (action === 'score-set') {
+            setLiveSetScores(current, match, scoreFirst, scoreSecond, scoreVersion, user.id);
+            label = '暫定スコア更新：' + match.player1.name + ' ' + scoreFirst + '-' + scoreSecond + ' ' + match.player2.name;
+          } else {
+            adjustLiveSetScore(current, match, scorePlayerId, scoreDelta, scoreVersion, user.id);
+            label = (scoreDelta === 1 ? '暫定スコア加点：' : '暫定スコア訂正：') +
+              [match.player1, match.player2].find(p => String(p.id) === String(scorePlayerId))?.name;
+          }
         } catch (error) {
           return fail(error.message || 'スコアを更新できませんでした。', 409);
         }
-        label = (scoreDelta === 1 ? '暫定スコア加点：' : '暫定スコア訂正：') +
-          [match.player1, match.player2].find(p => String(p.id) === String(scorePlayerId))?.name;
         updated = { ...current, bracket };
       } else if (action === 'submit') {
         if (state.pendingResult) return fail('この試合は結果の確認待ちです。', 409);
@@ -139,7 +144,7 @@ export async function POST(request) {
         ok: true,
         // Small authoritative acknowledgement: the writer's score changes
         // without another heavyweight tournament GET round-trip.
-        ...(action === 'score-adjust' ? { scoreUpdate: {
+        ...(['score-adjust', 'score-set'].includes(action) ? { scoreUpdate: {
           matchId: String(matchId),
           liveScore: liveSetScores(match),
           scoreVersion: state.scoreVersion,
