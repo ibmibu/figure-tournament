@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findParticipantOverlay } from '../../../../lib/overlay-participant-match';
-import { getMatchReportMode, hasStreamUrl, liveSetScores } from '../../../../lib/tournament-set-result';
+import { editableSetScores, getMatchReportMode, hasStreamUrl } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,10 +115,10 @@ export async function GET(request) {
     const roundIndex = personalMatch
       ? personalMatch.roundIndex
       : rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
-    // A set awaiting approval still needs its actual live score in OBS.
-    // Keep tournament advancement based on confirmed matchState.score only.
-    const score = getMatchReportMode(t, selected) === 'set' && !selected.winnerId
-      ? liveSetScores(selected) : selected.matchState?.score || {};
+    // Display provisional edits for both regular and broadcast matches.
+    // Bracket progression always uses matchState.score only after confirmation.
+    const score = !t.stageRejects && !selected.winnerId
+      ? editableSetScores(t, selected) : selected.matchState?.score || {};
     const match = {
       player1: selected.player1.name || '',
       player2: selected.player2.name || '',
