@@ -3,9 +3,10 @@
 -- Run manually in Supabase SQL Editor after taking a backup.
 -- Only the server-side service role can read this view.
 --
--- The projection deliberately excludes organizer logs, stats snapshots,
--- historical match logs, declarations and contact data. It is NOT yet used
--- by the application; switch reads only after client compatibility testing.
+-- This projection excludes bulky stats snapshots, but retains the fields
+-- needed by the current live page (including organizer logs and stream settings).
+-- Privacy redaction MUST continue in the server API. Never expose this view
+-- directly to browser clients. Enable only after comparison testing.
 CREATE OR REPLACE VIEW public.tournament_live_projection
 WITH (security_invoker = true)
 AS
@@ -38,7 +39,14 @@ SELECT
     'organizerName', data->'organizerName',
     'createdAt', data->'createdAt',
     'completedAt', data->'completedAt',
-    'description', data->'description'
+    'description', data->'description',
+    'matchLogs', data->'matchLogs',
+    'adminHistory', data->'adminHistory',
+    'adminLog', data->'adminLog',
+    'streamMatchId', data->'streamMatchId',
+    'resultPlacements', data->'resultPlacements',
+    'autoSeed', data->'autoSeed',
+    'overlaySettings', data->'overlaySettings'
   ) AS live_data
 FROM public.tournaments;
 
