@@ -616,7 +616,7 @@ export default function TournamentPage() {
 
   // All no-strike result changes go through one server-validated API.
   // A timed-out POST may have committed, so never automatically submit twice.
-  // Keep the remaining shared cooldown visible on both devices.
+  // Keep the short opponent-edit lock clock current on both devices.
   useEffect(() => {
     if (!tournament?.bracket || tournament.stageRejects || !activeMatchId) return;
     const timer = setInterval(() => setScoreClock(Date.now()), 500);
@@ -1519,7 +1519,10 @@ export default function TournamentPage() {
           return <div className={`bracket-match${canSelect ? ' match-startable' : ''}${isAdminSelected ? ' match-admin-selected' : ''}${isStreamMatch ? ' match-streaming' : ''}`} style={{ top: `${64 + (((mi + 0.5) * (2 ** ri)) - 0.5) * 104}px` }} key={match.id} onClick={canSelect ? handleSelect : undefined} role={canSelect ? "button" : undefined} tabIndex={canSelect ? 0 : undefined} aria-label={canSelect ? `${match.player1?.name || '未定'} 対 ${match.player2?.name || '未定'}の${isOwner ? '管理メニュー' : '対戦画面'}を開く` : undefined} onKeyDown={canSelect ? e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelect(); } } : undefined}>
             
             {isStreamMatch && <span className="bracket-stream-badge">● 配信台</span>}
-            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) ? (player?.name || "") : ""}{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) && player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? ((!tournament.stageRejects && getMatchReportMode(tournament, match) === 'set' && !match.winnerId ? liveSetScores(match) : state?.score || {})[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
+            <div className="match-players">{[match.player1, match.player2].map((player, pi) => <div key={pi} className={"match-player-line" + (!player ? " empty-player-line" : "") + (match.player1 && match.player2 && match.winnerId === player?.id ? " winner-line" : "") + (match.winnerId && match.winnerId !== player?.id ? " loser-line" : "")}><span title={player?.name || ""}>{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) ? (player?.name || "") : ""}{(ri === 0 || tournament.bracket.rounds[ri - 1]?.[mi * 2 + pi]?.winnerId) && player?.isDemo ? "（デモ）" : ""}</span><strong className={"player-score" + (match.player1 && match.player2 && match.winnerId === player?.id ? " score-winner" : "")}>{player ? (match.resultType === 'forfeit' ? (String(match.winnerId) === String(player.id) ? 'W' : '—') : (match.player1 && match.player2 ? ((!tournament.stageRejects && !match.winnerId
+              ? (scoreDraft?.matchId === String(match.id)
+                ? scoreDraft.scores : editableSetScores(tournament, match))
+              : state?.score || {})[player.id] ?? 0) : '')) : ""}</strong></div>)}</div>
 
 
             {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 0 && mi + 1 < round.length && (() => {
