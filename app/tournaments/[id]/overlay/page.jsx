@@ -29,9 +29,12 @@ export default function TournamentOverlay() {
     let controller;
     let debounce;
     let holdTimer;
+    let fallbackTimer;
+    let inFlight = false;
     let requestVersion = 0;
     const refresh = async () => {
-      if (!active) return;
+      if (!active || inFlight) return;
+      inFlight = true;
       const version = ++requestVersion;
       controller?.abort();
       controller = new AbortController();
@@ -58,7 +61,7 @@ export default function TournamentOverlay() {
           setLoadError(error.message || '通信に失敗しました。');
           setMatchLoaded(true);
         }
-      }
+      } finally { inFlight = false; }
     };
     const scheduleRefresh = () => {
       clearTimeout(debounce);
@@ -81,10 +84,14 @@ export default function TournamentOverlay() {
     } catch (error) {
       setLoadError(error.message || 'Realtimeに接続できませんでした。');
     }
-    // Initial read also works if the subscription is delayed or unavailable.
+    // Realtime signals are best-effort (including when the trigger is absent).
+    // OBS must still pick up the score through a bounded fallback refresh.
+    // Do not abort a slow request on every fallback tick.
+    fallbackTimer = setInterval(() => { if (!document.hidden) void refresh(); }, 2500);
     refresh();
     return () => {
       active = false;
+      clearInterval(fallbackTimer);
       clearTimeout(debounce);
       clearTimeout(holdTimer);
       controller?.abort();
