@@ -38,3 +38,30 @@ SELECT
     / NULLIF(SUM(pg_column_size(t.data)), 0), 1) AS live_percent_of_full
 FROM public.tournaments t
 JOIN public.tournament_live_projection p ON p.id = t.id;
+
+-- Compare actual JSON text byte lengths, which are closer to the
+-- PostgREST response payload than pg_column_size(jsonb).
+-- JSONB internal storage sizes are NOT network transfer sizes.
+SELECT
+  t.id,
+  octet_length(t.data::text) AS full_json_bytes,
+  octet_length(p.live_data::text) AS live_json_bytes,
+  ROUND(100.0 * octet_length(p.live_data::text)
+    / NULLIF(octet_length(t.data::text), 0), 1) AS live_json_percent,
+  ARRAY(
+    SELECT key FROM jsonb_object_keys(t.data) AS key
+    WHERE NOT (p.live_data ? key)
+    ORDER BY key
+  ) AS omitted_keys
+FROM public.tournaments t
+JOIN public.tournament_live_projection p ON p.id = t.id
+ORDER BY full_json_bytes DESC;
+
+SELECT
+  COUNT(*) AS tournament_count,
+  SUM(octet_length(t.data::text)) AS full_json_bytes,
+  SUM(octet_length(p.live_data::text)) AS live_json_bytes,
+  ROUND(100.0 * SUM(octet_length(p.live_data::text))
+    / NULLIF(SUM(octet_length(t.data::text)), 0), 1) AS live_json_percent
+FROM public.tournaments t
+JOIN public.tournament_live_projection p ON p.id = t.id;
