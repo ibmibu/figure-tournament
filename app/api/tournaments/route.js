@@ -136,6 +136,16 @@ function isFinishedTournamentRow(row) {
   return tournament.bracket?.complete === true ||
     ['終了', '終了済み', '大会終了'].includes(tournament.status);
 }
+// Disabled by default until the SQL view is installed and verified.
+// This is an opt-in path: the legacy full-row read remains the fallback.
+async function readLiveTournamentProjection(supabase, id) {
+  const { data, error } = await supabase.from('tournament_live_projection')
+    .select('id,created_at,owner_token,live_data').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data ? { id: data.id, created_at: data.created_at,
+    owner_token: data.owner_token, data: data.live_data || {} } : null;
+}
+
 async function readTournamentRow(supabase, id, bypassCache = false) {
   const now = Date.now();
   const cached = tournamentReads.get(id);
@@ -216,13 +226,26 @@ export async function GET(request) {
     const id = searchParams.get('id');
     const legacyOwnerToken = searchParams.get('ownerToken') || '';
     if (id) {
-      const { data, error } = await readTournamentRow(supabase, id, searchParams.has('fresh'));
-      if (error) throw error;
+      const liveMode = searchParams.get('view') === 'live';
+      // Explicit server-side opt-in only. If the projection is absent or fails,
+      // preserve the existing full-row behavior for all callers.
+      let data;
+      if (liveMode && process.env.TOURNAMENT_LIVE_PROJECTION_ENABLED === 'true') {
+        try {
+          data = await readLiveTournamentProjection(supabase, id);
+        } catch (projectionError) {
+          console.warn('Live projection unavailable; falling back to full tournament row:', projectionError.message);
+        }
+      }
+      if (data === undefined) {
+        const result = await readTournamentRow(supabase, id, searchParams.has('fresh'));
+        if (result.error) throw result.error;
+        data = result.data;
+      }
       if (!data) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
       const tournament = publicTournament(data, user, legacyOwnerToken);
       // Realtime polls use view=live: avatars are large base64 payloads and
       // rarely change during a set. Fetch them only on full page loads.
-      const liveMode = searchParams.get('view') === 'live';
       if (!liveMode) {
         const participantIds = [...new Set((tournament.joinedPlayers || [])
           .filter(player => !player.isDemo)
