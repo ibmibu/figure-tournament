@@ -2,6 +2,7 @@ import { saveTournamentRevision } from '../../../lib/tournament-save';
 import { repairPrematureAdvances } from '../../../lib/tournament-bracket-admin';
 import { getEffectiveStreamMatchId } from '../../../lib/tournament-set-result';
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, createHash } from 'crypto';
 
@@ -151,6 +152,14 @@ async function readTournamentSummaries(db) {
   }
 }
 
+// Cache only the public tournament-list projection. Live tournament details,
+// authenticated views, and all writes continue to read Supabase directly.
+const cachedTournamentSummaries = unstable_cache(
+  async () => readTournamentSummaries(getAdminClient()),
+  ['public-tournament-summaries-v1'],
+  { revalidate: 20 }
+);
+
 export async function GET(request) {
   try {
     const user = await getUser(request, false);
@@ -194,7 +203,9 @@ export async function GET(request) {
     let summaryRows = null;
     if (summaryMode) {
       try {
-        summaryRows = await readTournamentSummaries(supabase);
+        summaryRows = searchParams.has('refresh')
+          ? await readTournamentSummaries(supabase)
+          : await cachedTournamentSummaries();
       } catch (projectionError) {
         // Retain compatibility with older PostgREST deployments.
         console.warn('Summary projection unavailable, using full records:', projectionError.message);
