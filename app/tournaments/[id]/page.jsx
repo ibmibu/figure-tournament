@@ -308,7 +308,8 @@ export default function TournamentPage() {
       const round = tournament.bracket.rounds[ri];
       const mi = round.findIndex(match =>
         !match.winnerId && match.player1 && match.player2 &&
-        (String(match.player1.id) === String(perspectiveId) || String(match.player2.id) === String(perspectiveId))
+        [match.player1, match.player2].some(player =>
+          !player.isDemo && String(player.userId || player.id) === String(perspectiveId))
       );
       if (mi >= 0) {
         const ownMatch = round[mi];
@@ -1111,7 +1112,30 @@ export default function TournamentPage() {
               });
               if (mode === 'stream') return <div className="set-score-pending" role="status">
                 <strong>配信台の対戦</strong>
-                <p style={{ marginTop: 8, marginBottom: 0 }}>スコアは主催者がゲームごとに入力します。選手の操作は不要です。</p>
+                {isOwner ? <>
+                  <p className="setting-help" style={{ marginTop: 8 }}>
+                    主催者として各ゲームの勝者を記録してください。選手側は閲覧のみです。
+                  </p>
+                  <MatchScoreEditor
+                    firstName={match.player1.name} secondName={match.player2.name}
+                    firstScore={state?.score?.[match.player1.id] || 0}
+                    secondScore={state?.score?.[match.player2.id] || 0}
+                    target={target} readOnly />
+                  <div className="set-score-pending-actions">
+                    <button type="button" disabled={savingBracket}
+                      onClick={() => submitSetAction(match, 'stream-game', {
+                        winnerId: match.player1.id,
+                        gameNumber: state?.gameNumber || 1,
+                      })}>{match.player1.name} 勝利</button>
+                    <button type="button" disabled={savingBracket}
+                      onClick={() => submitSetAction(match, 'stream-game', {
+                        winnerId: match.player2.id,
+                        gameNumber: state?.gameNumber || 1,
+                      })}>{match.player2.name} 勝利</button>
+                  </div>
+                </> : <p style={{ marginTop: 8, marginBottom: 0 }}>
+                  スコアは主催者がゲームごとに入力します。選手の操作は不要です。
+                </p>}
               </div>;
               if (!state) return <div className="set-score-pending">
                 <p className="setting-help">対戦を準備しています…</p>
@@ -1317,7 +1341,8 @@ export default function TournamentPage() {
           const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 || Boolean(game?.rejectVotes?.[secondId]);
           const rejectsDone = !tournament.stageRejects || (state?.gameNumber === 1 ? firstRejectDone && secondRejectDone : (game?.rejects?.length || 0) >= Number(settings.laterRejects ?? 3));
           const chooserId = state?.gameNumber === 1 ? firstId : (game?.previousWinnerId === match.player1?.id ? match.player2?.id : match.player1?.id);
-          const isOwnMatch = [match.player1, match.player2].some(player => String(player?.id) === String(currentUserId));
+          const isOwnMatch = [match.player1, match.player2].some(player =>
+            player && !player.isDemo && String(player.userId || player.id) === String(currentUserId));
           const canStartMatch = !state && (isOwner || isOwnMatch) && match.player1 && match.player2 && !match.winnerId && !tournament.bracket.complete;
           const canSelect = isOwner || canStartMatch;
           const handleSelect = () => {
