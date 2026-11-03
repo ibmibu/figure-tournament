@@ -65,3 +65,19 @@ SELECT
     / NULLIF(SUM(octet_length(t.data::text)), 0), 1) AS live_json_percent
 FROM public.tournaments t
 JOIN public.tournament_live_projection p ON p.id = t.id;
+
+-- Safety audit: distinguish deliberately omitted fields from fields used by
+-- the live API or current UI. Read-only; does not modify tournament records.
+SELECT
+  t.id,
+  key AS omitted_key,
+  CASE
+    WHEN key IN ('statsSnapshot', 'participantAvatars') THEN 'likely bulky / derived; review'
+    WHEN key IN ('isOwner', 'overlayOwnerId', 'effectiveStreamMatchId') THEN 'server-derived; stored copy should be reviewed'
+    ELSE 'REQUIRES REVIEW BEFORE ENABLEMENT'
+  END AS review_status
+FROM public.tournaments t
+JOIN public.tournament_live_projection p ON p.id = t.id
+CROSS JOIN LATERAL jsonb_object_keys(t.data) AS key
+WHERE NOT (p.live_data ? key)
+ORDER BY t.id, key;
