@@ -87,7 +87,7 @@ export default function TournamentOverlay() {
     // Realtime signals are best-effort (including when the trigger is absent).
     // OBS must still pick up the score through a bounded fallback refresh.
     // Do not abort a slow request on every fallback tick.
-    fallbackTimer = setInterval(() => { if (!document.hidden) void refresh(); }, 2500);
+    fallbackTimer = setInterval(() => { void refresh(); }, 2500);
     refresh();
     return () => {
       active = false;
