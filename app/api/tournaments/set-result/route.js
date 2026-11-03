@@ -135,7 +135,18 @@ export async function POST(request) {
         : write.eq('data->>stageActionRevision', String(revision));
       const { data: changed, error: writeError } = await write.select('id');
       if (writeError) throw writeError;
-      if (changed?.length) return NextResponse.json({ ok: true });
+      if (changed?.length) return NextResponse.json({
+        ok: true,
+        // Small authoritative acknowledgement: the writer's score changes
+        // without another heavyweight tournament GET round-trip.
+        ...(action === 'score-adjust' ? { scoreUpdate: {
+          matchId: String(matchId),
+          liveScore: liveSetScores(match),
+          scoreVersion: state.scoreVersion,
+          lastScoreIncrementAt: state.lastScoreIncrementAt || null,
+          stageActionRevision: updated.stageActionRevision,
+        } } : {}),
+      });
       // CAS lost to another player. Reload, revalidate and retry.
     }
     return fail('同時に更新が行われました。最新の結果を確認してください。', 409);
