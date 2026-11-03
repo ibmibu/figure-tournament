@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { appendMatchLog } from '../../../../lib/tournament-match-log';
 import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
-import { advanceMatch, adjustLiveSetScore, getMatchReportMode, initializeScoreState, liveSetScores, scoreTarget, setLiveSetScores, validateFinalScore } from '../../../../lib/tournament-set-result';
+import { advanceMatch, adjustLiveSetScore, editableSetScores, getEffectiveStreamMatchId, getMatchReportMode, initializeScoreState, liveSetScores, scoreTarget, setLiveSetScores, setStreamSetScores, streamSetScores, validateFinalScore } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 const client = key => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, key, {
@@ -19,7 +19,7 @@ export async function POST(request) {
     if (authError || !user) return fail('ログインし直してください。', 401);
     const { id, matchId, action, firstScore, secondScore, winnerId, gameNumber,
       scorePlayerId, scoreDelta, scoreVersion, scoreFirst, scoreSecond } = await request.json();
-    if (!id || !matchId || !['submit', 'confirm', 'dispute', 'owner-confirm', 'stream-game', 'score-adjust', 'score-set'].includes(action))
+    if (!id || !matchId || !['submit', 'confirm', 'dispute', 'owner-confirm', 'stream-game', 'stream-score-set', 'stream-confirm', 'score-adjust', 'score-set'].includes(action))
       return fail('操作内容が不正です。');
     const db = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -44,10 +44,12 @@ export async function POST(request) {
       const me = [match.player1, match.player2].find(p =>
         !p.isDemo && String(p.userId || p.id) === String(user.id));
       if (mode === 'stream') {
-        if (action !== 'stream-game') return fail('配信台のスコアは主催者が入力します。', 403);
+        if (!['stream-score-set', 'stream-confirm'].includes(action))
+          return fail('配信台のスコアは主催者が入力します。新しい画面から操作してください。', 403);
         if (!owner) return fail('配信台のスコアは主催者のみ入力できます。', 403);
       } else {
-        if (action === 'stream-game') return fail('この試合はセット結果を報告してください。', 400);
+        if (['stream-game', 'stream-score-set', 'stream-confirm'].includes(action))
+          return fail('この試合はセット結果を報告してください。', 400);
         if (action === 'owner-confirm') {
           if (!owner) return fail('主催者のみ代理確定できます。', 403);
         } else if (!me) return fail('対戦選手のみ報告・確認できます。', 403);
@@ -57,26 +59,40 @@ export async function POST(request) {
       const p1 = String(match.player1.id), p2 = String(match.player2.id);
       let label, updated;
       if (mode === 'stream') {
-        // The game number is a guard against a second tap or delayed retry
-        // recording the same game twice.
-        if (Number(gameNumber) !== Number(state.gameNumber)) return fail('スコアが更新されました。最新の結果を確認してください。', 409);
-        const winner = [match.player1, match.player2].find(p => String(p.id) === String(winnerId));
-        if (!winner) return fail('勝利した選手を選んでください。');
-        const target = scoreTarget(current);
-        if (Number(state.score[p1] || 0) >= target || Number(state.score[p2] || 0) >= target)
-          return fail('この試合はすでに終了しています。', 409);
-        state.score[winner.id] = Number(state.score[winner.id] || 0) + 1;
-        state.games.push({ number: state.gameNumber, stage: '配信台', winnerId: winner.id });
-        label = '配信台・第' + state.gameNumber + 'ゲーム勝利：' + winner.name;
-        state.gameNumber += 1;
-        if (Number(state.score[winner.id]) >= target) {
+        if (action === 'stream-score-set') {
+          try {
+            setStreamSetScores(current, match, scoreFirst, scoreSecond, scoreVersion);
+          } catch (error) {
+            return fail(error.message || 'スコアを更新できませんでした。', 409);
+          }
+          label = '配信台・暫定スコア：' + match.player1.name + ' ' +
+            scoreFirst + '-' + scoreSecond + ' ' + match.player2.name;
+          updated = { ...current, bracket };
+        } else {
+          // Never advance when the winning score is merely displayed. The
+          // organizer explicitly confirms the persisted final score.
+          const version = Number.isSafeInteger(state.scoreVersion) ? state.scoreVersion : 0;
+          if (!Number.isSafeInteger(scoreVersion) || scoreVersion !== version)
+            return fail('スコアが更新されています。最新の結果を確認してください。', 409);
+          const provisional = streamSetScores(match);
+          const first = provisional[p1], second = provisional[p2];
+          try { validateFinalScore(current, first, second); }
+          catch (error) { return fail(error.message || '最終スコアを確認してください。'); }
+          if (first !== scoreFirst || second !== scoreSecond)
+            return fail('スコアが変更されています。最新の結果を確認してください。', 409);
+          state.score = { [p1]: first, [p2]: second };
+          state.streamLiveScore = { ...state.score };
+          state.games = [];
+          state.gameNumber = first + second + 1;
+          const winner = first === scoreTarget(current) ? match.player1 : match.player2;
+          label = '配信台・結果確定：' + match.player1.name + ' ' +
+            first + '-' + second + ' ' + match.player2.name;
+          const broadcastMatchId = getEffectiveStreamMatchId(current);
           updated = advanceMatch(current, bracket, ri, mi, winner.id);
-          if (String(current.streamMatchId ?? '') === String(match.id)) {
+          if (String(broadcastMatchId ?? '') === String(match.id)) {
             updated.streamHoldMatchId = match.id;
             updated.streamHoldUntil = new Date(Date.now() + 60000).toISOString();
           }
-        } else {
-          updated = { ...current, bracket };
         }
       } else if (action === 'score-adjust' || action === 'score-set') {
         try {
@@ -144,9 +160,9 @@ export async function POST(request) {
         ok: true,
         // Small authoritative acknowledgement: the writer's score changes
         // without another heavyweight tournament GET round-trip.
-        ...(['score-adjust', 'score-set'].includes(action) ? { scoreUpdate: {
+        ...(['score-adjust', 'score-set', 'stream-score-set'].includes(action) ? { scoreUpdate: {
           matchId: String(matchId),
-          liveScore: liveSetScores(match),
+          liveScore: editableSetScores(current, match),
           scoreVersion: state.scoreVersion,
           lastScoreActorId: state.lastScoreActorId || null,
           lastScoreActionAt: state.lastScoreActionAt || null,
