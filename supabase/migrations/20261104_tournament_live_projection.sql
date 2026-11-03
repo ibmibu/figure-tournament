@@ -44,6 +44,9 @@ SELECT
     'adminHistory', data->'adminHistory',
     'adminLog', data->'adminLog',
     'streamMatchId', data->'streamMatchId',
+    'streamHoldMatchId', data->'streamHoldMatchId',
+    'streamHoldUntil', data->'streamHoldUntil',
+    'streamMatchManual', data->'streamMatchManual',
     'resultPlacements', data->'resultPlacements',
     'autoSeed', data->'autoSeed',
     'overlaySettings', data->'overlaySettings'
