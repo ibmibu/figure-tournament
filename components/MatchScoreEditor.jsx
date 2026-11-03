@@ -5,11 +5,11 @@
 export default function MatchScoreEditor({
   firstName, secondName, firstScore, secondScore, target = 2,
   onFirstChange, onSecondChange, disabled = false, readOnly = false,
-  disableIncrease = false, disableDecrease = false,
+  disableIncrease = false, disableDecrease = false, hideNames = false,
 }) {
   const renderPlayer = (name, score, setScore) => (
     <div className="set-score-player">
-      <span className="set-score-player-name" title={name}>{name}</span>
+      {!hideNames && <span className="set-score-player-name" title={name}>{name}</span>}
       <strong className="set-score-digit" aria-label={name + 'の勝利数'}>{Number(score) || 0}</strong>
       {!readOnly && <div className="set-score-stepper">
         <button type="button" aria-label={name + 'のスコアを減らす'}

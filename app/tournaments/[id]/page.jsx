@@ -1158,13 +1158,12 @@ export default function TournamentPage() {
                     </div></>}
               </div>;
               return <div className="set-score-pending">
-                <h3 className="match-result-heading">対戦スコアボード</h3>
                 {state.disputedAt && <p className="form-error">申告に異議がありました。正しい結果を再入力してください。</p>}
                 <MatchScoreEditor
                   firstName={match.player1.name} secondName={match.player2.name}
                   firstScore={firstScore} secondScore={secondScore}
                   target={target} onFirstChange={editFirst} onSecondChange={editSecond}
-                  disabled={savingBracket} disableIncrease={!canAdd}/>
+                  disabled={savingBracket} disableIncrease={!canAdd} hideNames/>
                 {cooldownLeft > 0
                   ? <p className="setting-help" role="status">次の加点まで <strong>{cooldownLeft}秒</strong>（減点はいつでも可能）</p>
                   : <p className="setting-help">加点可能・スコアは両選手とOBSに同期します。</p>}
