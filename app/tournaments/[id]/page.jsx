@@ -191,9 +191,11 @@ export default function TournamentPage() {
     let lastSync = 0;
     let realtimeConnected = false;
     let receivedSignal = false;
+    let lastSignalAt = 0;
     let pendingRefresh = false;
+    let pendingFresh = false;
     let channel = null;
-    const refresh = async () => {
+    const refresh = async (fresh = false) => {
       if (cancelled || inFlight || document.visibilityState === 'hidden') return;
       inFlight = true;
       try {
@@ -204,7 +206,7 @@ export default function TournamentPage() {
         // Keep polling the full view while registration is still open.
         const live = Boolean(tournament?.bracket);
         if (live && liveEtagRef.current) headers['If-None-Match'] = liveEtagRef.current;
-        const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}` + (live ? '&view=live' : '');
+        const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}` + (live ? '&view=live' : '') + (fresh ? '&fresh=1' : '');
         const response = await fetch(url, { cache: 'no-store', headers });
         if (cancelled) return;
         if (response.status === 304) {
@@ -223,7 +225,9 @@ export default function TournamentPage() {
         inFlight = false;
         if (pendingRefresh && !cancelled) {
           pendingRefresh = false;
-          void refresh();
+          const fresh = pendingFresh;
+          pendingFresh = false;
+          void refresh(fresh);
         }
       }
     };
@@ -239,7 +243,13 @@ export default function TournamentPage() {
           schema: 'public',
           table: 'tournament_change_signals',
           filter: `tournament_id=eq.${id}`,
-        }, () => { receivedSignal = true; if (inFlight) pendingRefresh = true; else void refresh(); });
+        }, () => {
+          receivedSignal = true;
+          lastSignalAt = Date.now();
+          // Signals must bypass the short-lived server cache to see new writes.
+          if (inFlight) { pendingRefresh = true; pendingFresh = true; }
+          else void refresh(true);
+        });
         channel.subscribe(status => {
           realtimeConnected = status === 'SUBSCRIBED';
           if (status === 'SUBSCRIBED') void refresh();
@@ -274,10 +284,13 @@ export default function TournamentPage() {
     let timer;
     const poll = () => {
       if (cancelled) return;
-      // Keep a fallback even with Realtime connected: not every write path
-      // necessarily emits a signal yet.
-      if (Date.now() - lastSync >= fallbackMs) void refresh();
-      timer = setTimeout(poll, fallbackMs);
+      // Only relax active polling after a real change signal was observed.
+      // Unproven subscriptions, disconnected sockets and stale signals retain
+      // the original fast fallback so match progression stays responsive.
+      const signalHealthy = realtimeConnected && receivedSignal && Date.now() - lastSignalAt < 60000;
+      const intervalMs = signalHealthy && ownMatch ? Math.max(fallbackMs, 10000) : fallbackMs;
+      if (Date.now() - lastSync >= intervalMs) void refresh();
+      timer = setTimeout(poll, Math.min(fallbackMs, intervalMs));
     };
     timer = setTimeout(poll, fallbackMs + staggerMs);
     const onVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
