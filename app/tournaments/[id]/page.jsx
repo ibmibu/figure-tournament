@@ -248,14 +248,21 @@ export default function TournamentPage() {
     const activeMatch = Boolean(tournament.bracket && !tournament.bracket.complete);
     const ownMatch = tournament.bracket?.rounds?.flat().find(match =>
       !match.winnerId && match.player1 && match.player2 &&
-      (String(match.player1.id) === String(currentUserId) || String(match.player2.id) === String(currentUserId))
+      [match.player1, match.player2].some(player =>
+        String(player.userId || player.id) === String(currentUserId))
     );
     const game = ownMatch?.matchState?.currentGame;
     // A chosen stage normally means players are in-game. Keep fast updates
     // during stage striking and result reporting, but reduce idle game traffic.
     const reportsPending = Boolean(game?.results && Object.keys(game.results).length);
     const playingGame = Boolean(ownMatch && game?.stage && !reportsPending);
-    const fallbackMs = playingGame ? 5000 : activeMatch && ownMatch ? 2000 : 4000;
+    // A shared live scoreboard needs fresher reads than stage-strike turns.
+    // Keep inactive viewers and traditional mid-game reports on slower polls
+    // to avoid hammering Supabase as tournament participation grows.
+    const liveSet = Boolean(ownMatch && !tournament.stageRejects &&
+      getMatchReportMode(tournament, ownMatch) === 'set');
+    const fallbackMs = liveSet ? 1500 : playingGame ? 5000
+      : activeMatch && ownMatch ? 2000 : 4000;
     // Spread clients' periodic reads across a short window: a new round can
     // otherwise cause all players' browsers to hit the API at the same instant.
     const staggerMs = Math.floor(Math.random() * 500);
@@ -621,6 +628,7 @@ export default function TournamentPage() {
       if (!token) throw new Error('ログインが必要です。');
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 18000);
+      let savedResult = null;
       try {
         const response = await fetch('/api/tournaments/set-result', {
           method: 'POST',
@@ -630,7 +638,36 @@ export default function TournamentPage() {
         });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || 'スコアを保存できませんでした。');
+        savedResult = body;
       } finally { clearTimeout(timer); }
+      if (action === 'score-adjust' && savedResult?.scoreUpdate) {
+        const update = savedResult.scoreUpdate;
+        setTournament(prev => {
+          if (!prev?.bracket?.rounds) return prev;
+          const currentMatch = prev.bracket.rounds.flat().find(item => String(item.id) === update.matchId);
+          if (!currentMatch || Number(currentMatch.matchState?.scoreVersion || 0) > Number(update.scoreVersion))
+            return prev;
+          const next = {
+            ...prev,
+            stageActionRevision: Math.max(Number(prev.stageActionRevision || 0), Number(update.stageActionRevision || 0)),
+            bracket: {
+              ...prev.bracket,
+              rounds: prev.bracket.rounds.map(round => round.map(item =>
+                String(item.id) === update.matchId ? {
+                  ...item,
+                  matchState: {
+                    ...item.matchState, liveScore: update.liveScore,
+                    scoreVersion: update.scoreVersion,
+                    lastScoreIncrementAt: update.lastScoreIncrementAt,
+                  },
+                } : item)),
+            },
+          };
+          tournamentSnapshotRef.current = JSON.stringify(next);
+          return next;
+        });
+        return;
+      }
       const owner = localStorage.getItem(OWNER_KEY) || '';
       let matchFinished = false;
       const refreshController = new AbortController();
