@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -22,17 +23,27 @@ function databaseFailure(error, action) {
   return fail(`コメントの${action}に失敗しました。管理者にエラーコードを伝えてください。`, 500, error?.code || 'UNKNOWN');
 }
 
+// Public board messages are shared across viewers. A brief server cache
+// prevents every viewer from re-reading the same rows on each poll.
+const readBoardCached = unstable_cache(async (id) => {
+  const db = adminClient();
+  const { data: tournament, error: tournamentError } = await db.from('tournaments').select('id').eq('id', id).maybeSingle();
+  if (tournamentError) throw tournamentError;
+  if (!tournament) return null;
+  const { data, error } = await db.from('tournament_board_messages')
+    .select('id,author_name,is_organizer,body,created_at')
+    .eq('tournament_id', id).order('created_at', { ascending: true }).limit(300);
+  if (error) throw error;
+  return data || [];
+}, ['public-tournament-board-v1'], { revalidate: 10 });
+
 export async function GET(request) {
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return fail('大会IDが必要です。', 400);
   try {
-    const db = adminClient();
-    const { data: tournament, error: tournamentError } = await db.from('tournaments').select('id').eq('id', id).maybeSingle();
-    if (tournamentError) return databaseFailure(tournamentError, '読み込み');
-    if (!tournament) return fail('大会が見つかりません。', 404);
-    const { data, error } = await db.from('tournament_board_messages').select('id,author_name,is_organizer,body,created_at').eq('tournament_id', id).order('created_at', { ascending: true }).limit(300);
-    if (error) return databaseFailure(error, '読み込み');
-    return NextResponse.json({ messages: data || [] });
+    const messages = await readBoardCached(id);
+    if (messages === null) return fail('大会が見つかりません。', 404);
+    return NextResponse.json({ messages });
   } catch (error) {
     console.error('Tournament board read failed', error);
     return fail('掲示板を読み込めませんでした。', 500);
