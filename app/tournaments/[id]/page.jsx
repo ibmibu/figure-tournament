@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
 import { getCharacterReportPlacement } from '../../../lib/tournament-bracket-admin';
-import { getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
+import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
@@ -626,10 +626,11 @@ export default function TournamentPage() {
   // Score controls are optimistic and save a complete draft after rapid taps,
   // instead of disabling +/- for each network round-trip.
   function queueLiveScore(match, playerId, delta) {
+    const mode = getMatchReportMode(tournament, match);
     if (!match || savingBracket || !currentUserId || (delta !== 1 && delta !== -1) ||
         match.winnerId || match.matchState?.pendingResult ||
-        getMatchReportMode(tournament, match) !== 'set' ||
-        scoreControlLockRemainingMs(match.matchState, currentUserId) > 0) return;
+        (mode === 'stream' ? !tournament?.isOwner : mode !== 'set') ||
+        (mode === 'set' && scoreControlLockRemainingMs(match.matchState, currentUserId) > 0)) return;
     const currentDraft = scoreDraftRef.current;
     if (currentDraft && currentDraft.matchId !== String(match.id)) return;
     const serverVersion = Number(match.matchState?.scoreVersion || 0);
@@ -637,7 +638,7 @@ export default function TournamentPage() {
     const useAck = !currentDraft && ack?.matchId === String(match.id) &&
       Number(ack.version) > serverVersion;
     const scores = { ...(currentDraft?.scores ||
-      (useAck ? ack.scores : liveSetScores(match))) };
+      (useAck ? ack.scores : editableSetScores(tournament, match))) };
     const version = currentDraft?.version ?? (useAck ? ack.version : serverVersion);
     const firstId = String(match.player1.id);
     const secondId = String(match.player2.id);
@@ -648,7 +649,7 @@ export default function TournamentPage() {
     if (!Number.isInteger(next) || next < 0 || next > target) return;
     scores[idToEdit] = next;
     if (scores[firstId] === target && scores[secondId] === target) return;
-    const draft = { matchId: String(match.id), firstId, secondId, scores, version };
+    const draft = { matchId: String(match.id), firstId, secondId, scores, version, mode };
     scoreDraftRef.current = draft;
     setScoreDraft(draft);
     setError('');
@@ -674,7 +675,8 @@ export default function TournamentPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify({
-            id, matchId: submitted.matchId, action: 'score-set',
+            id, matchId: submitted.matchId,
+            action: submitted.mode === 'stream' ? 'stream-score-set' : 'score-set',
             scoreFirst: submitted.scores[submitted.firstId],
             scoreSecond: submitted.scores[submitted.secondId],
             scoreVersion: submitted.version,
@@ -687,7 +689,8 @@ export default function TournamentPage() {
       } finally { clearTimeout(timeout); }
       const update = saved.scoreUpdate;
       scoreLastAckRef.current = {
-        matchId: update.matchId, scores: update.liveScore, version: update.scoreVersion,
+        matchId: update.matchId, scores: update.liveScore,
+        version: update.scoreVersion, mode: submitted.mode,
       };
       setTournament(prev => {
         if (!prev?.bracket?.rounds) return prev;
@@ -701,10 +704,13 @@ export default function TournamentPage() {
           bracket: { ...prev.bracket, rounds: prev.bracket.rounds.map(round => round.map(entry =>
             String(entry.id) === update.matchId
               ? { ...entry, matchState: {
-                  ...entry.matchState, liveScore: update.liveScore,
+                  ...entry.matchState,
+                  ...(submitted.mode === 'stream'
+                    ? { streamLiveScore: update.liveScore }
+                    : { liveScore: update.liveScore,
+                        lastScoreActorId: update.lastScoreActorId,
+                        lastScoreActionAt: update.lastScoreActionAt }),
                   scoreVersion: update.scoreVersion,
-                  lastScoreActorId: update.lastScoreActorId,
-                  lastScoreActionAt: update.lastScoreActionAt,
                 } }
               : entry)) },
         };
@@ -843,6 +849,9 @@ export default function TournamentPage() {
       } else if (action === 'score-adjust') {
         // A provisional score update never finalizes a match.
         setNotice('');
+      } else if (action === 'stream-confirm') {
+        setNotice('配信台の結果を確定しました。');
+        setAdminMatchSelection(null);
       } else if (action === 'submit') setNotice('結果を申告しました。相手の確認を待っています。');
       else if (action === 'dispute') setNotice('結果に異議を出しました。相手に再入力を依頼してください。');
       else { setNotice('対戦結果を確定しました。'); setAdminMatchSelection(null); }
@@ -1205,8 +1214,9 @@ export default function TournamentPage() {
           const settings = tournament.stageSettings || {};
           const firstId = game?.firstPlayerId;
           const p1Id = match.player1.id;
-          const liveDisplay = !tournament.stageRejects && getMatchReportMode(tournament, match) === 'set'
-            ? (scoreDraft?.matchId === String(match.id) ? scoreDraft.scores : liveSetScores(match))
+          const liveDisplay = !tournament.stageRejects
+            ? (scoreDraft?.matchId === String(match.id)
+                ? scoreDraft.scores : editableSetScores(tournament, match))
             : state?.score || {};
           const viewingPlayerId = String(currentUserId || '');
           const viewingPlayer = [match.player1, match.player2].find(p => String(p.id) === String(viewingPlayerId));
@@ -1243,7 +1253,7 @@ export default function TournamentPage() {
               const isMyPending = pending && String(pending.submittedBy) === meId;
               const target = Number(tournament.bestOf) === 5 ? 3 : 2;
               const live = scoreDraft?.matchId === String(match.id)
-                ? scoreDraft.scores : liveSetScores(match);
+                ? scoreDraft.scores : editableSetScores(tournament, match);
               const firstScore = live[match.player1.id];
               const secondScore = live[match.player2.id];
               const lockRemaining = scoreControlLockRemainingMs(state, currentUserId, scoreClock);
@@ -1252,31 +1262,32 @@ export default function TournamentPage() {
               const unsavedScore = scoreDraft?.matchId === String(match.id);
               const editFirst = next => queueLiveScore(match, match.player1.id, next > firstScore ? 1 : -1);
               const editSecond = next => queueLiveScore(match, match.player2.id, next > secondScore ? 1 : -1);
-              if (mode === 'stream') return <div className="set-score-pending" role="status">
-                <strong>配信台の対戦</strong>
+              if (mode === 'stream') return <div className="set-score-pending">
                 {isOwner ? <>
-                  <p className="setting-help" style={{ marginTop: 8 }}>
-                    主催者として各ゲームの勝者を記録してください。選手側は閲覧のみです。
-                  </p>
                   <MatchScoreEditor
                     firstName={match.player1.name} secondName={match.player2.name}
-                    firstScore={state?.score?.[match.player1.id] || 0}
-                    secondScore={state?.score?.[match.player2.id] || 0}
-                    target={target} readOnly />
-                  <div className="set-score-pending-actions">
-                    <button type="button" disabled={savingBracket}
-                      onClick={() => submitSetAction(match, 'stream-game', {
-                        winnerId: match.player1.id,
-                        gameNumber: state?.gameNumber || 1,
-                      })}>{match.player1.name} 勝利</button>
-                    <button type="button" disabled={savingBracket}
-                      onClick={() => submitSetAction(match, 'stream-game', {
-                        winnerId: match.player2.id,
-                        gameNumber: state?.gameNumber || 1,
-                      })}>{match.player2.name} 勝利</button>
-                  </div>
+                    firstScore={firstScore} secondScore={secondScore}
+                    target={target} onFirstChange={editFirst} onSecondChange={editSecond}
+                    disabled={savingBracket}
+                    disableFirstIncrease={secondScore === target && firstScore >= target - 1}
+                    disableSecondIncrease={firstScore === target && secondScore >= target - 1}
+                    hideNames/>
+                  <button type="button" className="set-score-primary" disabled={savingBracket || unsavedScore ||
+                    !((firstScore === target && secondScore < target) ||
+                      (secondScore === target && firstScore < target))}
+                    onClick={() => {
+                      if (window.confirm(match.player1.name + ' ' + firstScore + ' - ' +
+                        secondScore + ' ' + match.player2.name + ' の結果を確定しますか？')) {
+                        submitSetAction(match, 'stream-confirm', {
+                          scoreFirst: firstScore, scoreSecond: secondScore,
+                          scoreVersion: Number(scoreLastAckRef.current?.matchId === String(match.id)
+                            ? Math.max(Number(state?.scoreVersion || 0), Number(scoreLastAckRef.current.version))
+                            : Number(state?.scoreVersion || 0)),
+                        });
+                      }
+                    }}>{unsavedScore ? '保存中…' : '結果を確定'}</button>
                 </> : <p style={{ marginTop: 8, marginBottom: 0 }}>
-                  スコアは主催者がゲームごとに入力します。選手の操作は不要です。
+                  配信台のスコアは主催者が入力します。
                 </p>}
               </div>;
               if (!state) return <div className="set-score-pending">
@@ -1375,7 +1386,7 @@ export default function TournamentPage() {
         <div className="bracket-header"><h2>トーナメント表</h2></div>
         <p className="setting-help">{tournament.stageRejects
         ? '設定されたBO形式・使用ステージ・拒否数に従い、ゲームごとに両選手が勝敗を報告します。'
-        : '通常対戦はセット終了後に片方がスコアを申告し、相手が承認すると確定します。配信台は主催者がゲームごとに記録します。'}</p>
+        : '通常対戦は片方が結果を申告し、相手が承認すると確定します。配信台は主催者がスコアを入力して確定します。'}</p>
         {isOwner && <div className="bracket-admin-hint">主催者：対戦カードを選択すると、結果のリセット・不戦勝・配信台の設定ができます。</div>}
         {isOwner && selectedAdminMatch && <div className="bracket-admin-modal-backdrop" onClick={() => { if (!savingBracket) { setAdminMatchSelection(null); setShowForfeitChoices(false); } }}><section className="bracket-admin-panel bracket-admin-modal" role="dialog" aria-modal="true" aria-label="主催者の対戦管理" onClick={event => event.stopPropagation()}>
           <div className="bracket-admin-heading">
