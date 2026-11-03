@@ -22,6 +22,8 @@ function getAuthClient() {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+const readOnlyAuthCache = new Map();
+
 async function getUser(request, required = true) {
   const authorization = request.headers.get('authorization') || '';
   const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
@@ -29,7 +31,16 @@ async function getUser(request, required = true) {
     if (required) throw Object.assign(new Error('大会の管理にはログインが必要です。'), { status: 401 });
     return null;
   }
+  // Read-only requests can reuse a recently validated identity. Never cache
+  // authorization decisions for writes, which still validate with Supabase.
+  const cacheKey = !required ? createHash('sha256').update(token).digest('hex') : '';
+  const cached = cacheKey ? readOnlyAuthCache.get(cacheKey) : null;
+  if (cached && cached.expires > Date.now()) return cached.user;
   const { data, error } = await getAuthClient().auth.getUser(token);
+  if (cacheKey) {
+    if (readOnlyAuthCache.size > 500) readOnlyAuthCache.clear();
+    readOnlyAuthCache.set(cacheKey, { user: error ? null : data?.user || null, expires: Date.now() + (error ? 5000 : 30000) });
+  }
   if (error || !data?.user) {
     if (required) throw Object.assign(new Error('ログインの有効期限が切れています。再度ログインしてください。'), { status: 401 });
     return null;
