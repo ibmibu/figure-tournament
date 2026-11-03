@@ -109,7 +109,7 @@ export default function TournamentPage() {
 
   useEffect(() => {
     refreshBoard();
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') refreshBoard(); }, 10000);
+    const timer = setInterval(() => { if (document.visibilityState === 'visible') refreshBoard(); }, 30000);
     return () => clearInterval(timer);
   }, [id]);
 
@@ -267,7 +267,7 @@ export default function TournamentPage() {
     const liveSet = Boolean(ownMatch && !tournament.stageRejects &&
       getMatchReportMode(tournament, ownMatch) === 'set');
     const fallbackMs = liveSet ? 1500 : playingGame ? 5000
-      : activeMatch && ownMatch ? 2000 : 4000;
+      : activeMatch && ownMatch ? 2000 : activeMatch ? 15000 : 30000;
     // Spread clients' periodic reads across a short window: a new round can
     // otherwise cause all players' browsers to hit the API at the same instant.
     const staggerMs = Math.floor(Math.random() * 500);
