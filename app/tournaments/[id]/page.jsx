@@ -1309,7 +1309,6 @@ export default function TournamentPage() {
                   disableFirstIncrease={secondScore === target && firstScore >= target - 1}
                   disableSecondIncrease={firstScore === target && secondScore >= target - 1}
                   hideNames/>
-                {lockedByOther && <p className="setting-help" role="status">相手が入力中です。あと<strong>{lockSeconds}秒</strong>で操作できます。</p>}
                 <button type="button" className="set-score-primary" disabled={savingBracket || unsavedScore ||
                   !((firstScore === target && secondScore < target) ||
                     (secondScore === target && firstScore < target))}
