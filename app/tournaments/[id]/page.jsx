@@ -1430,28 +1430,41 @@ export default function TournamentPage() {
               <button type="button" disabled={savingBracket || adminScore.first === '' || adminScore.second === ''}
                 onClick={() => correctMatchScore(selectedAdminMatch)}>{savingBracket ? '保存中…' : 'スコアを保存'}</button>
             </div>}
-            {!tournament.stageRejects && getMatchReportMode(tournament, selectedAdminMatch) === 'stream' && !selectedAdminMatch.winnerId &&
-              <div className="set-score-pending">
-                <strong>配信台のゲーム結果を記録</strong>
-                <MatchScoreEditor
-                  firstName={selectedAdminMatch.player1.name} secondName={selectedAdminMatch.player2.name}
-                  firstScore={selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player1.id] || 0}
-                  secondScore={selectedAdminMatch.matchState?.score?.[selectedAdminMatch.player2.id] || 0}
-                  target={Number(tournament.bestOf) === 5 ? 3 : 2} readOnly />
-                <p className="setting-help">1ゲーム終了するごとに勝者を押してください。OBSのスコアにも反映されます。</p>
-                <div className="set-score-pending-actions">
-                  <button type="button" disabled={savingBracket}
-                    onClick={() => submitSetAction(selectedAdminMatch, 'stream-game', {
-                      winnerId: selectedAdminMatch.player1.id,
-                      gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
-                    })}>{selectedAdminMatch.player1.name} 勝利</button>
-                  <button type="button" disabled={savingBracket}
-                    onClick={() => submitSetAction(selectedAdminMatch, 'stream-game', {
-                      winnerId: selectedAdminMatch.player2.id,
-                      gameNumber: selectedAdminMatch.matchState?.gameNumber || 1,
-                    })}>{selectedAdminMatch.player2.name} 勝利</button>
-                </div>
-              </div>}
+            {!tournament.stageRejects && getMatchReportMode(tournament, selectedAdminMatch) === 'stream' &&
+              !selectedAdminMatch.winnerId && (() => {
+                const target = Number(tournament.bestOf) === 5 ? 3 : 2;
+                const unsaved = scoreDraft?.matchId === String(selectedAdminMatch.id);
+                const scores = unsaved ? scoreDraft.scores : editableSetScores(tournament, selectedAdminMatch);
+                const first = Number(scores[selectedAdminMatch.player1.id] || 0);
+                const second = Number(scores[selectedAdminMatch.player2.id] || 0);
+                const serverVersion = Number(selectedAdminMatch.matchState?.scoreVersion || 0);
+                const version = scoreLastAckRef.current?.matchId === String(selectedAdminMatch.id)
+                  ? Math.max(serverVersion, Number(scoreLastAckRef.current.version))
+                  : serverVersion;
+                return <div className="set-score-pending">
+                  <strong>配信台のスコアを入力</strong>
+                  <MatchScoreEditor
+                    firstName={selectedAdminMatch.player1.name} secondName={selectedAdminMatch.player2.name}
+                    firstScore={first} secondScore={second} target={target}
+                    onFirstChange={next => queueLiveScore(selectedAdminMatch, selectedAdminMatch.player1.id, next > first ? 1 : -1)}
+                    onSecondChange={next => queueLiveScore(selectedAdminMatch, selectedAdminMatch.player2.id, next > second ? 1 : -1)}
+                    disabled={savingBracket}
+                    disableFirstIncrease={second === target && first >= target - 1}
+                    disableSecondIncrease={first === target && second >= target - 1}
+                    hideNames />
+                  <button type="button" className="set-score-primary"
+                    disabled={savingBracket || unsaved ||
+                      !((first === target && second < target) || (second === target && first < target))}
+                    onClick={() => {
+                      if (window.confirm(selectedAdminMatch.player1.name + ' ' + first + ' - ' +
+                        second + ' ' + selectedAdminMatch.player2.name + ' の結果を確定しますか？')) {
+                        submitSetAction(selectedAdminMatch, 'stream-confirm', {
+                          scoreFirst: first, scoreSecond: second, scoreVersion: version,
+                        });
+                      }
+                    }}>{unsaved ? '保存中…' : '結果を確定'}</button>
+                </div>;
+              })()}
             {!tournament.stageRejects && getMatchReportMode(tournament, selectedAdminMatch) === 'set' &&
               selectedAdminMatch.matchState?.pendingResult && <div className="set-score-pending">
                 <strong>セット結果・確認待ち</strong>
