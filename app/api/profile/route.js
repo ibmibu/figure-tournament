@@ -26,7 +26,9 @@ export async function GET(request) {
     const result = await getAuthenticatedUser(request);
     if (result.error) return result.error;
     const { user, admin } = result;
-    const { data, error } = await admin.from('profiles').select('display_name,avatar_data,friend_code,public_uid').eq('user_id', user.id).maybeSingle();
+    const basic = new URL(request.url).searchParams.get('view') === 'basic';
+    const fields = basic ? 'display_name,friend_code,public_uid' : 'display_name,avatar_data,friend_code,public_uid';
+    const { data, error } = await admin.from('profiles').select(fields).eq('user_id', user.id).maybeSingle();
     if (error) throw error;
     return NextResponse.json({ profile: data || { display_name: 'no name', avatar_data: '' } });
   } catch (error) {
