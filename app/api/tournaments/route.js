@@ -1,5 +1,6 @@
 import { saveTournamentRevision } from '../../../lib/tournament-save';
 import { repairPrematureAdvances } from '../../../lib/tournament-bracket-admin';
+import { getEffectiveStreamMatchId } from '../../../lib/tournament-set-result';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID, createHash } from 'crypto';
@@ -43,13 +44,9 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     (!ownerUserId && legacyOwnerToken && row.owner_token === legacyOwnerToken)
   ));
   const activeMatches = (data.bracket?.rounds || []).flat();
-  const organizerMatch = activeMatches.find(match => !match.winnerId && match.player1 && match.player2 &&
-    [match.player1, match.player2].some(player => !player.isDemo && String(player.userId || player.id) === String(ownerUserId)));
-  const selectedStreamMatch = activeMatches.find(match => String(match.id) === String(data.streamMatchId) && match.player1 && match.player2 && !match.winnerId);
-  // Automatic selection is only the initial default. Explicit assignment or removal always wins.
-  const effectiveStreamMatchId = data.streamMatchManual === true || data.streamMatchId !== undefined
-    ? (selectedStreamMatch?.id || null)
-    : (organizerMatch?.id || null);
+  // Reuse the exact server-side assignment policy used by score-write
+  // permissions: no automatic broadcast without a configured stream URL.
+  const effectiveStreamMatchId = getEffectiveStreamMatchId(data);
   const visibleReports = isOwner ? (data.characterReports || {}) : Object.fromEntries(
     Object.entries(data.characterReports || {}).filter(([playerId]) =>
       user && (data.joinedPlayers || []).some(player =>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { findParticipantOverlay } from '../../../../lib/overlay-participant-match';
-import { getMatchReportMode, liveSetScores } from '../../../../lib/tournament-set-result';
+import { getMatchReportMode, hasStreamUrl, liveSetScores } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,8 +98,10 @@ export async function GET(request) {
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
     const matches = rounds.flat();
-    const organizerMatch = matches.find(m => (t.bracket?.complete || !m.winnerId) && m.player1 && m.player2 &&
-      [m.player1, m.player2].some(p => !p.isDemo && String(p.userId || p.id) === String(t.ownerUserId)));
+    const organizerMatch = hasStreamUrl(t)
+      ? matches.find(m => (t.bracket?.complete || !m.winnerId) && m.player1 && m.player2 &&
+          [m.player1, m.player2].some(p => !p.isDemo && String(p.userId || p.id) === String(t.ownerUserId)))
+      : null;
     const explicit = t.streamMatchManual === true || t.streamMatchId !== undefined;
     // Keep the assigned match visible after its winner is confirmed until the organizer changes or clears the assignment.
     const holdUntil = Date.parse(t.streamHoldUntil || '') || 0;
