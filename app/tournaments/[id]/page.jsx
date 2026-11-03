@@ -148,7 +148,7 @@ export default function TournamentPage() {
         setCurrentUserId(data.session?.user?.id || '');
         if (accessToken) {
           // Profile is supplemental: never block the tournament request on it.
-          fetch('/api/profile', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
+          fetch('/api/profile?view=basic', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
             .then(async response => {
               if (!response.ok) return;
               const profileResult = await response.json();
