@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
 import { getCharacterReportPlacement } from '../../../lib/tournament-bracket-admin';
-import { getMatchReportMode, liveSetScores, SCORE_INCREMENT_COOLDOWN_MS } from '../../../lib/tournament-set-result';
+import { getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
@@ -659,7 +659,8 @@ export default function TournamentPage() {
                   matchState: {
                     ...item.matchState, liveScore: update.liveScore,
                     scoreVersion: update.scoreVersion,
-                    lastScoreIncrementAt: update.lastScoreIncrementAt,
+                    lastScoreActorId: update.lastScoreActorId,
+                    lastScoreActionAt: update.lastScoreActionAt,
                   },
                 } : item)),
             },
@@ -1097,10 +1098,10 @@ export default function TournamentPage() {
               const live = liveSetScores(match);
               const firstScore = live[match.player1.id];
               const secondScore = live[match.player2.id];
-              const lastPlusAt = Date.parse(state?.lastScoreIncrementAt || '') || 0;
-              const cooldownLeft = Math.max(0, Math.ceil(
-                (lastPlusAt + SCORE_INCREMENT_COOLDOWN_MS - scoreClock) / 1000));
-              const canAdd = !cooldownLeft && firstScore < target && secondScore < target;
+              const lockRemaining = scoreControlLockRemainingMs(state, currentUserId, scoreClock);
+              const lockedByOther = lockRemaining > 0;
+              const lockSeconds = Math.ceil(lockRemaining / 1000);
+              const canAdd = firstScore < target && secondScore < target;
               const version = Number(state?.scoreVersion || 0);
               const editFirst = next => submitSetAction(match, 'score-adjust', {
                 scorePlayerId: match.player1.id, scoreDelta: next > firstScore ? 1 : -1,
@@ -1163,11 +1164,11 @@ export default function TournamentPage() {
                   firstName={match.player1.name} secondName={match.player2.name}
                   firstScore={firstScore} secondScore={secondScore}
                   target={target} onFirstChange={editFirst} onSecondChange={editSecond}
-                  disabled={savingBracket} disableIncrease={!canAdd} hideNames/>
-                {cooldownLeft > 0
-                  ? <p className="setting-help" role="status">次の加点まで <strong>{cooldownLeft}秒</strong>（減点はいつでも可能）</p>
-                  : <p className="setting-help">加点可能・スコアは両選手とOBSに同期します。</p>}
-                <p className="setting-help">1ゲーム終了ごとにどちらかが加点。BO{Number(tournament.bestOf) === 5 ? 5 : 3}終了後に片方が申告し、相手が承認して確定します。</p>
+                  disabled={savingBracket || lockedByOther} disableIncrease={!canAdd} hideNames/>
+                {lockedByOther
+                  ? <p className="setting-help" role="status">相手が入力中です。あと<strong>{lockSeconds}秒</strong>で操作できます。</p>
+                  : <p className="setting-help">スコアを連続入力できます。操作後は相手のみ3秒間ロックされます。</p>}
+                <p className="setting-help">スコアは両選手とOBSに同期します。BO{Number(tournament.bestOf) === 5 ? 5 : 3}終了後に申告し、相手が承認して確定します。</p>
                 <button type="button" className="set-score-primary" disabled={savingBracket ||
                   !((firstScore === target && secondScore < target) ||
                     (secondScore === target && firstScore < target))}

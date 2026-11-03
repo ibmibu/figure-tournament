@@ -80,7 +80,7 @@ export async function POST(request) {
         }
       } else if (action === 'score-adjust') {
         try {
-          adjustLiveSetScore(current, match, scorePlayerId, scoreDelta, scoreVersion);
+          adjustLiveSetScore(current, match, scorePlayerId, scoreDelta, scoreVersion, user.id);
         } catch (error) {
           return fail(error.message || 'スコアを更新できませんでした。', 409);
         }
@@ -90,7 +90,7 @@ export async function POST(request) {
       } else if (action === 'submit') {
         if (state.pendingResult) return fail('この試合は結果の確認待ちです。', 409);
         // Submitted scores must match the live scoreboard. No separate
-        // unverified score entry can skip the shared 10-second guard.
+        // unverified score entry can bypass the shared live score.
         const live = liveSetScores(match);
         const currentFirst = live[p1], currentSecond = live[p2];
         validateFinalScore(current, currentFirst, currentSecond);
@@ -143,7 +143,8 @@ export async function POST(request) {
           matchId: String(matchId),
           liveScore: liveSetScores(match),
           scoreVersion: state.scoreVersion,
-          lastScoreIncrementAt: state.lastScoreIncrementAt || null,
+          lastScoreActorId: state.lastScoreActorId || null,
+          lastScoreActionAt: state.lastScoreActionAt || null,
           stageActionRevision: updated.stageActionRevision,
         } } : {}),
       });
