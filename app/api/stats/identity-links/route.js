@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { loadServerArchivedTournamentRecords } from '../../../../lib/tournament-archive-server';
+import { loadServerArchivedTournamentState } from '../../../../lib/tournament-archive-server';
 import {
   buildStatsSnapshot, completedForStats, snapshotIsCurrent, snapshotToPublicResult,
   withStatsSnapshot,
@@ -81,8 +81,8 @@ export async function GET(request) {
     // snapshots. Keep the old DB projection below as a safe fallback until
     // archive backfill catches up or if CDN export is unavailable.
     try {
-      const archived = await loadServerArchivedTournamentRecords(request);
-      const results = archived.filter(row => row.statsSnapshot?.version === 1)
+      const state = await loadServerArchivedTournamentState(request);
+      const results = state.records.filter(row => row.statsSnapshot?.version === 1)
         .map(row => ({
           id: row.id, created_at: row.createdAt,
           data: row.statsSnapshot,
@@ -92,7 +92,11 @@ export async function GET(request) {
       // All viewers receive the same public finished results. The browser has a
       // longer local cache; this short CDN cache also prevents a burst of
       // anonymous visitors from rerunning Vercel's CPU-intensive rating map.
-      return NextResponse.json({ tournaments }, { headers: {
+      return NextResponse.json({
+        tournaments,
+        archiveRevision: state.revision,
+        identityRevision: state.identityRevision,
+      }, { headers: {
         'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
       } });
     } catch (archiveError) {

@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import {getSupabaseBrowserClient} from '../../lib/supabase/client';
 import {getPlayerAchievements} from '../../lib/stats-data';
+import {loadHistoryRevision,rankingHistoryRevision} from '../../lib/history-revision-client';
 const aliases={'99450':'145071','118591':'149650','148400':'164481','80108':'142959','100389':'167992','159344':'167992','156108':'156414'};
 function canonical(id){let value=String(id),n=0;while(aliases[value]&&n++<10)value=aliases[value];return value;}
 export default function LinkedStatsSummary(){const [data,setData]=useState(null),[archive,setArchive]=useState(null),[tag,setTag]=useState('all'),[error,setError]=useState('');
@@ -11,50 +12,72 @@ export default function LinkedStatsSummary(){const [data,setData]=useState(null)
      try {
        const { data: { session } } = await getSupabaseBrowserClient().auth.getSession();
        if (!session) return;
-       const statsKey = 'amiconne-my-series-summary-v1-' + session.user.id;
-       let result = null;
+       const key = 'amiconne-my-series-summary-v2-' + session.user.id;
+       let persisted = null;
        try {
-         const stored = JSON.parse(localStorage.getItem(statsKey) || 'null');
-         if (stored?.version === 1 && stored?.savedAt <= Date.now() &&
-             Date.now() - stored.savedAt < 30 * 60 * 1000 && stored.data?.series)
-           result = stored.data;
+         const stored = JSON.parse(localStorage.getItem(key) || 'null');
+         if (stored?.version === 2 && stored.data?.series) {
+           persisted = stored;
+           if (active) setData(stored.data);
+         } else {
+           const old = JSON.parse(localStorage.getItem(
+             'amiconne-my-series-summary-v1-' + session.user.id) || 'null');
+           if (old?.data?.series && active) setData(old.data);
+         }
        } catch {}
-       if (!result) {
-         const response = await fetch('/api/stats/my', {
+
+       let manifest = null;
+       try { manifest = await loadHistoryRevision(); }
+       catch (revisionError) { console.warn('Series revision unavailable:', revisionError); }
+       const version = manifest?.verified ? rankingHistoryRevision(manifest) : '';
+       let result = persisted?.data || null;
+       if (!persisted || (version && persisted.revision !== version)) {
+         const response = await fetch('/api/stats/my' +
+           (version ? '?revision=' + encodeURIComponent(version) : ''), {
            headers: { Authorization: 'Bearer ' + session.access_token },
            cache: 'no-store',
          });
-         result = await response.json();
-         if (!response.ok) throw Error(result.error || '戦績の読み込みに失敗しました。');
-         try {
-           localStorage.setItem(statsKey, JSON.stringify({
-             version: 1, savedAt: Date.now(), data: result,
-           }));
-         } catch {}
-       }
-       if (!active) return;
-       setData(result);
-       if (result.legacyPlayerId) {
-         // The 人形劇 historical archive is fixed. The stats page already
-         // stores it locally; reuse that data rather than requesting it again.
-         let historical = null;
-         try {
-           const stored = JSON.parse(localStorage.getItem('ningyogeki-archive-cache-v1') || 'null');
-           if (stored?.data?.records && stored?.data?.tournaments)
-             historical = stored.data;
-         } catch {}
-         if (!historical) {
-           const response = await fetch('/api/ningyogeki-archive', { cache: 'force-cache' });
-           if (!response.ok) throw Error('過去の人形劇戦績を読み込めませんでした。');
-           const body = await response.json();
-           historical = body.data || body;
-           try {
-             localStorage.setItem('ningyogeki-archive-cache-v1', JSON.stringify({ data: historical }));
-           } catch {}
+         const loaded = await response.json();
+         if (!response.ok) throw Error(loaded.error || '戦績を読み込めませんでした。');
+         const actual = loaded.archiveRevision && (loaded.archiveRevision + ':' +
+           (loaded.identityRevision || 'unversioned'));
+         if (!version || actual === version) {
+           result = loaded;
+           if (active) setData(result);
+           if (version) {
+             try {
+               localStorage.setItem(key, JSON.stringify({
+                 version: 2, revision: version, data: result,
+               }));
+               localStorage.removeItem('amiconne-my-series-summary-v1-' + session.user.id);
+             } catch {}
+           }
+         } else if (!result) {
+           // Show an uncached fallback if the server has not caught up.
+           result = loaded;
+           if (active) setData(result);
          }
-         if (active) setArchive(historical);
        }
-     } catch (error) { if (active) setError(error.message); }
+       if (!active || !result?.legacyPlayerId) return;
+
+       // Archived 人形劇 matches are immutable and shared with the main stats
+       // page. Read the browser copy once; only the first visit downloads it.
+       let historical = null;
+       try {
+         const stored = JSON.parse(localStorage.getItem('ningyogeki-archive-cache-v1') || 'null');
+         if (stored?.data?.records && stored?.data?.tournaments) historical = stored.data;
+       } catch {}
+       if (!historical) {
+         const response = await fetch('/api/ningyogeki-archive', { cache: 'force-cache' });
+         if (!response.ok) throw Error('過去の人形劇戦績を読み込めませんでした。');
+         const body = await response.json();
+         historical = body.data || body;
+         try {
+           localStorage.setItem('ningyogeki-archive-cache-v1', JSON.stringify({ data: historical }));
+         } catch {}
+       }
+       if (active) setArchive(historical);
+     } catch (e) { if (active) setError(e.message); }
    })();
    return () => { active = false; };
  }, []);
