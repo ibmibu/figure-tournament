@@ -31,64 +31,122 @@ export default function TournamentOverlay() {
     let holdTimer;
     let fallbackTimer;
     let inFlight = false;
+    let pendingSelection = false;
+    let pendingForce = false;
     let requestVersion = 0;
-    const refresh = async () => {
-      if (!active || inFlight) return;
+    let selectedId = '';
+    let selectedRole = '';
+    let knownSelection = false;
+    let lastSelectionAt = 0;
+    let overlayVersion = '';
+    const dynamicSource = Boolean(player || owner);
+    const source = player ? 'player=' + encodeURIComponent(player)
+      : owner ? 'owner=' + encodeURIComponent(owner)
+      : 'id=' + encodeURIComponent(id);
+    const refresh = async (selectAgain = false, forceData = false) => {
+      if (!active) return;
+      if (inFlight) {
+        pendingSelection ||= selectAgain;
+        pendingForce ||= forceData;
+        return;
+      }
+      // OBS needs just one selected tournament every 2.5 seconds. Search the
+      // owner's/participant's tournament list at most every 30 seconds, or
+      // immediately when an unrelated tournament change signal arrives.
+      const lookup = dynamicSource && (selectAgain || !knownSelection ||
+        Date.now() - lastSelectionAt >= 30000);
+      if (dynamicSource && !lookup && !selectedId) return;
       inFlight = true;
       const version = ++requestVersion;
       controller?.abort();
       controller = new AbortController();
       try {
-        const source = player ? 'player=' + encodeURIComponent(player)
-          : owner ? 'owner=' + encodeURIComponent(owner) : 'id=' + encodeURIComponent(id);
-        const response = await fetch('/api/tournaments/overlay?' + source, {
-          cache: 'no-store', signal: controller.signal,
+        const hint = dynamicSource && !lookup
+          ? '&selectedId=' + encodeURIComponent(selectedId) +
+            '&selectedRole=' + encodeURIComponent(selectedRole)
+          : '';
+        const fullRead = forceData || lookup;
+        const url = '/api/tournaments/overlay?' + source + hint +
+          (forceData ? '&fresh=1' : '');
+        const headers = overlayVersion && !fullRead
+          ? { 'X-Overlay-Version': overlayVersion } : {};
+        const response = await fetch(url, {
+          cache: 'no-store', headers, signal: controller.signal,
         });
+        if (!active || version !== requestVersion) return;
+        if (response.status === 304) {
+          setLoadError('');
+          return;
+        }
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
-        if (active && version === requestVersion) {
-          setData(result);
-          setMatchLoaded(true);
-          clearTimeout(holdTimer);
-          if (result.holdUntil) {
-            const remaining = Date.parse(result.holdUntil) - Date.now();
-            if (remaining > 0) holdTimer = setTimeout(refresh, remaining + 100);
-          }
-          setLoadError('');
+        if (lookup) {
+          knownSelection = true;
+          lastSelectionAt = Date.now();
         }
+        if (dynamicSource) {
+          selectedId = result.selectedTournamentId || '';
+          selectedRole = result.selectedRole || '';
+        }
+        overlayVersion = response.headers.get('x-overlay-version') || '';
+        setData(result);
+        setMatchLoaded(true);
+        clearTimeout(holdTimer);
+        if (result.holdUntil) {
+          const remaining = Date.parse(result.holdUntil) - Date.now();
+          // The hold period expires without a database write or revision bump.
+          // A forced full read clears the finished match at the right time.
+          if (remaining > 0) holdTimer = setTimeout(() => refresh(false, true), remaining + 100);
+        }
+        setLoadError('');
       } catch (error) {
         if (active && version === requestVersion && error.name !== 'AbortError') {
           setLoadError(error.message || '通信に失敗しました。');
           setMatchLoaded(true);
         }
-      } finally { inFlight = false; }
+      } finally {
+        inFlight = false;
+        if (active && (pendingSelection || pendingForce)) {
+          const nextSelection = pendingSelection;
+          const nextForce = pendingForce;
+          pendingSelection = false;
+          pendingForce = false;
+          void refresh(nextSelection, nextForce);
+        }
+      }
     };
-    const scheduleRefresh = () => {
+    const scheduleRefresh = (selectAgain = false) => {
       clearTimeout(debounce);
-      debounce = setTimeout(refresh, 250);
+      debounce = setTimeout(() => refresh(selectAgain), 250);
     };
-    // The public change-signals table exposes only IDs and revision tokens,
-    // never private tournament JSON. Its trigger must be installed in Supabase.
+    // Only tournament IDs / revisions are broadcast; never subscribe to the
+    // private tournament JSON. For owner/player URLs, other tournaments can
+    // become the preferred stream source, so reselect on their change signal.
     try {
       const supabase = getSupabaseBrowserClient();
       channel = supabase.channel('obs-overlay-' + (player || owner || id))
         .on('postgres_changes', {
           event: '*', schema: 'public', table: 'tournament_change_signals',
-          ...(id && !owner && !player ? { filter: 'tournament_id=eq.' + id } : {}),
-        }, scheduleRefresh)
+          ...(id && !dynamicSource ? { filter: 'tournament_id=eq.' + id } : {}),
+        }, payload => {
+          const changedId = String(payload?.new?.tournament_id || payload?.old?.tournament_id || '');
+          const otherTournament = dynamicSource &&
+            (!selectedId || (changedId && changedId !== selectedId));
+          scheduleRefresh(Boolean(otherTournament && Date.now() - lastSelectionAt >= 5000));
+        })
         .subscribe(status => {
-          // A fresh read on subscription/reconnection catches missed changes.
-          if (status === 'SUBSCRIBED') refresh();
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setLoadError('Realtimeの接続が切れました。再接続を待っています。');
+          if (status === 'SUBSCRIBED') void refresh();
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+            setLoadError('Realtimeの接続が切れました。再接続を待っています。');
         });
     } catch (error) {
       setLoadError(error.message || 'Realtimeに接続できませんでした。');
     }
-    // Realtime signals are best-effort (including when the trigger is absent).
-    // OBS must still pick up the score through a bounded fallback refresh.
-    // Do not abort a slow request on every fallback tick.
+    // The score fallback remains 2.5 seconds. After the first response, an
+    // unchanged tournament is only a tiny revision query; a changed result
+    // immediately reads the selected tournament's score projection.
     fallbackTimer = setInterval(() => { void refresh(); }, 2500);
-    refresh();
+    void refresh();
     return () => {
       active = false;
       clearInterval(fallbackTimer);
