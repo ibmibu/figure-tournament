@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
-import { appendMatchLog } from '../../../../lib/tournament-match-log';
 import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 import { advanceMatch, adjustLiveSetScore, editableSetScores, getEffectiveStreamMatchId, getMatchReportMode, initializeScoreState, liveSetScores, scoreTarget, setLiveSetScores, setStreamSetScores, streamSetScores, validateFinalScore } from '../../../../lib/tournament-set-result';
 
@@ -57,7 +56,7 @@ export async function POST(request) {
 
       const state = initializeScoreState(current, match, mode);
       const p1 = String(match.player1.id), p2 = String(match.player2.id);
-      let label, updated;
+      let updated;
       if (mode === 'stream') {
         if (action === 'stream-score-set') {
           try {
@@ -65,8 +64,6 @@ export async function POST(request) {
           } catch (error) {
             return fail(error.message || 'スコアを更新できませんでした。', 409);
           }
-          label = '配信台・暫定スコア：' + match.player1.name + ' ' +
-            scoreFirst + '-' + scoreSecond + ' ' + match.player2.name;
           updated = { ...current, bracket };
         } else {
           // Never advance when the winning score is merely displayed. The
@@ -85,8 +82,6 @@ export async function POST(request) {
           state.games = [];
           state.gameNumber = first + second + 1;
           const winner = first === scoreTarget(current) ? match.player1 : match.player2;
-          label = '配信台・結果確定：' + match.player1.name + ' ' +
-            first + '-' + second + ' ' + match.player2.name;
           const broadcastMatchId = getEffectiveStreamMatchId(current);
           updated = advanceMatch(current, bracket, ri, mi, winner.id);
           if (String(broadcastMatchId ?? '') === String(match.id)) {
@@ -98,11 +93,8 @@ export async function POST(request) {
         try {
           if (action === 'score-set') {
             setLiveSetScores(current, match, scoreFirst, scoreSecond, scoreVersion, user.id);
-            label = '暫定スコア更新：' + match.player1.name + ' ' + scoreFirst + '-' + scoreSecond + ' ' + match.player2.name;
           } else {
             adjustLiveSetScore(current, match, scorePlayerId, scoreDelta, scoreVersion, user.id);
-            label = (scoreDelta === 1 ? '暫定スコア加点：' : '暫定スコア訂正：') +
-              [match.player1, match.player2].find(p => String(p.id) === String(scorePlayerId))?.name;
           }
         } catch (error) {
           return fail(error.message || 'スコアを更新できませんでした。', 409);
@@ -122,14 +114,12 @@ export async function POST(request) {
           submittedBy: user.id, submittedAt: new Date().toISOString(),
         };
         state.disputedAt = null;
-        label = 'セット結果を申告：' + match.player1.name + ' ' + firstScore + '-' + secondScore + ' ' + match.player2.name;
         updated = { ...current, bracket };
       } else if (action === 'dispute') {
         if (!state.pendingResult) return fail('確認待ちの結果がありません。', 409);
         if (String(state.pendingResult.submittedBy) === String(user.id)) return fail('自分の報告には異議を出せません。', 403);
         state.pendingResult = null;
         state.disputedAt = new Date().toISOString();
-        label = 'セット結果に異議：' + (me?.name || '参加者');
         updated = { ...current, bracket };
       } else {
         const pending = state.pendingResult;
@@ -142,12 +132,8 @@ export async function POST(request) {
         state.score[p2] = pending.secondScore;
         state.games = [];
         const winner = pending.firstScore === scoreTarget(current) ? match.player1 : match.player2;
-        label = (action === 'owner-confirm' ? '主催者が代理確定：' : '相手がセット結果を承認：') +
-          match.player1.name + ' ' + pending.firstScore + '-' + pending.secondScore + ' ' + match.player2.name;
         updated = advanceMatch(current, bracket, ri, mi, winner.id);
       }
-      appendMatchLog(updated, current, matchId, owner && (mode === 'stream' || action === 'owner-confirm')
-        ? '主催者' : me?.name || '参加者', label);
       const revision = Number.isSafeInteger(current.stageActionRevision) && current.stageActionRevision >= 0
         ? current.stageActionRevision : null;
       updated.stageActionRevision = (revision ?? 0) + 1;
