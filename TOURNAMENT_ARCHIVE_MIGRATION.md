@@ -2,8 +2,8 @@
 
 ## Data ownership
 - Supabase remains authoritative for tournament creation, join/leave, live
-  bracket, stage strikes, score, permissions, private character reports,
-  account metadata, edits and deletes.
+  bracket, stage strikes, score, permissions, account metadata,
+  edits and deletes. Fighter/color reports are allowed into the public archive.
 - GitHub stores **only explicitly allowlisted public completed results** in
   `public/data/tournament-archive/index.json` and
   `public/data/tournament-archive/tournaments/<id>.json`.
@@ -46,7 +46,8 @@
    recent events. Confirm new finished results and edits appear immediately via
    the delta fallback.
 4. Verify GitHub files contain no emails, friend codes, token fields,
-   private declarations, character reports or avatar base64.
+   unannounced declarations or avatar base64. Only explicitly allowlisted
+   fighter/color character-report fields may be included.
 5. Check Vercel deployment of the scheduled archive commit and Supabase
    Egress over the following event.
 
