@@ -86,6 +86,7 @@ export default function TournamentPage() {
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
   const liveVersionRef = useRef('');
+  const liveLastSyncRef = useRef(0);
   // Keep one Realtime socket for each live event. Polling cadence may
   // change every game, but must not recreate the subscription each time.
   const liveRefreshRef = useRef(null);
@@ -254,6 +255,7 @@ export default function TournamentPage() {
   useEffect(() => {
     liveVersionRef.current = '';
     liveEtagRef.current = '';
+    liveLastSyncRef.current = 0;
   }, [id, accessToken]);
 
   // Fetch icons only when the cached roster differs from the actual roster.
@@ -294,7 +296,7 @@ export default function TournamentPage() {
     if (!id || !tournament || tournament.bracket?.complete || savingBracket || declarationBusy) return;
     let cancelled = false;
     let inFlight = false;
-    let lastSync = 0;
+    let lastSync = liveLastSyncRef.current;
     let pendingRefresh = false;
     let pendingFresh = false;
     const refresh = async (fresh = false) => {
@@ -318,6 +320,7 @@ export default function TournamentPage() {
           const nextVersion = response.headers.get('x-tournament-version');
           if (nextVersion) liveVersionRef.current = nextVersion;
           lastSync = Date.now();
+          liveLastSyncRef.current = lastSync;
           return;
         }
         if (!response.ok) return;
@@ -328,6 +331,7 @@ export default function TournamentPage() {
         if (!cancelled && result.tournament) {
           applyTournamentSnapshot(result.tournament);
           lastSync = Date.now();
+          liveLastSyncRef.current = lastSync;
         }
       } catch {} finally {
         inFlight = false;
