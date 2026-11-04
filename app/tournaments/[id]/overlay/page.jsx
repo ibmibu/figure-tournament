@@ -156,14 +156,14 @@ export default function TournamentOverlay() {
       if (channel) getSupabaseBrowserClient().removeChannel(channel);
     };
   }, [id, owner, player]);
-  // Design lives on the organizer account, not on an individual tournament.
-  // Refresh independently of the match stream so edits appear in OBS without
-  // touching participants, brackets, scores, or any match-result updates.
+  // OBS design rarely changes during a match. Load it once per organizer
+  // instead of reading Supabase Auth metadata every 15 seconds. Reloading the
+  // OBS browser source applies any layout edits; scores and tournament changes
+  // still synchronize independently at their original fast intervals.
   const designOwner = player || owner || data?.ownerId || '';
   useEffect(() => {
     if (!designOwner) return;
     let active = true;
-    let timer;
     const loadDesign = async () => {
       try {
         const response = await fetch('/api/overlay-design?owner=' + encodeURIComponent(designOwner), { cache: 'no-store' });
@@ -174,17 +174,16 @@ export default function TournamentOverlay() {
           setDesignReady(true);
         }
       } catch (error) {
-        // Preserve the previous visible overlay if settings cannot be reached.
-        console.warn('OBS overlay design refresh failed:', error);
+        // Don't leave OBS blank if the optional design fetch fails.
+        // A browser-source reload can retry without background polling.
+        console.warn('OBS overlay design load failed:', error);
         if (active) setDesignReady(true);
-      } finally {
-        if (active) timer = setTimeout(loadDesign, 15000);
       }
     };
     setDesign(null);
     setDesignReady(false);
-    loadDesign();
-    return () => { active = false; clearTimeout(timer); };
+    void loadDesign();
+    return () => { active = false; };
   }, [designOwner]);
   // Show a clearly labeled sample whenever no stream match is assigned,
   // so OBS placement can be adjusted before the tournament starts.
