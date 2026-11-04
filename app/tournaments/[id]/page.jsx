@@ -430,12 +430,16 @@ export default function TournamentPage() {
     let timer;
     const poll = () => {
       if (cancelled) return;
-      // Only relax active polling after a real change signal was observed.
-      // Unproven subscriptions, disconnected sockets and stale signals retain
-      // the original fast fallback so match progression stays responsive.
+      // Verify at least one actual Realtime notification before relaxing
+      // polling. A socket can connect even when database change publication
+      // is misconfigured; such tournaments retain their original fast checks.
+      // Realtime has no reason to expire after 60 seconds without an event:
+      // an idle match is precisely when redundant polling should be avoided.
       const signal = liveSignalRef.current;
-      const signalHealthy = signal.connected && signal.received && Date.now() - signal.lastAt < 60000;
-      const intervalMs = signalHealthy && ownMatch ? Math.max(fallbackMs, 10000) : fallbackMs;
+      const signalHealthy = signal.connected && signal.received;
+      const intervalMs = signalHealthy
+        ? (ownMatch ? Math.max(fallbackMs, 10000) : 60000)
+        : fallbackMs;
       if (Date.now() - lastSync >= intervalMs) void refresh();
       timer = setTimeout(poll, Math.min(fallbackMs, intervalMs));
     };
@@ -462,6 +466,7 @@ export default function TournamentPage() {
     signal.received = false;
     signal.lastAt = 0;
     const client = getSupabaseBrowserClient();
+    let subscribedBefore = false;
     const channel = client.channel('tournament-signals:' + id)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'tournament_change_signals',
@@ -473,7 +478,17 @@ export default function TournamentPage() {
         liveRefreshRef.current?.(true);
       })
       .subscribe(status => {
-        signal.connected = status === 'SUBSCRIBED';
+        const connected = status === 'SUBSCRIBED';
+        signal.connected = connected;
+        if (!connected) {
+          // Do not trust the old connection's notifications after a socket
+          // error. Revert to the old fast fallback until events are proven.
+          signal.received = false;
+          signal.lastAt = 0;
+        } else {
+          if (subscribedBefore) liveRefreshRef.current?.(true);
+          subscribedBefore = true;
+        }
       });
     return () => {
       signal.connected = false;
