@@ -14,10 +14,12 @@ export async function GET(request) {
     const db = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
     const id = new URL(request.url).searchParams.get('id');
     if (!id) return NextResponse.json({ error: '大会IDが必要です。' }, { status: 400 });
-    const { data: row, error } = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
+    const { data: tournament, error } = await db.from('tournaments')
+      .select('name:data->>name,ownerUserId:data->>ownerUserId,joinedPlayers:data->joinedPlayers,bracket:data->bracket,resultPlacements:data->resultPlacements,characterReports:data->characterReports')
+      .eq('id', id).maybeSingle();
     if (error) throw error;
-    if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
-    const tournament = row.data || {};
+    if (!tournament) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
+    // Organizer report review does not need the full tournament JSON.
     if (String(tournament.ownerUserId) !== String(user.id)) return NextResponse.json({ error: '主催者のみ閲覧できます。' }, { status: 403 });
     const bracket = repairPrematureAdvances(tournament).bracket;
     const placements = tournament.resultPlacements || [];
