@@ -32,6 +32,10 @@ export default function TournamentOverlay() {
     let fallbackTimer;
     let inFlight = false;
     let pendingForce = false;
+    let pendingRefresh = false;
+    let realtimeConnected = false;
+    let realtimeVerified = false;
+    let connectedBefore = false;
     let requestVersion = 0;
     let selectedId = '';
     let selectedRole = '';
@@ -44,6 +48,8 @@ export default function TournamentOverlay() {
     const refresh = async (forceData = false) => {
       if (!active) return;
       if (inFlight) {
+        // Never drop a score-change notification during an ongoing read.
+        pendingRefresh = true;
         pendingForce ||= forceData;
         return;
       }
@@ -102,13 +108,29 @@ export default function TournamentOverlay() {
         }
       } finally {
         inFlight = false;
-        if (active && pendingForce) {
+        if (active && (pendingRefresh || pendingForce)) {
+          const force = pendingForce;
+          pendingRefresh = false;
           pendingForce = false;
-          void refresh(true);
+          void refresh(force);
         }
       }
     };
+    // A proved Realtime event lets us reduce HTTP requests to a one-minute
+    // safety check. Merely subscribing is not enough: a missing publication
+    // can look connected while delivering no change notifications.
+    const scheduleFallback = () => {
+      clearTimeout(fallbackTimer);
+      if (!active) return;
+      const delayMs = realtimeConnected && realtimeVerified ? 60000 : 2500;
+      fallbackTimer = setTimeout(() => {
+        void refresh();
+        scheduleFallback();
+      }, delayMs);
+    };
     const scheduleRefresh = () => {
+      realtimeVerified = true;
+      scheduleFallback();
       clearTimeout(debounce);
       debounce = setTimeout(() => refresh(), 250);
     };
@@ -124,7 +146,16 @@ export default function TournamentOverlay() {
             filter: 'tournament_id=eq.' + tournamentId,
           }, scheduleRefresh)
           .subscribe(status => {
-            if (status === 'SUBSCRIBED') void refresh();
+            const connected = status === 'SUBSCRIBED';
+            realtimeConnected = connected;
+            if (!connected) realtimeVerified = false;
+            scheduleFallback();
+            if (connected) {
+              // An initial response already established the score. Re-read
+              // after reconnection to catch anything missed while offline.
+              if (connectedBefore) void refresh(true);
+              connectedBefore = true;
+            }
             if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
               setLoadError('Realtimeの接続が切れました。再接続を待っています。');
           });
@@ -132,14 +163,13 @@ export default function TournamentOverlay() {
         setLoadError(error.message || 'Realtimeに接続できませんでした。');
       }
     }
-    // The score fallback remains 2.5 seconds. After the first response, an
-    // unchanged tournament is only a tiny revision query; a changed result
-    // immediately reads the selected tournament's score projection.
-    fallbackTimer = setInterval(() => { void refresh(); }, 2500);
+    // 2.5s while Realtime is disconnected or unproven; 60s once it has
+    // actually delivered a change. A signal still refreshes scores at once.
+    scheduleFallback();
     void refresh();
     return () => {
       active = false;
-      clearInterval(fallbackTimer);
+      clearTimeout(fallbackTimer);
       clearTimeout(debounce);
       clearTimeout(holdTimer);
       controller?.abort();
