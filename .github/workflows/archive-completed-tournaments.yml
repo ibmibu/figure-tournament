@@ -1,5 +1,11 @@
 name: Archive completed tournaments
 on:
+  # Initial sync after rollout; later archive commits do not trigger this
+  # workflow because they only touch data, not this workflow file.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/archive-completed-tournaments.yml'
   schedule:
     - cron: '*/30 * * * *'
   workflow_dispatch:
