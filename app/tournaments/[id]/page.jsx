@@ -10,7 +10,7 @@ import MatchScoreEditor from '../../../components/MatchScoreEditor';
 const OWNER_KEY = 'figure-tournament-owner-v1';
 // sessionStorage survives F5 in the same tab. Cache avatars only for the
 // current browser session, not in Supabase's tournament JSON.
-const AVATAR_CACHE_PREFIX = 'figure-tournament-avatars-v1:';
+const AVATAR_CACHE_PREFIX = 'figure-tournament-avatars-v2:';
 const AVATAR_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 function readCachedAvatars(id) {
   try {
@@ -1686,7 +1686,7 @@ export default function TournamentPage() {
     </section>
     <section className="create-panel tournament-detail participant-side-panel">
       <h2 className="participant-section-heading">参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a></span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && String(player.userId || player.id) === String(currentUserId) ? <button type="button" onClick={withdrawTournament}>参加を解除</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a></span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && String(player.userId || player.id) === String(currentUserId) ? <button type="button" onClick={withdrawTournament}>参加を解除</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
