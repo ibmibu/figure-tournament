@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import Link from 'next/link';
 import { loadCompletedTournamentRecords } from '../../lib/tournament-archive-client';
+import { loadLegacyParticipations } from '../../lib/legacy-results-cache';
 import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 function formatDate(value) {
@@ -56,13 +57,12 @@ export default function ResultsPage() {
         try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(sortParticipations(saved.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); } } catch {}
         const snapshot = readTabSnapshot('results-v3-' + session.user.id);
         if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); }
-        const headers = { Authorization: `Bearer ${session.access_token}` };
-        const [completedTournaments, legacyResponse] = await Promise.all([
+        const [completedTournaments, legacyResult] = await Promise.all([
           loadCompletedTournamentRecords(),
-          fetch('/api/results/legacy', { headers, cache: 'no-store' }),
+          loadLegacyParticipations('mine', session.user.id, session.access_token)
+            .catch(() => ({ tournaments: [], stale: true })),
         ]);
-        const legacyResult = legacyResponse.ok ? await legacyResponse.json() : { tournaments: [] };
-        if (!legacyResponse.ok) console.warn('過去の人形劇の結果を取得できませんでした。');
+        if (legacyResult.stale) console.warn('過去の人形劇の結果は保存済みのデータを優先します。');
         const myId = String(session.user.id);
         const mine = completedTournaments.filter(item =>
           item.bracket?.complete && item.resultPlacements?.length && (item.joinedPlayers || []).some(player =>
@@ -83,8 +83,8 @@ export default function ResultsPage() {
           return { ...item, myPlacement: placement || inferredPlace };
         });
         const savedLegacy = (() => { try { return JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || '[]').filter(item => isLegacyParticipation(item)); } catch { return []; } })();
-        const combined = sortParticipations([...mine, ...(legacyResponse.ok ? (legacyResult.tournaments || []) : savedLegacy)]);
-        if (active) { setTournaments(combined); writeTabSnapshot('results-v3-' + session.user.id, combined); if (!legacyResponse.ok) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
+        const combined = sortParticipations([...mine, ...(legacyResult.tournaments?.length ? legacyResult.tournaments : (legacyResult.stale ? savedLegacy : []))]);
+        if (active) { setTournaments(combined); writeTabSnapshot('results-v3-' + session.user.id, combined); if (legacyResult.stale) setError('過去の人形劇の最新データを取得できませんでした。保存済みの記録を表示しています。'); try { localStorage.setItem('figure-personal-results-v2-' + session.user.id, JSON.stringify(combined)); } catch {} }
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {

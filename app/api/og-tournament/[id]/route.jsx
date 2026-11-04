@@ -49,8 +49,12 @@ export async function GET(_request, { params }) {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (url && key) {
       const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-      const { data } = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
-      const t = data?.data;
+      // OG text and preview only need a few scalar fields, never bracket
+      // history, profiles, private reports or full tournament JSON.
+      const { data } = await db.from('tournaments')
+        .select('name:data->>name,date:data->>date,format:data->>format,bestOf:data->bestOf,stageRejects:data->stageRejects,stageSettings:data->stageSettings,stages:data->stages')
+        .eq('id', id).maybeSingle();
+      const t = data;
       if (t?.name) {
         name = String(t.name).slice(0, 90);
         formatText = String(t.format || (t.bestOf ? 'BO' + t.bestOf : 'BO3'));
@@ -162,7 +166,7 @@ export async function GET(_request, { params }) {
           </div>
         </div>
       </div>
-    </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=60' }, fonts: japaneseFont ? [{ name: 'Noto Sans JP', data: japaneseFont, weight: 900, style: 'normal' }] : [] }
+    </div>, { ...size, headers: { 'Cache-Control': 'public, max-age=300, s-maxage=3600, stale-while-revalidate=300' }, fonts: japaneseFont ? [{ name: 'Noto Sans JP', data: japaneseFont, weight: 900, style: 'normal' }] : [] }
   );
   // Return a complete PNG with an explicit content length for Discord/X.
   // Do not hide rendering bugs behind the temporary English test image.
@@ -172,7 +176,7 @@ export async function GET(_request, { params }) {
       'Content-Type': 'image/png',
       'Content-Length': String(png.length),
       'Content-Disposition': 'inline; filename="tournament.png"',
-      'Cache-Control': 'public, max-age=300, s-maxage=300',
+      'Cache-Control': 'public, max-age=300, s-maxage=3600',
       'X-Content-Type-Options': 'nosniff',
     },
   });

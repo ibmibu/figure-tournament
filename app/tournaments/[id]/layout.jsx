@@ -11,8 +11,12 @@ export async function generateMetadata({ params, searchParams }) {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (url && key) {
       const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-      const { data } = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
-      const t = data?.data;
+      // OG text and preview only need a few scalar fields, never bracket
+      // history, profiles, private reports or full tournament JSON.
+      const { data } = await db.from('tournaments')
+        .select('name:data->>name,date:data->>date,format:data->>format,bestOf:data->bestOf,stageRejects:data->stageRejects,stageSettings:data->stageSettings,stages:data->stages')
+        .eq('id', id).maybeSingle();
+      const t = data;
       if (t) {
         // Image URL changes only when visible card details change.
         // X and other crawlers may retain an earlier image URL for a long time.

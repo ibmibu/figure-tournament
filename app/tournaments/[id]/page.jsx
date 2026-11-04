@@ -10,7 +10,7 @@ import MatchScoreEditor from '../../../components/MatchScoreEditor';
 const OWNER_KEY = 'figure-tournament-owner-v1';
 // sessionStorage survives F5 in the same tab. Cache avatars only for the
 // current browser session, not in Supabase's tournament JSON.
-const AVATAR_CACHE_PREFIX = 'figure-tournament-avatars-v1:';
+const AVATAR_CACHE_PREFIX = 'figure-tournament-avatars-v2:';
 const AVATAR_CACHE_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 function readCachedAvatars(id) {
   try {
@@ -86,9 +86,15 @@ export default function TournamentPage() {
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
   const liveVersionRef = useRef('');
+  const liveLastSyncRef = useRef(0);
+  // Keep one Realtime socket for each live event. Polling cadence may
+  // change every game, but must not recreate the subscription each time.
+  const liveRefreshRef = useRef(null);
+  const liveSignalRef = useRef({ connected: false, received: false, lastAt: 0 });
   const avatarMapRef = useRef({});
   const avatarRosterRef = useRef('');
   const boardSnapshotRef = useRef('');
+  const boardEtagRef = useRef('');
   const boardInFlightRef = useRef(false);
   const autoStartAttemptRef = useRef(new Set());
 
@@ -132,11 +138,16 @@ export default function TournamentPage() {
     setTournament(next);
   }
 
-  async function refreshBoard() {
+  async function refreshBoard(force = false) {
     if (!id || boardInFlightRef.current) return;
     boardInFlightRef.current = true;
     try {
-      const response = await fetch(`/api/tournaments/board?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      const url = `/api/tournaments/board?id=${encodeURIComponent(id)}` + (force ? '&fresh=1' : '');
+      const headers = !force && boardEtagRef.current ? { 'If-None-Match': boardEtagRef.current } : {};
+      const response = await fetch(url, { cache: 'no-store', headers });
+      if (response.status === 304) return;
+      const etag = response.headers.get('etag');
+      if (etag) boardEtagRef.current = etag;
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'コメントを読み込めませんでした。');
       const messages = data.messages || [];
@@ -156,6 +167,7 @@ export default function TournamentPage() {
   const boardFinished = Boolean(tournament?.bracket?.complete);
   useEffect(() => {
     if (!boardVisible) return;
+    boardEtagRef.current = '';
     void refreshBoard();
     if (boardFinished) return;
     const timer = setInterval(() => {
@@ -180,7 +192,7 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '投稿できませんでした。');
       setBoardText('');
-      await refreshBoard();
+      await refreshBoard(true);
     } catch (error) { setBoardError(error.message || '投稿できませんでした。'); }
     finally { setBoardBusy(false); }
   }
@@ -243,6 +255,7 @@ export default function TournamentPage() {
   useEffect(() => {
     liveVersionRef.current = '';
     liveEtagRef.current = '';
+    liveLastSyncRef.current = 0;
   }, [id, accessToken]);
 
   // Fetch icons only when the cached roster differs from the actual roster.
@@ -283,15 +296,12 @@ export default function TournamentPage() {
     if (!id || !tournament || tournament.bracket?.complete || savingBracket || declarationBusy) return;
     let cancelled = false;
     let inFlight = false;
-    let lastSync = 0;
-    let realtimeConnected = false;
-    let receivedSignal = false;
-    let lastSignalAt = 0;
+    let lastSync = liveLastSyncRef.current;
     let pendingRefresh = false;
     let pendingFresh = false;
-    let channel = null;
     const refresh = async (fresh = false) => {
-      if (cancelled || inFlight || document.visibilityState === 'hidden') return;
+      if (cancelled || document.visibilityState === 'hidden') return;
+      if (inFlight) { pendingRefresh = true; pendingFresh ||= fresh; return; }
       inFlight = true;
       try {
         const owner = localStorage.getItem(OWNER_KEY) || '';
@@ -310,6 +320,7 @@ export default function TournamentPage() {
           const nextVersion = response.headers.get('x-tournament-version');
           if (nextVersion) liveVersionRef.current = nextVersion;
           lastSync = Date.now();
+          liveLastSyncRef.current = lastSync;
           return;
         }
         if (!response.ok) return;
@@ -320,6 +331,7 @@ export default function TournamentPage() {
         if (!cancelled && result.tournament) {
           applyTournamentSnapshot(result.tournament);
           lastSync = Date.now();
+          liveLastSyncRef.current = lastSync;
         }
       } catch {} finally {
         inFlight = false;
@@ -331,33 +343,10 @@ export default function TournamentPage() {
         }
       }
     };
-    // Subscribe only to a dedicated, non-sensitive change signal table.
-    // Never subscribe to public.tournaments: its JSON contains private data.
-    // The authenticated GET API remains the source of truth.
-    if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
-      try {
-        const client = getSupabaseBrowserClient();
-        channel = client.channel(`tournament-signals:${id}`);
-        channel.on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'tournament_change_signals',
-          filter: `tournament_id=eq.${id}`,
-        }, () => {
-          receivedSignal = true;
-          lastSignalAt = Date.now();
-          // Signals must bypass the short-lived server cache to see new writes.
-          if (inFlight) { pendingRefresh = true; pendingFresh = true; }
-          else void refresh(true);
-        });
-        channel.subscribe(status => {
-          realtimeConnected = status === 'SUBSCRIBED';
-          if (status === 'SUBSCRIBED') void refresh();
-        });
-      } catch {
-        realtimeConnected = false;
-      }
-    }
+    // Realtime channel is managed in an independent useEffect below.
+    // Updating a match or revision recreates the polling cadence, NOT the
+    // subscription. The current refresh callback stays callable by signals.
+    liveRefreshRef.current = refresh;
     // Active matches prioritize responsiveness. Overview and declarations use a
     // slower fallback, while change signals can refresh immediately.
     const activeMatch = Boolean(tournament.bracket && !tournament.bracket.complete);
@@ -387,7 +376,8 @@ export default function TournamentPage() {
       // Only relax active polling after a real change signal was observed.
       // Unproven subscriptions, disconnected sockets and stale signals retain
       // the original fast fallback so match progression stays responsive.
-      const signalHealthy = realtimeConnected && receivedSignal && Date.now() - lastSignalAt < 60000;
+      const signal = liveSignalRef.current;
+      const signalHealthy = signal.connected && signal.received && Date.now() - signal.lastAt < 60000;
       const intervalMs = signalHealthy && ownMatch ? Math.max(fallbackMs, 10000) : fallbackMs;
       if (Date.now() - lastSync >= intervalMs) void refresh();
       timer = setTimeout(poll, Math.min(fallbackMs, intervalMs));
@@ -401,9 +391,39 @@ export default function TournamentPage() {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
-      if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+      if (liveRefreshRef.current === refresh) liveRefreshRef.current = null;
     };
   }, [id, Boolean(tournament), Boolean(tournament?.bracket), tournament?.bracket?.complete, tournament?.stageActionRevision, currentUserId, savingBracket, declarationBusy, accessToken]);
+
+  // Separate socket lifetime from score/stage state. Only one channel exists
+  // for an active tournament; changes to stageActionRevision do not reconnect.
+  useEffect(() => {
+    if (!id || !tournament || tournament.bracket?.complete ||
+        process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED !== 'true') return;
+    const signal = liveSignalRef.current;
+    signal.connected = false;
+    signal.received = false;
+    signal.lastAt = 0;
+    const client = getSupabaseBrowserClient();
+    const channel = client.channel('tournament-signals:' + id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'tournament_change_signals',
+        filter: 'tournament_id=eq.' + id,
+      }, () => {
+        signal.received = true;
+        signal.lastAt = Date.now();
+        // A signal while the GET is in flight queues one final refresh.
+        liveRefreshRef.current?.(true);
+      })
+      .subscribe(status => {
+        signal.connected = status === 'SUBSCRIBED';
+      });
+    return () => {
+      signal.connected = false;
+      signal.received = false;
+      void client.removeChannel(channel);
+    };
+  }, [id, Boolean(tournament), tournament?.bracket?.complete]);
 
   // Prompt for character reporting as soon as each placement is decided.
   // Semifinal losers need not wait for the final match to finish.
@@ -1677,7 +1697,7 @@ export default function TournamentPage() {
     </section>
     <section className="create-panel tournament-detail participant-side-panel">
       <h2 className="participant-section-heading">参加者（{joinedPlayers.length}/{tournament.participants || 8}人）</h2>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a></span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && String(player.userId || player.id) === String(currentUserId) ? <button type="button" onClick={withdrawTournament}>参加を解除</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a></span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && String(player.userId || player.id) === String(currentUserId) ? <button type="button" onClick={withdrawTournament}>参加を解除</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
