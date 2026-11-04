@@ -1,9 +1,133 @@
 import { NextResponse } from 'next/server';
+import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { findParticipantOverlay } from '../../../../lib/overlay-participant-match';
+import { findParticipantOverlay, ownOverlayMatch } from '../../../../lib/overlay-participant-match';
 import { editableSetScores, getMatchReportMode, hasStreamUrl } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
+
+// JSON-path selection is performed by PostgREST before data crosses the
+// Supabase -> Vercel boundary. Never select the entire tournaments.data JSON
+// (historical results, avatars, logs, reports) for OBS score reads.
+const OVERLAY_SELECT = [
+  'id', 'created_at', 'name:data->>name', 'createdAt:data->>createdAt',
+  'ownerUserId:data->>ownerUserId', 'status:data->>status',
+  'bracket:data->bracket', 'joinedPlayers:data->joinedPlayers',
+  'streamUrl:data->>streamUrl', 'streamMatchManual:data->streamMatchManual',
+  'streamMatchId:data->streamMatchId', 'streamHoldMatchId:data->streamHoldMatchId',
+  'streamHoldUntil:data->>streamHoldUntil', 'bestOf:data->bestOf',
+  'stageRejects:data->stageRejects', 'stageActionRevision:data->stageActionRevision',
+].join(',');
+const OVERLAY_INDEX_SELECT = [
+  'id', 'created_at', 'createdAt:data->>createdAt', 'status:data->>status',
+  'complete:data->bracket->>complete',
+].join(',');
+const CANDIDATE_BATCH_SIZE = 4;
+
+function expandOverlayRow(raw) {
+  if (!raw) return null;
+  const { id, created_at, ...data } = raw;
+  return { id, created_at, data };
+}
+function overlayAt(row) {
+  return Date.parse(row?.data?.createdAt || row?.createdAt || row?.created_at || '') || 0;
+}
+async function readOverlayRow(db, id) {
+  const { data, error } = await db.from('tournaments')
+    .select(OVERLAY_SELECT).eq('id', id).maybeSingle();
+  if (error) throw error;
+  return expandOverlayRow(data);
+}
+async function readOverlayIndex(db, contains) {
+  const { data, error } = await db.from('tournaments')
+    .select(OVERLAY_INDEX_SELECT).contains('data', contains)
+    .order('created_at', { ascending: false }).limit(100);
+  if (error) throw error;
+  return (data || []).sort((a, b) => overlayAt(b) - overlayAt(a));
+}
+// Return exact match detail for only the few candidate tournaments that might
+// actually be shown. Preserve the previous 100-row cap and selection priority.
+async function readCandidateBatch(db, indexRows) {
+  if (!indexRows.length) return [];
+  const { data, error } = await db.from('tournaments')
+    .select(OVERLAY_SELECT).in('id', indexRows.map(row => row.id));
+  if (error) throw error;
+  const byId = new Map((data || []).map(row => [String(row.id), expandOverlayRow(row)]));
+  return indexRows.map(row => byId.get(String(row.id))).filter(Boolean);
+}
+async function firstOrganizer(db, indexRows) {
+  for (let offset = 0; offset < indexRows.length; offset += CANDIDATE_BATCH_SIZE) {
+    const rows = await readCandidateBatch(db, indexRows.slice(offset, offset + CANDIDATE_BATCH_SIZE));
+    const found = rows.find(row => row.data?.bracket?.rounds?.length);
+    if (found) return found;
+  }
+  return null;
+}
+function activeParticipantIndex(row) {
+  return row.complete !== 'true' &&
+    ['対戦中', 'キャラ宣言中', '開始'].includes(row.status);
+}
+async function bestParticipant(db, indexRows, userId) {
+  // Playing (priority 3) beats another live event already played (priority 2),
+  // regardless of its date. Completed matches (priority 1) come last.
+  const active = indexRows.filter(activeParticipantIndex);
+  let waiting = null;
+  for (let offset = 0; offset < active.length; offset += CANDIDATE_BATCH_SIZE) {
+    const rows = await readCandidateBatch(db, active.slice(offset, offset + CANDIDATE_BATCH_SIZE));
+    const found = findParticipantOverlay(rows, userId);
+    if (found?.priority === 3) return found;
+    if (!waiting && found?.priority === 2) waiting = found;
+  }
+  if (waiting) return waiting;
+  const completed = indexRows.filter(row => !activeParticipantIndex(row));
+  for (let offset = 0; offset < completed.length; offset += CANDIDATE_BATCH_SIZE) {
+    const rows = await readCandidateBatch(db, completed.slice(offset, offset + CANDIDATE_BATCH_SIZE));
+    const found = findParticipantOverlay(rows, userId);
+    if (found) return found;
+  }
+  return null;
+}
+async function selectOverlay(db, owner, player) {
+  if (player) {
+    let rows = await readOverlayIndex(db, { joinedPlayers: [{ userId: player }] });
+    let selected = await bestParticipant(db, rows, player);
+    if (!selected && !rows.length) {
+      rows = await readOverlayIndex(db, { joinedPlayers: [{ id: player }] });
+      selected = await bestParticipant(db, rows, player);
+    }
+    return selected ? { row: selected.row, personalMatch: selected.item, role: 'participant' } : null;
+  }
+  const owned = await readOverlayIndex(db, { ownerUserId: owner });
+  const running = owned.filter(row => row.status === '対戦中' && row.complete !== 'true');
+  const currentOrganizer = await firstOrganizer(db, running);
+  if (currentOrganizer) return { row: currentOrganizer, personalMatch: null, role: 'organizer' };
+
+  let entered = await readOverlayIndex(db, { joinedPlayers: [{ userId: owner }] });
+  let participant = await bestParticipant(db, entered, owner);
+  if (!participant && !entered.length) {
+    entered = await readOverlayIndex(db, { joinedPlayers: [{ id: owner }] });
+    participant = await bestParticipant(db, entered, owner);
+  }
+  if (participant?.priority > 1)
+    return { row: participant.row, personalMatch: participant.item, role: 'participant' };
+  const finished = owned.filter(row =>
+    row.status === '対戦中' || row.status === '終了' || row.complete === 'true');
+  const finishedOrganizer = await firstOrganizer(db, finished);
+  if (participant && (!finishedOrganizer ||
+      overlayAt(participant.row) > overlayAt(finishedOrganizer))) {
+    return { row: participant.row, personalMatch: participant.item, role: 'participant' };
+  }
+  return finishedOrganizer
+    ? { row: finishedOrganizer, personalMatch: null, role: 'organizer' } : null;
+}
+function versionToken(rowId, revision, selector, role) {
+  if (revision == null || revision === '' || !Number.isSafeInteger(Number(revision)) || Number(revision) < 0)
+    return '';
+  return createHash('sha256').update(JSON.stringify([
+    String(rowId), String(revision), String(selector || ''), String(role),
+  ])).digest('hex');
+}
+
 
 export async function GET(request) {
   try {
@@ -17,84 +141,76 @@ export async function GET(request) {
         Number(Boolean(id)) + Number(Boolean(owner)) + Number(Boolean(player)) !== 1) {
       return NextResponse.json({ error: 'オーバーレイの指定が不正です。' }, { status: 400 });
     }
+    const selectedId = params.get('selectedId');
+    const selectedRole = params.get('selectedRole');
+    const useSelection = Boolean(owner || player);
+    if ((selectedId && (!useSelection || !/^[a-zA-Z0-9_-]{1,128}$/.test(selectedId))) ||
+        (selectedRole && !['organizer', 'participant'].includes(selectedRole)) ||
+        (selectedId && !selectedRole)) {
+      return NextResponse.json({ error: 'オーバーレイの選択が不正です。' }, { status: 400 });
+    }
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-    let row;
-    let personalMatch = null;
-    if (player) {
-      // Query only tournaments the account entered, never every private
-      // tournament. OBS receives only the public match names and scores.
-      const { data: rows, error } = await db.from('tournaments')
-        .select('id,data,created_at')
-        .contains('data', { joinedPlayers: [{ userId: player }] })
-        .order('created_at', { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      let selected = findParticipantOverlay(rows, player);
-      if (!selected && !rows?.length) {
-        // Earlier linked accounts can have id without userId.
-        const fallback = await db.from('tournaments')
-          .select('id,data,created_at')
-          .contains('data', { joinedPlayers: [{ id: player }] })
-          .order('created_at', { ascending: false }).limit(100);
-        if (fallback.error) throw fallback.error;
-        selected = findParticipantOverlay(fallback.data, player);
-      }
-      row = selected?.row;
-      personalMatch = selected?.item || null;
-    } else if (owner) {
-      // One account URL works for both organizer and participant.
-      // A currently running tournament that this account organizes wins;
-      // otherwise an active match the account is playing takes precedence.
-      // Older ?owner= links therefore continue working without OBS changes.
-      const [ownedResult, enteredResult] = await Promise.all([
-        db.from('tournaments').select('data,created_at')
-          .contains('data', { ownerUserId: owner })
-          .order('created_at', { ascending: false }).limit(100),
-        db.from('tournaments').select('data,created_at')
-          .contains('data', { joinedPlayers: [{ userId: owner }] })
-          .order('created_at', { ascending: false }).limit(100),
-      ]);
-      if (ownedResult.error) throw ownedResult.error;
-      if (enteredResult.error) throw enteredResult.error;
-
-      const organizerRows = (ownedResult.data || []).filter(r =>
-        r.data?.bracket?.rounds?.length &&
-        (r.data.status === '対戦中' || r.data.status === '終了' || r.data.bracket.complete));
-      const dateOf = r => Date.parse(r?.data?.createdAt || r?.created_at || '') || 0;
-      const latest = list => [...list].sort((a, b) => dateOf(b) - dateOf(a))[0] || null;
-      const currentOrganizer = latest(organizerRows.filter(r =>
-        r.data.status === '対戦中' && !r.data.bracket.complete));
-      let participant = findParticipantOverlay(enteredResult.data, owner);
-      if (!participant && !enteredResult.data?.length) {
-        // Historic registrations may use the account UUID in id alone.
-        const legacy = await db.from('tournaments').select('data,created_at')
-          .contains('data', { joinedPlayers: [{ id: owner }] })
-          .order('created_at', { ascending: false }).limit(100);
-        if (legacy.error) throw legacy.error;
-        participant = findParticipantOverlay(legacy.data, owner);
-      }
-
-      if (currentOrganizer) {
-        row = currentOrganizer;
-      } else if (participant?.priority > 1) {
-        row = participant.row;
-        personalMatch = participant.item;
-      } else {
-        const finishedOrganizer = latest(organizerRows);
-        if (participant && (!finishedOrganizer ||
-            dateOf(participant.row) > dateOf(finishedOrganizer))) {
-          row = participant.row;
-          personalMatch = participant.item;
-        } else {
-          row = finishedOrganizer;
+    const targetId = selectedId || id;
+    const role = selectedId ? selectedRole : id ? 'direct' : null;
+    const selector = owner || player || '';
+    const priorVersion = request.headers.get('x-overlay-version') || '';
+    if (targetId && priorVersion && !params.has('fresh')) {
+      try {
+        const { data: record, error } = await db.from('tournaments')
+          .select('revision:data->>stageActionRevision').eq('id', targetId).maybeSingle();
+        if (error) throw error;
+        if (record && priorVersion === versionToken(targetId, record.revision, selector, role)) {
+          return new NextResponse(null, { status: 304, headers: {
+            'X-Overlay-Version': priorVersion,
+            'Cache-Control': 'no-store',
+          } });
         }
+      } catch (revisionError) {
+        // OBS must continue showing scores if the compact check is unavailable.
+        console.warn('Overlay revision preflight unavailable:', revisionError.message);
+      }
+    }
+
+    let row = null;
+    let personalMatch = null;
+    let sourceRole = role;
+    if (id) {
+      row = await readOverlayRow(db, id);
+    } else if (selectedId) {
+      row = await readOverlayRow(db, selectedId);
+      if (row && (selectedRole === 'participant' || player)) {
+        personalMatch = ownOverlayMatch(row.data, selector);
+        if (!personalMatch) row = null;
+        sourceRole = 'participant';
+      } else if (row && selectedRole === 'organizer') {
+        if (String(row.data.ownerUserId || '') !== String(owner)) row = null;
+        sourceRole = 'organizer';
+      }
+      // If an old selection is no longer valid, re-resolve rather than showing
+      // a different person's tournament under the account OBS URL.
+      if (!row) {
+        const selected = await selectOverlay(db, owner, player);
+        row = selected?.row || null;
+        personalMatch = selected?.personalMatch || null;
+        sourceRole = selected?.role || null;
       }
     } else {
-      const result = await db.from('tournaments').select('data').eq('id', id).maybeSingle();
-      if (result.error) throw result.error;
-      row = result.data;
+      const selected = await selectOverlay(db, owner, player);
+      row = selected?.row || null;
+      personalMatch = selected?.personalMatch || null;
+      sourceRole = selected?.role || null;
     }
-    if (!row) return NextResponse.json({ name: '', match: null, status: 'unassigned' }, { headers: { 'Cache-Control': 'no-store' } });
+    const headers = { 'Cache-Control': 'no-store' };
+    if (row) {
+      const token = versionToken(row.id, row.data.stageActionRevision, selector, sourceRole);
+      if (token) headers['X-Overlay-Version'] = token;
+    }
+    const reply = body => NextResponse.json({
+      ...body,
+      selectedTournamentId: row?.id || null,
+      selectedRole: sourceRole || null,
+    }, { headers });
+    if (!row) return reply({ name: '', match: null, status: 'unassigned' });
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
     const matches = rounds.flat();
@@ -111,7 +227,7 @@ export async function GET(request) {
     const selected = personalMatch ? personalMatch.match : held || (explicit
       ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2)
       : organizerMatch);
-    if (!selected) return NextResponse.json({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found', ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
+    if (!selected) return reply({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found', ownerId: t.ownerUserId || null });
     const roundIndex = personalMatch
       ? personalMatch.roundIndex
       : rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
@@ -128,9 +244,9 @@ export async function GET(request) {
       bestOf: Number(t.bestOf) === 5 ? 5 : 3,
       finished: Boolean(selected.winnerId),
     };
-    return NextResponse.json({ name: t.name || '', match,
+    return reply({ name: t.name || '', match,
       holdUntil: personalMatch ? null : held ? t.streamHoldUntil : null,
-      ownerId: t.ownerUserId || null }, { headers: { 'Cache-Control': 'no-store' } });
+      ownerId: t.ownerUserId || null });
   } catch (error) {
     console.error('Overlay score read failed', error);
     return NextResponse.json({ error: 'スコアを取得できませんでした。' }, { status: 500 });
