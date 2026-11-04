@@ -52,20 +52,20 @@ export default function NewTournamentPage() {
       try {
         const { data } = await getSupabaseBrowserClient().auth.getSession();
         if (!data.session) return;
-        const response = await fetch('/api/tournaments', {
+        const response = await fetch('/api/tournaments/presets', {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
           cache: 'no-store',
         });
         if (!response.ok) return;
         const result = await response.json();
-        const previous = (result.tournaments || []).find(t => t.isOwner && typeof t.name === 'string' && t.name.trim());
+        const previous = result.previous;
         if (active && previous) {
           setName(current => current || nextTournamentName(previous.name));
           setSeriesTag(current => current || (previous.seriesTags?.[0] || ''));
           setStreamUrl(current => current || previous.streamUrl || '');
           setStreamFriendCode(current => current || previous.streamFriendCode || '');
         }
-        if (active) setKnownSeriesTags([...new Set((result.tournaments || []).flatMap(t => Array.isArray(t.seriesTags) ? t.seriesTags : []))].sort((a,b) => a.localeCompare(b, 'ja')));
+        if (active) setKnownSeriesTags(Array.isArray(result.knownSeriesTags) ? result.knownSeriesTags : []);
       } catch { /* Keep the name empty if previous tournaments cannot be loaded. */ }
     })();
     return () => { active = false; };
