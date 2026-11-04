@@ -35,7 +35,7 @@ def request(params):
         if attempt < attempts - 1:
             print("Waiting for updated production archive exporter...", flush=True)
             time.sleep(15)
-    raise ValueError("Archive exporter is not yet deployed with schema 2")
+    raise ValueError("Archive exporter is not yet deployed with schema 3")
 
 
 def save(path, obj):
