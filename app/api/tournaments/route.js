@@ -111,7 +111,9 @@ function publicTournament(row, user, legacyOwnerToken = '') {
   if (!isOwner && !isStreamPlayer) delete publicData.streamFriendCode;
   publicData.matchLogs = (data.matchLogs || []).map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
   delete publicData.statsSnapshot;
-  if (!isOwner) { delete publicData.adminHistory; delete publicData.adminLog; }
+  // Rollback snapshots are never needed by the page or the live polling API.
+  delete publicData.adminHistory;
+  if (!isOwner) delete publicData.adminLog;
   return { ...publicData, characterReports: visibleReports, isOwner, ...(isOwner ? { overlayOwnerId: ownerUserId } : {}), effectiveStreamMatchId };
 }
 

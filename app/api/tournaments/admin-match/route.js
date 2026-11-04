@@ -2,7 +2,7 @@ import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { updateBracketMatch, correctBracketScore, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
-import { appendMatchLog, rewindMatchPath } from '../../../../lib/tournament-match-log';
+import { appendMatchLog } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +21,7 @@ export async function POST(request) {
     if (authError || !user) return NextResponse.json({ error: 'ログインの有効期限が切れています。' }, { status: 401 });
 
     const { id, matchId, action, winnerId, ownerToken, firstScore, secondScore } = await request.json();
-    if (!id || !['reset', 'forfeit', 'undo', 'rewind-match', 'score'].includes(action) || (!['undo'].includes(action) && !matchId)) {
+    if (!id || !['reset', 'forfeit', 'score'].includes(action) || !matchId) {
       return NextResponse.json({ error: '操作内容が正しくありません。' }, { status: 400 });
     }
     const admin = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -38,56 +38,23 @@ export async function POST(request) {
 
     let updated;
     try {
-      const history = Array.isArray(existing.adminHistory) ? existing.adminHistory : [];
-      if (action === 'rewind-match') {
-        const logId = winnerId;
-        const log = (existing.matchLogs || []).find(item => item.id === logId && String(item.matchId) === String(matchId));
-        if (!(log?.before?.match || log?.before?.bracket)) throw new Error('巻き戻す履歴が見つかりません。');
-        const entries = existing.matchLogs || [];
-        const index = entries.findIndex(item => item.id === log.id);
-        if (index < 0) throw new Error('巻き戻す履歴が見つかりません。');
-        updated = rewindMatchPath(existing, matchId, logId);
-        updated.adminLog = [...(existing.adminLog || []), { at: new Date().toISOString(), label: `対戦履歴を巻き戻し：${log.actor} ${log.action}` }].slice(-100);
-      } else if (action === 'undo') {
-        const latest = history.at(-1);
-        if (!latest?.before) throw new Error('巻き戻せる主催者操作がありません。');
-        // Never restore a snapshot over bracket progress made by players after the admin action.
-        if (JSON.stringify(existing.bracket) !== JSON.stringify(latest.afterBracket)) {
-          throw new Error('操作後に対戦が進行したため巻き戻せません。対戦結果を確認してください。');
-        }
-        updated = {
-          ...existing,
-          bracket: latest.before.bracket,
-          status: latest.before.status,
-          resultPlacements: latest.before.resultPlacements,
-          completedAt: latest.before.completedAt,
-          adminHistory: history.slice(0, -1),
-          adminLog: [...(existing.adminLog || []), { at: new Date().toISOString(), label: `巻き戻し：${latest.label}` }].slice(-100),
-        };
-      } else {
-        updated = action === 'score'
-          ? correctBracketScore(existing, String(matchId), firstScore, secondScore)
-          : updateBracketMatch(existing, String(matchId), action, winnerId);
-        const match = (existing.bracket?.rounds || []).flat().find(item => String(item.id) === String(matchId));
-        const label = action === 'score'
-          ? `スコア修正：${match?.player1?.name || '?'} ${firstScore} - ${secondScore} ${match?.player2?.name || '?'}`
-          : action === 'reset'
-          ? `結果リセット：${match?.player1?.name || '?'} VS ${match?.player2?.name || '?'}`
-          : `不戦勝：${[match?.player1, match.player2].find(p => String(p?.id) === String(winnerId))?.name || '?'}`;
-        const at = new Date().toISOString();
-        updated.adminHistory = [...history, {
-          at, label,
-          before: { bracket: existing.bracket, status: existing.status, resultPlacements: existing.resultPlacements ?? null, completedAt: existing.completedAt ?? null },
-          afterBracket: updated.bracket,
-        }].slice(-20);
-        updated.adminLog = [...(existing.adminLog || []), { at, label }].slice(-100);
-        appendMatchLog(updated, existing, matchId, '主催者', label);
-      }
+      updated = action === 'score'
+        ? correctBracketScore(existing, String(matchId), firstScore, secondScore)
+        : updateBracketMatch(existing, String(matchId), action, winnerId);
+      const match = (existing.bracket?.rounds || []).flat().find(item => String(item.id) === String(matchId));
+      const label = action === 'score'
+        ? `スコア修正：${match?.player1?.name || '?'} ${firstScore} - ${secondScore} ${match?.player2?.name || '?'}`
+        : action === 'reset'
+        ? `結果リセット：${match?.player1?.name || '?'} VS ${match?.player2?.name || '?'}`
+        : `不戦勝：${[match?.player1, match.player2].find(p => String(p?.id) === String(winnerId))?.name || '?'}`;
+      const at = new Date().toISOString();
+      updated.adminLog = [...(existing.adminLog || []), { at, label }].slice(-100);
+      appendMatchLog(updated, existing, matchId, '主催者', label);
     } catch (error) {
       return NextResponse.json({ error: error.message || '対戦結果を変更できませんでした。' }, { status: 400 });
     }
 
-    // Older undo snapshots can also contain invalid automatic advancements.
+    // Validate bracket advancements after organizer edits.
     updated = repairPrematureAdvances(updated);
 
     // Share the compact revision guard with stage actions, result reports and stream changes.
@@ -102,7 +69,9 @@ export async function POST(request) {
     const { data: changed, error: writeError } = await update.select('id');
     if (writeError) throw writeError;
     if (!changed?.length) return NextResponse.json({ error: '別の操作が先に保存されました。再読み込みしてください。' }, { status: 409 });
-    const { ownerUserId, ownerId, ...publicTournament } = updated;
+    const { ownerUserId, ownerId, adminHistory, ...publicTournament } = updated;
+    publicTournament.matchLogs = (updated.matchLogs || [])
+      .map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
     return NextResponse.json({ ok: true, tournament: { ...publicTournament, isOwner: true } });
   } catch (error) {
     console.error('Match administration failed:', error);

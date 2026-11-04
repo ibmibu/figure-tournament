@@ -50,7 +50,6 @@ function safeTournament(data, user) {
     const streamMatch = (data.bracket?.rounds || []).flat().find(m => String(m.id) === String(data.streamMatchId));
     if (!streamMatch || ![streamMatch.player1, streamMatch.player2].some(p => p && String(p.userId || p.id) === String(user.id))) delete publicData.streamFriendCode;
   } else {
-    publicData.adminHistory = adminHistory;
     publicData.adminLog = adminLog;
   }
   return { ...publicData, isOwner };
