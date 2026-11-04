@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
+import { loadCompletedTournamentRecords } from '../../../lib/tournament-archive-client';
 
 function placement(t, player) {
   const saved = (t.resultPlacements || []).find(r => String(r.playerId) === String(player.id));
@@ -28,10 +29,8 @@ export default function PlayerResultsPage() {
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    Promise.all([fetch('/api/tournaments', { cache: 'no-store' }), fetch(`/api/players/legacy?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })]).then(async ([response, legacyResponse]) => {
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || '大会を読み込めませんでした。');
-      const matches = (data.tournaments || []).flatMap(t => {
+    Promise.all([loadCompletedTournamentRecords(), fetch(`/api/players/legacy?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })]).then(async ([completedTournaments, legacyResponse]) => {
+      const matches = completedTournaments.flatMap(t => {
         const player = (t.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === userId);
         return player && t.bracket?.complete && t.resultPlacements?.length ? [{ tournament: t, player }] : [];
       });
