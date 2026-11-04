@@ -2,7 +2,6 @@ import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { updateBracketMatch, correctBracketScore, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
-import { appendMatchLog } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,15 +40,6 @@ export async function POST(request) {
       updated = action === 'score'
         ? correctBracketScore(existing, String(matchId), firstScore, secondScore)
         : updateBracketMatch(existing, String(matchId), action, winnerId);
-      const match = (existing.bracket?.rounds || []).flat().find(item => String(item.id) === String(matchId));
-      const label = action === 'score'
-        ? `スコア修正：${match?.player1?.name || '?'} ${firstScore} - ${secondScore} ${match?.player2?.name || '?'}`
-        : action === 'reset'
-        ? `結果リセット：${match?.player1?.name || '?'} VS ${match?.player2?.name || '?'}`
-        : `不戦勝：${[match?.player1, match.player2].find(p => String(p?.id) === String(winnerId))?.name || '?'}`;
-      const at = new Date().toISOString();
-      updated.adminLog = [...(existing.adminLog || []), { at, label }].slice(-100);
-      appendMatchLog(updated, existing, matchId, '主催者', label);
     } catch (error) {
       return NextResponse.json({ error: error.message || '対戦結果を変更できませんでした。' }, { status: 400 });
     }
@@ -69,9 +59,7 @@ export async function POST(request) {
     const { data: changed, error: writeError } = await update.select('id');
     if (writeError) throw writeError;
     if (!changed?.length) return NextResponse.json({ error: '別の操作が先に保存されました。再読み込みしてください。' }, { status: 409 });
-    const { ownerUserId, ownerId, adminHistory, ...publicTournament } = updated;
-    publicTournament.matchLogs = (updated.matchLogs || [])
-      .map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
+    const { ownerUserId, ownerId, matchLogs, adminLog, adminHistory, ...publicTournament } = updated;
     return NextResponse.json({ ok: true, tournament: { ...publicTournament, isOwner: true } });
   } catch (error) {
     console.error('Match administration failed:', error);
