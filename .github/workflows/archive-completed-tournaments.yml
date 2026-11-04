@@ -1,0 +1,32 @@
+name: Archive completed tournaments
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: archive-completed-tournaments
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export completed public results
+        run: python3 scripts/sync-tournament-archive.py
+      - name: Commit changed archive data only
+        run: |
+          git add -A public/data/tournament-archive
+          if git diff --cached --quiet; then
+            echo "Archive already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Archive completed public tournament results"
+          git push
