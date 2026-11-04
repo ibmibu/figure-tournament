@@ -150,11 +150,19 @@ export default function TournamentPage() {
     finally { boardInFlightRef.current = false; }
   }
 
+  // The board is displayed only while the bracket view is open. Do not
+  // poll it from the overview or once the tournament has completed.
+  const boardVisible = Boolean(tournament?.bracket && !showTournamentOverview);
+  const boardFinished = Boolean(tournament?.bracket?.complete);
   useEffect(() => {
-    refreshBoard();
-    const timer = setInterval(() => { if (document.visibilityState === 'visible') refreshBoard(); }, 30000);
+    if (!boardVisible) return;
+    void refreshBoard();
+    if (boardFinished) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshBoard();
+    }, 30000);
     return () => clearInterval(timer);
-  }, [id]);
+  }, [id, boardVisible, boardFinished]);
 
   async function postBoardMessage(event) {
     event.preventDefault();
@@ -603,7 +611,7 @@ export default function TournamentPage() {
           // A concurrent action may already have advanced the turn. Refresh
           // instead of blindly resubmitting a potentially stale action.
           const owner = localStorage.getItem(OWNER_KEY) || '';
-          const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
+          const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live&fresh=1`, {
             cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
           });
           if (latest.ok) {
@@ -614,12 +622,15 @@ export default function TournamentPage() {
         throw new Error(response.status === 409 ? '他の操作が先に反映されました。最新の状態を確認して操作してください。' : (result.error || '対戦操作に失敗しました。'));
       }
       const owner = localStorage.getItem(OWNER_KEY) || '';
-      const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, {
+      // Pull only the compact live projection after the action. The full
+      // tournament JSON carries history and reports that this view does not
+      // need, and the avatar cache must survive this refresh.
+      const latest = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live&fresh=1`, {
         cache: 'no-store', headers: { Authorization: `Bearer ${token}` },
       });
       if (latest.ok) {
         const data = await latest.json();
-        if (data.tournament) setTournament(data.tournament);
+        if (data.tournament) applyTournamentSnapshot(data.tournament);
       }
       if (action === 'start') setActiveMatchId(match.id);
       setRejectSelection([]);
