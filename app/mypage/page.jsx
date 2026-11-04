@@ -74,6 +74,9 @@ export default function MyPage({ colorsOnly = false }) {
         } finally {
           if (active) setColorsReady(true);
         }
+        // The My Colors screen renders no profile fields or avatar. Loading
+        // a potentially multi-megabyte base64 image here is unnecessary.
+        if (colorsOnly) return;
         const cacheKey = 'figure-profile-' + currentSession.user.id;
         try {
           const cached = window.localStorage.getItem(cacheKey);
