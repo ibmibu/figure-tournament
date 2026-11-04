@@ -11,6 +11,7 @@ const INDEX_FIELDS = [
   'name:data->>name', 'date:data->>date',
   'completedAt:data->>completedAt',
   'tags:data->seriesTags', 'placements:data->resultPlacements',
+  'reports:data->characterReports',
 ].join(',');
 function db() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,7 +21,7 @@ function db() {
 function fingerprint(row) {
   return createHash('sha256').update(JSON.stringify([
     row.id, row.revision, row.name, row.date,
-    row.completedAt, row.tags, row.placements,
+    row.completedAt, row.tags, row.placements, row.reports,
   ])).digest('hex').slice(0, 24);
 }
 function publicJson(body, cache = 'no-store') {
