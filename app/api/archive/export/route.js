@@ -6,7 +6,7 @@ import { completedArchiveRecord, completedArchiveDetail } from '../../../../lib/
 export const dynamic = 'force-dynamic';
 const MAX_BATCH = 20;
 // Bump when exported public archive fields change: refresh all GitHub JSON.
-const ARCHIVE_SCHEMA = 2;
+const ARCHIVE_SCHEMA = 3;
 const INDEX_FIELDS = [
   'id', 'complete:data->bracket->>complete',
   'revision:data->>stageActionRevision',
