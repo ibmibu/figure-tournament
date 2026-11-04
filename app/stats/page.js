@@ -111,12 +111,29 @@ export default function StatsPage() {
   useEffect(() => {
     const snapshot = readTabSnapshot('stats-created');
     if (snapshot) { setCreatedTournaments(snapshot); return; }
+    // A previously viewed set of completed results can be reused between
+    // browser restarts. A fresh 30-minute cache avoids a CPU-heavy server
+    // recomputation just because the user revisited their stats page.
+    try {
+      const item = JSON.parse(localStorage.getItem('amiconne-created-stats-v1') || 'null');
+      if (item?.version === 1 && Array.isArray(item.tournaments) &&
+          item.savedAt <= Date.now() && Date.now() - item.savedAt < 30 * 60 * 1000) {
+        setCreatedTournaments(item.tournaments);
+        writeTabSnapshot('stats-created', item.tournaments);
+        return;
+      }
+    } catch {}
     fetch('/api/stats/identity-links', { cache: 'no-store' })
       .then(async response => {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会情報を取得できませんでした。');
         setCreatedTournaments(result.tournaments || []);
         writeTabSnapshot('stats-created', result.tournaments || []);
+        try {
+          localStorage.setItem('amiconne-created-stats-v1', JSON.stringify({
+            version: 1, savedAt: Date.now(), tournaments: result.tournaments || [],
+          }));
+        } catch {}
       }).catch(error => setNewDataError(error.message));
   }, []);
   const availableTags = [...new Set(['人形劇', ...createdTournaments.flatMap(t => t.seriesTags || []).map(tag => String(tag).trim()).filter(Boolean)])].sort((a,b) => a.localeCompare(b, 'ja'));
@@ -210,6 +227,9 @@ export default function StatsPage() {
       const saved = JSON.parse(localStorage.getItem('ningyogeki-archive-cache-v1') || 'null');
       if (saved?.data?.tournaments && saved?.data?.records) {
         setData(saved.data);
+        // 人形劇の旧データは確定済み。再表示のたびに大容量の
+        // GitHubバックアップを取り直さず、明示的な更新時だけ取得する。
+        return;
       }
     } catch (e) {
       console.warn('保存済み大会バックアップを読み込めませんでした', e);
