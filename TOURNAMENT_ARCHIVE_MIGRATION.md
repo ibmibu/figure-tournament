@@ -2,8 +2,8 @@
 
 ## Data ownership
 - Supabase remains authoritative for tournament creation, join/leave, live
-  bracket, stage strikes, score, permissions, private character reports,
-  account metadata, edits and deletes.
+  bracket, stage strikes, score, permissions, account metadata,
+  edits and deletes. Fighter/color reports are allowed into the public archive.
 - GitHub stores **only explicitly allowlisted public completed results** in
   `public/data/tournament-archive/index.json` and
   `public/data/tournament-archive/tournaments/<id>.json`.
