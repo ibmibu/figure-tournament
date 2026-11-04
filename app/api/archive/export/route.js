@@ -56,6 +56,28 @@ async function readSignals(database, ids = null) {
     return null;
   }
 }
+// Stable revision tokens let browsers retain completed records and every
+// derived ranking indefinitely. Only this compact manifest is revalidated.
+// Account links affect merged rankings even when no tournament changed; keep
+// their revision separate so raw event JSON never needs downloading for links.
+function digestRevision(entries) {
+  return createHash('sha256').update(JSON.stringify(entries)).digest('hex').slice(0, 24);
+}
+async function readIdentityRevision(database) {
+  const pairs = [];
+  for (let start = 0; ; start += 500) {
+    const { data, error } = await database.from('legacy_player_links')
+      .select('legacy_player_id,user_id')
+      .order('user_id', { ascending: true })
+      .range(start, start + 499);
+    if (error) throw error;
+    for (const row of data || [])
+      pairs.push([String(row.user_id), String(row.legacy_player_id)]);
+    if (!data || data.length < 500) break;
+  }
+  pairs.sort((a,b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+  return digestRevision(pairs);
+}
 function publicJson(body, cache = 'no-store') {
   return NextResponse.json(body, { headers: { 'Cache-Control': cache } });
 }
@@ -88,14 +110,20 @@ export async function GET(request) {
         if (error) throw error;
         for (const row of data || []) fallback.set(String(row.id), row);
       }
+      const records = completed.map(row => ({
+        id: row.id,
+        fingerprint: fingerprint(fallback.get(String(row.id)) || row,
+          signals?.get(String(row.id))),
+      }));
+      const revision = digestRevision(records.map(row =>
+        [String(row.id), String(row.fingerprint)]).sort((a,b) => a[0].localeCompare(b[0])));
+      const identityRevision = await readIdentityRevision(database);
       return publicJson({
         version: 1,
         archiveSchema: ARCHIVE_SCHEMA,
-        records: completed.map(row => ({
-          id: row.id,
-          fingerprint: fingerprint(fallback.get(String(row.id)) || row,
-            signals?.get(String(row.id))),
-        })),
+        revision,
+        identityRevision,
+        records,
       }, 'public, s-maxage=30, stale-while-revalidate=30');
     }
     const rawIds = params.get('ids') || '';
