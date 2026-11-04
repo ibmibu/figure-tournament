@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
+import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,7 @@ function databaseFailure(error, action) {
 
 // Public board messages are shared across viewers. A brief server cache
 // prevents every viewer from re-reading the same rows on each poll.
-const readBoardCached = unstable_cache(async (id) => {
+async function readBoardUncached(id) {
   const db = adminClient();
   const { data: tournament, error: tournamentError } = await db.from('tournaments').select('id').eq('id', id).maybeSingle();
   if (tournamentError) throw tournamentError;
@@ -35,15 +36,22 @@ const readBoardCached = unstable_cache(async (id) => {
     .eq('tournament_id', id).order('created_at', { ascending: true }).limit(300);
   if (error) throw error;
   return data || [];
-}, ['public-tournament-board-v1'], { revalidate: 10 });
+}
+const readBoardCached = unstable_cache(readBoardUncached,
+  ['public-tournament-board-v1'], { revalidate: 10 });
 
 export async function GET(request) {
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return fail('大会IDが必要です。', 400);
   try {
-    const messages = await readBoardCached(id);
+    const fresh = new URL(request.url).searchParams.get('fresh') === '1';
+    const messages = await (fresh ? readBoardUncached(id) : readBoardCached(id));
     if (messages === null) return fail('大会が見つかりません。', 404);
-    return NextResponse.json({ messages });
+    const etag = '"' + createHash('sha256').update(JSON.stringify(messages)).digest('hex') + '"';
+    const headers = { ETag: etag, 'Cache-Control': 'no-cache' };
+    if (!fresh && request.headers.get('if-none-match') === etag)
+      return new NextResponse(null, { status: 304, headers });
+    return NextResponse.json({ messages }, { headers });
   } catch (error) {
     console.error('Tournament board read failed', error);
     return fail('掲示板を読み込めませんでした。', 500);
