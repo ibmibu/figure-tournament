@@ -68,6 +68,8 @@ export default function TournamentPage() {
   const tournamentSnapshotRef = useRef('');
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
+  const liveVersionRef = useRef('');
+  const liveFullReadAtRef = useRef(0);
   const avatarMapRef = useRef({});
   const avatarRosterRef = useRef('');
   const boardSnapshotRef = useRef('');
@@ -192,6 +194,14 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // A revision token is only valid for the user and tournament that received
+  // the matching full response. Reset it when the login or route changes.
+  useEffect(() => {
+    liveVersionRef.current = '';
+    liveEtagRef.current = '';
+    liveFullReadAtRef.current = 0;
+  }, [id, accessToken]);
+
   // While registration is open, live polling updates the roster without
   // transferring avatar base64. One compact page request hydrates the images
   // only when a newly registered participant changes the roster.
@@ -247,16 +257,27 @@ export default function TournamentPage() {
         // Both registration and matches use the compact live projection.
         // Avatar images are requested separately only after roster changes.
         if (liveEtagRef.current) headers['If-None-Match'] = liveEtagRef.current;
+        // Every 60 seconds read the actual live projection even if the
+        // revision is unchanged. Ordinary polls transfer only a tiny version
+        // field from Supabase and keep the existing 1-2 second schedule.
+        const checkVersion = !fresh && Boolean(liveVersionRef.current && liveEtagRef.current) &&
+          Date.now() - liveFullReadAtRef.current < 60000;
+        if (checkVersion) headers['X-Tournament-Version'] = liveVersionRef.current;
         const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live` + (fresh ? '&fresh=1' : '');
         const response = await fetch(url, { cache: 'no-store', headers });
         if (cancelled) return;
         if (response.status === 304) {
+          const nextVersion = response.headers.get('x-tournament-version');
+          if (nextVersion) liveVersionRef.current = nextVersion;
+          if (!checkVersion) liveFullReadAtRef.current = Date.now();
           lastSync = Date.now();
           return;
         }
         if (!response.ok) return;
         const etag = response.headers.get('etag');
         if (etag) liveEtagRef.current = etag;
+        liveVersionRef.current = response.headers.get('x-tournament-version') || '';
+        liveFullReadAtRef.current = Date.now();
         const result = await response.json();
         if (!cancelled && result.tournament) {
           applyTournamentSnapshot(result.tournament);
