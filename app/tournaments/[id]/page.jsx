@@ -224,7 +224,7 @@ export default function TournamentPage() {
             const archive = await archiveResponse.json();
             if (archive?.id === id && archive.bracket?.complete === true &&
                 Array.isArray(archive.bracket?.rounds) && archive.bracket.rounds.length &&
-                typeof archive.description === 'string' && archive.stageSettings) {
+                archive.stageSettings) {
               const accessResponse = await fetch(
                 '/api/tournaments?id=' + encodeURIComponent(id) +
                 '&ownerToken=' + encodeURIComponent(owner) + '&view=access',
@@ -247,8 +247,12 @@ export default function TournamentPage() {
                   );
                   avatarMapRef.current = avatars;
                   avatarRosterRef.current = avatarRosterKey(archive.joinedPlayers);
-                  applyTournamentSnapshot({ ...archive, isOwner: false,
-                    participantAvatars: avatars });
+                  applyTournamentSnapshot({
+                    ...archive, isOwner: false,
+                    description: access.description || '',
+                    streamUrl: access.streamUrl || '',
+                    participantAvatars: avatars,
+                  });
                   return;
                 }
               }
