@@ -42,6 +42,7 @@ export default function TournamentPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [savingBracket, setSavingBracket] = useState(false);
+  const [refreshingBracket, setRefreshingBracket] = useState(false);
   const [activeMatchId, setActiveMatchId] = useState('');
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
@@ -69,7 +70,6 @@ export default function TournamentPage() {
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
   const liveVersionRef = useRef('');
-  const liveFullReadAtRef = useRef(0);
   const avatarMapRef = useRef({});
   const avatarRosterRef = useRef('');
   const boardSnapshotRef = useRef('');
@@ -147,6 +147,35 @@ export default function TournamentPage() {
     finally { setBoardBusy(false); }
   }
 
+  // Manual recovery for updates that do not advance stageActionRevision,
+  // such as direct database maintenance. Normal match synchronization remains
+  // automatic and only reads the tiny revision when nothing has changed.
+  async function refreshBracketNow() {
+    if (refreshingBracket || savingBracket) return;
+    setRefreshingBracket(true);
+    setError('');
+    try {
+      const owner = localStorage.getItem(OWNER_KEY) || '';
+      const { data: auth } = await getSupabaseBrowserClient().auth.getSession();
+      const token = auth.session?.access_token || '';
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live&fresh=1`;
+      // Deliberately do not send the previous ETag or version: this button
+      // always obtains the full, redacted live projection.
+      const response = await fetch(url, { cache: 'no-store', headers });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'トーナメント表を更新できませんでした。');
+      if (!result.tournament) throw new Error('トーナメント表を取得できませんでした。');
+      liveEtagRef.current = response.headers.get('etag') || '';
+      liveVersionRef.current = response.headers.get('x-tournament-version') || '';
+      applyTournamentSnapshot(result.tournament);
+    } catch (refreshError) {
+      setError(refreshError.message || 'トーナメント表を更新できませんでした。');
+    } finally {
+      setRefreshingBracket(false);
+    }
+  }
+
   async function loadTournament() {
     setLoading(true);
     setError('');
@@ -199,7 +228,6 @@ export default function TournamentPage() {
   useEffect(() => {
     liveVersionRef.current = '';
     liveEtagRef.current = '';
-    liveFullReadAtRef.current = 0;
   }, [id, accessToken]);
 
   // While registration is open, live polling updates the roster without
@@ -257,11 +285,10 @@ export default function TournamentPage() {
         // Both registration and matches use the compact live projection.
         // Avatar images are requested separately only after roster changes.
         if (liveEtagRef.current) headers['If-None-Match'] = liveEtagRef.current;
-        // Every 60 seconds read the actual live projection even if the
-        // revision is unchanged. Ordinary polls transfer only a tiny version
-        // field from Supabase and keep the existing 1-2 second schedule.
-        const checkVersion = !fresh && Boolean(liveVersionRef.current && liveEtagRef.current) &&
-          Date.now() - liveFullReadAtRef.current < 60000;
+        // Use a revision-only preflight on every unchanged poll. The
+        // tournament bracket's manual refresh button forces a full projection
+        // read when needed, instead of an automatic full read every minute.
+        const checkVersion = !fresh && Boolean(liveVersionRef.current && liveEtagRef.current);
         if (checkVersion) headers['X-Tournament-Version'] = liveVersionRef.current;
         const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live` + (fresh ? '&fresh=1' : '');
         const response = await fetch(url, { cache: 'no-store', headers });
@@ -269,7 +296,6 @@ export default function TournamentPage() {
         if (response.status === 304) {
           const nextVersion = response.headers.get('x-tournament-version');
           if (nextVersion) liveVersionRef.current = nextVersion;
-          if (!checkVersion) liveFullReadAtRef.current = Date.now();
           lastSync = Date.now();
           return;
         }
@@ -277,7 +303,6 @@ export default function TournamentPage() {
         const etag = response.headers.get('etag');
         if (etag) liveEtagRef.current = etag;
         liveVersionRef.current = response.headers.get('x-tournament-version') || '';
-        liveFullReadAtRef.current = Date.now();
         const result = await response.json();
         if (!cancelled && result.tournament) {
           applyTournamentSnapshot(result.tournament);
@@ -1413,7 +1438,13 @@ export default function TournamentPage() {
         {boardError && <p className="form-error" role="alert">{boardError.replaceAll('掲示板', 'コメント')}</p>}
       </section>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-live-panel" id="tournament-bracket">
-        <div className="bracket-header"><h2>トーナメント表</h2></div>
+        <div className="bracket-header">
+          <h2>トーナメント表</h2>
+          <button type="button" className="button-link" onClick={refreshBracketNow}
+            disabled={refreshingBracket || savingBracket} aria-label="トーナメント表を更新">
+            {refreshingBracket ? '更新中…' : '↻ 更新'}
+          </button>
+        </div>
         <p className="setting-help">{tournament.stageRejects
         ? '設定されたBO形式・使用ステージ・拒否数に従い、ゲームごとに両選手が勝敗を報告します。'
         : '通常対戦は片方が結果を申告し、相手が承認すると確定します。配信台は主催者がスコアを入力して確定します。'}</p>
