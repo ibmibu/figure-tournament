@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { loadCompletedTournamentRecords } from '../../../lib/tournament-archive-client';
+import { loadLegacyParticipations } from '../../../lib/legacy-results-cache';
 
 function placement(t, player) {
   const saved = (t.resultPlacements || []).find(r => String(r.playerId) === String(player.id));
@@ -29,12 +30,12 @@ export default function PlayerResultsPage() {
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
-    Promise.all([loadCompletedTournamentRecords(), fetch(`/api/players/legacy?userId=${encodeURIComponent(userId)}`, { cache: 'no-store' })]).then(async ([completedTournaments, legacyResponse]) => {
+    Promise.all([loadCompletedTournamentRecords(), loadLegacyParticipations('player', userId)]).then(([completedTournaments, legacyResult]) => {
       const matches = completedTournaments.flatMap(t => {
         const player = (t.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === userId);
         return player && t.bracket?.complete && t.resultPlacements?.length ? [{ tournament: t, player }] : [];
       });
-      const legacy = legacyResponse.ok ? (await legacyResponse.json()).tournaments || [] : [];
+      const legacy = legacyResult.tournaments || [];
       matches.push(...legacy.map(tournament => ({ tournament, player: { id: userId, name: '' } })));
       matches.sort((a, b) => {
         const x = a.tournament;
