@@ -21,8 +21,12 @@
   public finished result summary and safely redacted bracket.
 - Public finished-event JSON also stores an allowlisted match/statistics snapshot
   for ratings and historical fighter/series calculations. No private player data.
-- `Archive completed tournaments` GitHub Action runs every 30 minutes and
-  on manual dispatch. It compares fingerprints and only fetches changed events.
+- `Archive completed tournaments` GitHub Action runs **once per day** at
+  03:17 UTC (12:17 JST), or on manual dispatch. It compares fingerprints
+  and only fetches changed events. New finished results remain available
+  immediately through the live delta exporter; GitHub's durable copy can
+  lag by up to approximately one day (plus scheduler/deployment delay).
+  This daily job is not a substitute for point-in-time database backups.
   It commits when contents actually differ, to avoid excessive Vercel builds.
 - The Action uses the repo-scoped `GITHUB_TOKEN` with `contents: write`;
   **no Vercel or GitHub access token is required in browser JavaScript**.
@@ -44,9 +48,10 @@
   deltas from Supabase, so final results needn't wait 30 minutes.
 - If static archive or export API is unavailable, existing read-only full
   tournament list fallback preserves functionality, at the cost of egress.
-- Home's compact `view=summary`, tournament detail, statistics and character
-  reports still use Supabase at this stage; migrate them only after validating
-  archive parity and permission-dependent fields.
+- Home's compact `view=summary` and authenticated live/edit routes still
+  use Supabase. Read-only completed event details and past ranking datasets
+  use the public GitHub/CDN archive where available. Permissions are always
+  checked server-side for private or editable views.
 
 ## Verification before deleting any historical DB data
 1. Inspect Actions run logs; ensure the index and per-event files were committed.
