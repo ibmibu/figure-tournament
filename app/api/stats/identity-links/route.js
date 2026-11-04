@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { loadServerArchivedTournamentRecords } from '../../../../lib/tournament-archive-server';
 import {
   buildStatsSnapshot, completedForStats, snapshotIsCurrent, snapshotToPublicResult,
   withStatsSnapshot,
@@ -66,7 +67,7 @@ async function backfillSnapshot(db, row) {
 
 // Only expose results of completed tournaments, not private bracket data.
 // The small projection avoids downloading full brackets for cached tournaments.
-export async function GET() {
+export async function GET(request) {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -76,6 +77,22 @@ export async function GET() {
     if (error) throw error;
     const linkMap = new Map((rows || []).map(row => [String(row.user_id), String(row.legacy_player_id)]));
 
+    // The public GitHub JSON is the primary source of completed result
+    // snapshots. Keep the old DB projection below as a safe fallback until
+    // archive backfill catches up or if CDN export is unavailable.
+    try {
+      const archived = await loadServerArchivedTournamentRecords(request);
+      const results = archived.filter(row => row.statsSnapshot?.version === 1)
+        .map(row => ({
+          id: row.id, created_at: row.createdAt,
+          data: row.statsSnapshot,
+        }));
+      const tournaments = results.sort(compareByScheduledStart)
+        .map(row => snapshotToPublicResult(row.id, row.data, linkMap));
+      return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'no-store' } });
+    } catch (archiveError) {
+      console.warn('GitHub stats archive unavailable; using compact Supabase snapshot fallback:', archiveError.message);
+    }
     const entries = [];
     const needsBackfill = [];
     let compactRows = null;
