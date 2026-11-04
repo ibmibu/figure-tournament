@@ -65,7 +65,10 @@ export async function GET(request) {
       const detail = completedArchiveDetail(row.id, row.data);
       records.push({ id: row.id, fingerprint: fingerprint(row), tournament: summary, detail });
     }
-    return publicJson({ version: 1, records });
+    // Public immutable-ish result data may be cached briefly by Vercel CDN.
+    // This prevents multiple visitors from all pulling the same recently
+    // completed brackets from Supabase before GitHub catches up.
+    return publicJson({ version: 1, records }, 'public, s-maxage=15, stale-while-revalidate=15');
   } catch (error) {
     console.error('Public tournament archive export failed:', error);
     return NextResponse.json({ error: '大会アーカイブの取得に失敗しました。' }, { status: 500 });
