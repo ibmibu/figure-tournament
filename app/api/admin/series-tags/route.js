@@ -14,3 +14,29 @@ export async function PUT(request){try{
  const {error}=await admin.from('tournaments').update({data:{...row.data,seriesTags:cleaned}}).eq('id',tournamentId);if(error)throw error;
  return NextResponse.json({ok:true,tags:cleaned});
  }catch(e){console.error(e);return NextResponse.json({error:'タグを保存できませんでした。'},{status:500});}}
+
+export async function GET(request) {
+ try {
+  const token=(request.headers.get('authorization')||'').match(/^Bearer\s+(.+)$/i)?.[1];
+  if(!token)return NextResponse.json({error:'ログインが必要です。'},{status:401});
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const auth=createClient(url,process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const {data:{user},error:authError}=await auth.auth.getUser(token);
+  if(authError||!user||!process.env.FIGURE_STATS_ADMIN_USER_ID||user.id!==process.env.FIGURE_STATS_ADMIN_USER_ID)
+   return NextResponse.json({error:'管理者権限が必要です。'},{status:403});
+  const admin=createClient(url,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+  const tournaments=[];
+  for(let start=0;;start+=500){
+   const {data,error}=await admin.from('tournaments')
+    .select('id,name:data->>name,seriesTags:data->seriesTags')
+    .order('created_at',{ascending:false}).range(start,start+499);
+   if(error)throw error;
+   tournaments.push(...(data||[]).map(t=>({id:t.id,name:t.name||'大会',seriesTags:Array.isArray(t.seriesTags)?t.seriesTags:[]})));
+   if(!data||data.length<500)break;
+  }
+  return NextResponse.json({tournaments},{headers:{'Cache-Control':'private, no-store'}});
+ }catch(error){
+  console.error('GET series tags failed:',error);
+  return NextResponse.json({error:'タグ一覧を読み込めませんでした。'},{status:500});
+ }
+}
