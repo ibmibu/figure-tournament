@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import Link from 'next/link';
-import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
+import { loadCompletedTournamentRecords } from '../../lib/tournament-archive-client';
 import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 function formatDate(value) {
@@ -57,21 +57,14 @@ export default function ResultsPage() {
         const snapshot = readTabSnapshot('results-v3-' + session.user.id);
         if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); }
         const headers = { Authorization: `Bearer ${session.access_token}` };
-        const [profileResponse, tournamentResponse, legacyResponse] = await Promise.all([
-          fetch('/api/profile', { headers, cache: 'no-store' }),
-          fetch('/api/tournaments', { headers, cache: 'no-store' }),
+        const [completedTournaments, legacyResponse] = await Promise.all([
+          loadCompletedTournamentRecords(),
           fetch('/api/results/legacy', { headers, cache: 'no-store' }),
         ]);
-        const profileResult = await profileResponse.json();
-        const tournamentResult = await tournamentResponse.json();
         const legacyResult = legacyResponse.ok ? await legacyResponse.json() : { tournaments: [] };
         if (!legacyResponse.ok) console.warn('過去の人形劇の結果を取得できませんでした。');
-        if (!profileResponse.ok) throw new Error(profileResult.error || 'プロフィールを読み込めませんでした。');
-        if (!tournamentResponse.ok) throw new Error(tournamentResult.error || '大会情報を読み込めませんでした。');
-        writeTournamentCache(tournamentResult.tournaments || []);
-        try { localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(profileResult.profile || {})); } catch {}
         const myId = String(session.user.id);
-        const mine = (tournamentResult.tournaments || []).filter(item =>
+        const mine = completedTournaments.filter(item =>
           item.bracket?.complete && item.resultPlacements?.length && (item.joinedPlayers || []).some(player =>
             !player.isDemo && String(player.userId || player.id) === myId
           )
