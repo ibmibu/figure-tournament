@@ -245,7 +245,7 @@ export async function GET(request) {
         // validate that the event is still complete and whether this caller
         // needs the editable organizer view. No bracket JSON is read here.
         const { data: access, error: accessError } = await supabase.from('tournaments')
-          .select('complete:data->bracket->>complete,ownerUserId:data->>ownerUserId,owner_token')
+          .select('complete:data->bracket->>complete,ownerUserId:data->>ownerUserId,description:data->>description,streamUrl:data->>streamUrl,owner_token')
           .eq('id', id).maybeSingle();
         if (accessError) throw accessError;
         if (!access) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
@@ -256,6 +256,8 @@ export async function GET(request) {
         return NextResponse.json({
           completed: access.complete === true || access.complete === 'true',
           isOwner,
+          description: String(access.description || ''),
+          streamUrl: String(access.streamUrl || ''),
         }, { headers: { 'Cache-Control': 'private, no-store' } });
       }
       const liveMode = requestedView === 'live';
