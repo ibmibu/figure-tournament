@@ -244,10 +244,9 @@ export async function GET(request) {
       // The first page load needs participant avatars, but not the full
       // tournaments.data document. Reuse the live projection for its metadata.
       const compactPageMode = requestedView === 'page';
-      // A 2-second live poll only needs to compare the compact revision.
-      // On an unchanged revision, avoid transferring the full bracket JSON
-      // from PostgREST. The browser forces a full refresh every 60 seconds
-      // in case external SQL changes did not bump stageActionRevision.
+      // Live polling compares a compact revision first; an unchanged revision
+      // does not transfer the full bracket JSON from PostgREST. Browser reloads
+      // can obtain the full current tournament state if recovery is needed.
       const previousVersion = request.headers.get('x-tournament-version') || '';
       const previousEtag = request.headers.get('if-none-match') || '';
       if (liveMode && process.env.TOURNAMENT_LIVE_PROJECTION_ENABLED === 'true' &&
