@@ -30,12 +30,12 @@ def request(params):
     for attempt in range(attempts):
         with urllib.request.urlopen(req, timeout=90) as response:
             payload = json.load(response)
-        if payload.get("version") == 1 and payload.get("archiveSchema", 0) >= 2 and isinstance(payload.get("records"), list):
+        if payload.get("version") == 1 and payload.get("archiveSchema", 0) >= 3 and isinstance(payload.get("records"), list):
             return payload["records"]
         if attempt < attempts - 1:
             print("Waiting for updated production archive exporter...", flush=True)
             time.sleep(15)
-    raise ValueError("Archive exporter is not yet deployed with schema 2")
+    raise ValueError("Archive exporter is not yet deployed with schema 3")
 
 
 def save(path, obj):

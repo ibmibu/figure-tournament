@@ -240,6 +240,26 @@ export async function GET(request) {
     const legacyOwnerToken = searchParams.get('ownerToken') || '';
     if (id) {
       const requestedView = searchParams.get('view');
+      if (requestedView === 'access') {
+        // Finished public records are served from the GitHub archive. Only
+        // validate that the event is still complete and whether this caller
+        // needs the editable organizer view. No bracket JSON is read here.
+        const { data: access, error: accessError } = await supabase.from('tournaments')
+          .select('complete:data->bracket->>complete,ownerUserId:data->>ownerUserId,description:data->>description,streamUrl:data->>streamUrl,owner_token')
+          .eq('id', id).maybeSingle();
+        if (accessError) throw accessError;
+        if (!access) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
+        const isOwner = Boolean(
+          (user && access.ownerUserId && String(access.ownerUserId) === String(user.id)) ||
+          (!access.ownerUserId && legacyOwnerToken && access.owner_token === legacyOwnerToken)
+        );
+        return NextResponse.json({
+          completed: access.complete === true || access.complete === 'true',
+          isOwner,
+          description: String(access.description || ''),
+          streamUrl: String(access.streamUrl || ''),
+        }, { headers: { 'Cache-Control': 'private, no-store' } });
+      }
       const liveMode = requestedView === 'live';
       // The first page load needs participant avatars, but not the full
       // tournaments.data document. Reuse the live projection for its metadata.

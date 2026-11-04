@@ -14,6 +14,9 @@
 ## Archival
 - `GET /api/archive/export?mode=index` exposes a small *completed-only*
   fingerprint manifest, not raw data. Public CDN caching is 30 seconds.
+  Where the existing `tournament_change_signals` table is available, the
+  manifest hashes its compact UUID revisions. Older installations fall back
+  to projected public metadata; no new SQL is required.
 - `GET /api/archive/export?ids=ID1,ID2` (at most 20 IDs) returns allowlisted
   public finished result summary and safely redacted bracket.
 - Public finished-event JSON also stores an allowlisted match/statistics snapshot
@@ -31,6 +34,11 @@
 
 ## Reads and resilience
 - `/results` and `/players/[id]` read the versioned static archive first.
+- Completed event detail pages now use public per-event static JSON when the caller
+  is not an organizer and the live DB confirms the tournament is still finished.
+  This requires only a small server-side access/overview projection rather
+  than downloading the full live bracket from Supabase. Owners, live events,
+  missing archive files and older file schemas keep the original full route.
 - The small live fingerprint manifest detects results absent from GitHub or
   changed since last sync. Only those finished events are read as public
   deltas from Supabase, so final results needn't wait 30 minutes.
