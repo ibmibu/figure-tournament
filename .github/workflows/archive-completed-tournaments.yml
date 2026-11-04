@@ -1,5 +1,5 @@
 name: Archive completed tournaments
-# Public fighter/color reports are included in the finished-results archive.
+# Re-run initial fighter/color report backfill after the exporter is deployed.
 on:
   # Initial sync after rollout; later archive commits do not trigger this
   # workflow because they only touch data, not this workflow file.
