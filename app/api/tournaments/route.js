@@ -221,6 +221,16 @@ const cachedTournamentSummaries = unstable_cache(
   { revalidate: 20 }
 );
 
+// Live responses are user-specific (owner flags, declarations and friend codes).
+// Scope a compact revision check to the same caller as the last complete
+// response; do not use a shared ETag or skip authentication.
+function liveVersionToken(id, revision, user, legacyOwnerToken) {
+  if (revision == null || revision === '' || !Number.isSafeInteger(Number(revision)) || Number(revision) < 0) return '';
+  return createHash('sha256').update(JSON.stringify([
+    String(id), String(revision), String(user?.id || ''), String(legacyOwnerToken || ''),
+  ])).digest('hex');
+}
+
 export async function GET(request) {
   try {
     const user = await getUser(request, false);
@@ -234,6 +244,33 @@ export async function GET(request) {
       // The first page load needs participant avatars, but not the full
       // tournaments.data document. Reuse the live projection for its metadata.
       const compactPageMode = requestedView === 'page';
+      // A 2-second live poll only needs to compare the compact revision.
+      // On an unchanged revision, avoid transferring the full bracket JSON
+      // from PostgREST. The browser forces a full refresh every 60 seconds
+      // in case external SQL changes did not bump stageActionRevision.
+      const previousVersion = request.headers.get('x-tournament-version') || '';
+      const previousEtag = request.headers.get('if-none-match') || '';
+      if (liveMode && process.env.TOURNAMENT_LIVE_PROJECTION_ENABLED === 'true' &&
+          previousVersion && previousEtag && !searchParams.has('fresh')) {
+        try {
+          const { data: latest, error: revisionError } = await supabase.from('tournaments')
+            .select('revision:data->>stageActionRevision').eq('id', id).maybeSingle();
+          if (revisionError) throw revisionError;
+          if (latest && previousVersion === liveVersionToken(
+            id, latest.revision, user, legacyOwnerToken
+          )) {
+            return new NextResponse(null, { status: 304, headers: {
+              ETag: previousEtag,
+              'X-Tournament-Version': previousVersion,
+              'Cache-Control': 'private, no-cache',
+            } });
+          }
+        } catch (revisionError) {
+          // A failed preflight may never interrupt a match: use the existing
+          // full live projection instead.
+          console.warn('Tournament revision check unavailable:', revisionError.message);
+        }
+      }
       // Explicit server-side opt-in only. If the projection is absent or fails,
       // preserve the existing full-row behavior for all callers.
       let data;
@@ -272,10 +309,19 @@ export async function GET(request) {
       const payload = JSON.stringify({ tournament });
       // ETag is derived from the caller-specific, redacted response.
       const etag = '"' + createHash('sha256').update(payload).digest('hex') + '"';
+      const liveVersion = liveMode ? liveVersionToken(
+        id, data.data?.stageActionRevision, user, legacyOwnerToken
+      ) : '';
+      const responseHeaders = {
+        ETag: etag, 'Cache-Control': 'private, no-cache',
+        ...(liveVersion ? { 'X-Tournament-Version': liveVersion } : {}),
+      };
       if (request.headers.get('if-none-match') === etag) {
-        return new NextResponse(null, { status: 304, headers: { ETag: etag, 'Cache-Control': 'private, no-cache' } });
+        return new NextResponse(null, { status: 304, headers: responseHeaders });
       }
-      return new NextResponse(payload, { headers: { 'Content-Type': 'application/json; charset=utf-8', ETag: etag, 'Cache-Control': 'private, no-cache' } });
+      return new NextResponse(payload, { headers: {
+        ...responseHeaders, 'Content-Type': 'application/json; charset=utf-8',
+      } });
     }
     const summaryMode = searchParams.get('view') === 'summary';
     let summaryRows = null;
