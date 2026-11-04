@@ -16,6 +16,8 @@
   fingerprint manifest, not raw data. Public CDN caching is 30 seconds.
 - `GET /api/archive/export?ids=ID1,ID2` (at most 20 IDs) returns allowlisted
   public finished result summary and safely redacted bracket.
+- Public finished-event JSON also stores an allowlisted match/statistics snapshot
+  for ratings and historical fighter/series calculations. No private player data.
 - `Archive completed tournaments` GitHub Action runs every 30 minutes and
   on manual dispatch. It compares fingerprints and only fetches changed events.
   It commits when contents actually differ, to avoid excessive Vercel builds.

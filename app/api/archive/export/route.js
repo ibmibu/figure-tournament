@@ -5,6 +5,8 @@ import { completedArchiveRecord, completedArchiveDetail } from '../../../../lib/
 
 export const dynamic = 'force-dynamic';
 const MAX_BATCH = 20;
+// Bump when exported public archive fields change: refresh all GitHub JSON.
+const ARCHIVE_SCHEMA = 2;
 const INDEX_FIELDS = [
   'id', 'complete:data->bracket->>complete',
   'revision:data->>stageActionRevision',
@@ -20,7 +22,7 @@ function db() {
 }
 function fingerprint(row) {
   return createHash('sha256').update(JSON.stringify([
-    row.id, row.revision, row.name, row.date,
+    ARCHIVE_SCHEMA, row.id, row.revision, row.name, row.date,
     row.completedAt, row.tags, row.placements, row.reports,
   ])).digest('hex').slice(0, 24);
 }
@@ -45,6 +47,7 @@ export async function GET(request) {
       }
       return publicJson({
         version: 1,
+        archiveSchema: ARCHIVE_SCHEMA,
         records: rows.filter(row => row.complete === 'true' || row.complete === true)
           .map(row => ({ id: row.id, fingerprint: fingerprint(row) })),
       }, 'public, s-maxage=30, stale-while-revalidate=30');
@@ -69,7 +72,7 @@ export async function GET(request) {
     // Public immutable-ish result data may be cached briefly by Vercel CDN.
     // This prevents multiple visitors from all pulling the same recently
     // completed brackets from Supabase before GitHub catches up.
-    return publicJson({ version: 1, records }, 'public, s-maxage=15, stale-while-revalidate=15');
+    return publicJson({ version: 1, archiveSchema: ARCHIVE_SCHEMA, records }, 'public, s-maxage=15, stale-while-revalidate=15');
   } catch (error) {
     console.error('Public tournament archive export failed:', error);
     return NextResponse.json({ error: '大会アーカイブの取得に失敗しました。' }, { status: 500 });
