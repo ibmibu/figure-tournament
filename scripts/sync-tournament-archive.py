@@ -7,6 +7,7 @@ website, and the Next.js exporter returns allowlisted public fields only.
 import json
 import os
 import pathlib
+import re
 import urllib.parse
 import urllib.request
 
@@ -41,7 +42,7 @@ def main():
     for row in remote:
         id_ = row.get("id", "")
         digest = row.get("fingerprint", "")
-        if not isinstance(id_, str) or not id_.replace("_", "").replace("-", "").isalnum():
+        if not isinstance(id_, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", id_):
             raise ValueError("Invalid archived tournament ID")
         if not isinstance(digest, str) or len(digest) != 24:
             raise ValueError("Invalid archive fingerprint")
