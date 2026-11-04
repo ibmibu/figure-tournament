@@ -1,3 +1,4 @@
+import { loadServerArchivedTournamentRecords } from '../../../../lib/tournament-archive-server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { countOnlineFighters, countLegacyFighters, getFighterOrder } from '../../../../lib/fighter-order';
@@ -13,12 +14,20 @@ export async function GET(request) {
     const {data:{user},error:authError}=await auth.auth.getUser(token);
     if(authError||!user)return NextResponse.json({error:'ログインが必要です。'},{status:401});
     const db=createClient(url,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-    const [{data:rows,error:rowsError},{data:link,error:linkError}]=await Promise.all([
-      db.from('tournaments').select('data'),
+    const [tournaments,{data:link,error:linkError}]=await Promise.all([
+      (async () => {
+        try { return await loadServerArchivedTournamentRecords(request); }
+        catch (error) {
+          console.warn('Public tournament archive unavailable for fighter ordering:', error.message);
+          const {data:rows,error:rowsError}=await db.from('tournaments').select('data');
+          if(rowsError)throw rowsError;
+          return (rows||[]).map(row=>row.data).filter(Boolean);
+        }
+      })(),
       db.from('legacy_player_links').select('legacy_player_id').eq('user_id',user.id).maybeSingle(),
     ]);
-    if(rowsError||linkError)throw rowsError||linkError;
-    const online=countOnlineFighters((rows||[]).map(row=>row.data),user.id);
+    if(linkError)throw linkError;
+    const online=countOnlineFighters(tournaments,user.id);
     let legacy=new Map();
     if(link?.legacy_player_id){
       try {
