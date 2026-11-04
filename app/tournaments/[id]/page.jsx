@@ -86,6 +86,10 @@ export default function TournamentPage() {
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
   const liveVersionRef = useRef('');
+  // Keep one Realtime socket for each live event. Polling cadence may
+  // change every game, but must not recreate the subscription each time.
+  const liveRefreshRef = useRef(null);
+  const liveSignalRef = useRef({ connected: false, received: false, lastAt: 0 });
   const avatarMapRef = useRef({});
   const avatarRosterRef = useRef('');
   const boardSnapshotRef = useRef('');
@@ -284,14 +288,11 @@ export default function TournamentPage() {
     let cancelled = false;
     let inFlight = false;
     let lastSync = 0;
-    let realtimeConnected = false;
-    let receivedSignal = false;
-    let lastSignalAt = 0;
     let pendingRefresh = false;
     let pendingFresh = false;
-    let channel = null;
     const refresh = async (fresh = false) => {
-      if (cancelled || inFlight || document.visibilityState === 'hidden') return;
+      if (cancelled || document.visibilityState === 'hidden') return;
+      if (inFlight) { pendingRefresh = true; pendingFresh ||= fresh; return; }
       inFlight = true;
       try {
         const owner = localStorage.getItem(OWNER_KEY) || '';
@@ -331,33 +332,10 @@ export default function TournamentPage() {
         }
       }
     };
-    // Subscribe only to a dedicated, non-sensitive change signal table.
-    // Never subscribe to public.tournaments: its JSON contains private data.
-    // The authenticated GET API remains the source of truth.
-    if (process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED === 'true') {
-      try {
-        const client = getSupabaseBrowserClient();
-        channel = client.channel(`tournament-signals:${id}`);
-        channel.on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'tournament_change_signals',
-          filter: `tournament_id=eq.${id}`,
-        }, () => {
-          receivedSignal = true;
-          lastSignalAt = Date.now();
-          // Signals must bypass the short-lived server cache to see new writes.
-          if (inFlight) { pendingRefresh = true; pendingFresh = true; }
-          else void refresh(true);
-        });
-        channel.subscribe(status => {
-          realtimeConnected = status === 'SUBSCRIBED';
-          if (status === 'SUBSCRIBED') void refresh();
-        });
-      } catch {
-        realtimeConnected = false;
-      }
-    }
+    // Realtime channel is managed in an independent useEffect below.
+    // Updating a match or revision recreates the polling cadence, NOT the
+    // subscription. The current refresh callback stays callable by signals.
+    liveRefreshRef.current = refresh;
     // Active matches prioritize responsiveness. Overview and declarations use a
     // slower fallback, while change signals can refresh immediately.
     const activeMatch = Boolean(tournament.bracket && !tournament.bracket.complete);
@@ -387,7 +365,8 @@ export default function TournamentPage() {
       // Only relax active polling after a real change signal was observed.
       // Unproven subscriptions, disconnected sockets and stale signals retain
       // the original fast fallback so match progression stays responsive.
-      const signalHealthy = realtimeConnected && receivedSignal && Date.now() - lastSignalAt < 60000;
+      const signal = liveSignalRef.current;
+      const signalHealthy = signal.connected && signal.received && Date.now() - signal.lastAt < 60000;
       const intervalMs = signalHealthy && ownMatch ? Math.max(fallbackMs, 10000) : fallbackMs;
       if (Date.now() - lastSync >= intervalMs) void refresh();
       timer = setTimeout(poll, Math.min(fallbackMs, intervalMs));
@@ -401,9 +380,39 @@ export default function TournamentPage() {
       clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', onVisible);
-      if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+      if (liveRefreshRef.current === refresh) liveRefreshRef.current = null;
     };
   }, [id, Boolean(tournament), Boolean(tournament?.bracket), tournament?.bracket?.complete, tournament?.stageActionRevision, currentUserId, savingBracket, declarationBusy, accessToken]);
+
+  // Separate socket lifetime from score/stage state. Only one channel exists
+  // for an active tournament; changes to stageActionRevision do not reconnect.
+  useEffect(() => {
+    if (!id || !tournament || tournament.bracket?.complete ||
+        process.env.NEXT_PUBLIC_TOURNAMENT_REALTIME_ENABLED !== 'true') return;
+    const signal = liveSignalRef.current;
+    signal.connected = false;
+    signal.received = false;
+    signal.lastAt = 0;
+    const client = getSupabaseBrowserClient();
+    const channel = client.channel('tournament-signals:' + id)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'tournament_change_signals',
+        filter: 'tournament_id=eq.' + id,
+      }, () => {
+        signal.received = true;
+        signal.lastAt = Date.now();
+        // A signal while the GET is in flight queues one final refresh.
+        liveRefreshRef.current?.(true);
+      })
+      .subscribe(status => {
+        signal.connected = status === 'SUBSCRIBED';
+      });
+    return () => {
+      signal.connected = false;
+      signal.received = false;
+      void client.removeChannel(channel);
+    };
+  }, [id, Boolean(tournament), tournament?.bracket?.complete]);
 
   // Prompt for character reporting as soon as each placement is decided.
   // Semifinal losers need not wait for the final match to finish.
