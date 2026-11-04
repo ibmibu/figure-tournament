@@ -296,12 +296,17 @@ export async function GET(request) {
           .filter(value => /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value)))];
         tournament.participantAvatars = {};
         if (participantIds.length) {
+          // Only check which participants have an icon. Never transfer
+          // megabytes of avatar base64 inside the tournament JSON.
           const { data: profiles, error: avatarError } = await supabase.from('profiles')
-            .select('user_id,avatar_data').in('user_id', participantIds);
-          if (avatarError) console.error('Tournament participant avatars could not be loaded:', avatarError);
+            .select('user_id').in('user_id', participantIds)
+            .not('avatar_data', 'is', null).neq('avatar_data', '');
+          if (avatarError) console.error('Tournament participant avatar list failed:', avatarError);
           else tournament.participantAvatars = Object.fromEntries(
-            (profiles || []).filter(profile => /^data:image\/(png|jpeg|webp);base64,/.test(profile.avatar_data || ''))
-              .map(profile => [profile.user_id, profile.avatar_data])
+            (profiles || []).map(profile => [
+              profile.user_id,
+              '/api/profile/avatar?userId=' + encodeURIComponent(profile.user_id),
+            ])
           );
         }
         }
