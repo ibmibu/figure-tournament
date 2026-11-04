@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
-import { readTournamentCache, writeTournamentCache } from '../../lib/tournament-cache';
 import { readTabSnapshot, writeTabSnapshot } from '../../lib/tab-snapshot';
 
 const EMPTY_PROFILE = { display_name: 'no name', avatar_data: '', friend_code: '', public_uid: null };
@@ -15,7 +14,6 @@ export default function MyPage({ colorsOnly = false }) {
   const [draftAvatar, setDraftAvatar] = useState('');
   const [draftFriendCode, setDraftFriendCode] = useState('');
   const [editing, setEditing] = useState(false);
-  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
@@ -46,7 +44,6 @@ export default function MyPage({ colorsOnly = false }) {
           setDraftName(snapshot.profile.display_name || 'no name');
           setDraftAvatar(snapshot.profile.avatar_data || '');
           setDraftFriendCode(snapshot.profile.friend_code || '');
-          setTournaments(snapshot.tournaments);
           setMyColors(snapshot.colors || []);
           setColorsReady(true);
           setLoading(false);
@@ -88,19 +85,10 @@ export default function MyPage({ colorsOnly = false }) {
             setDraftFriendCode(cachedProfile.friend_code || '');
           }
         } catch {}
-        const cachedTournaments = readTournamentCache();
-        if (cachedTournaments) {
-          setTournaments(cachedTournaments.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentSession.user.id))));
-        }
         const headers = { Authorization: `Bearer ${currentSession.access_token}` };
-        const [profileResponse, tournamentResponse] = await Promise.all([
-          fetch('/api/profile', { headers, cache: 'no-store' }),
-          fetch('/api/tournaments', { headers, cache: 'no-store' }),
-        ]);
+        const profileResponse = await fetch('/api/profile', { headers, cache: 'no-store' });
         const profileResult = await profileResponse.json();
-        const tournamentResult = await tournamentResponse.json();
         if (!profileResponse.ok) throw new Error(profileResult.error || 'プロフィールを読み込めませんでした。');
-        if (!tournamentResponse.ok) throw new Error(tournamentResult.error || '大会結果を読み込めませんでした。');
         if (!active) return;
         const loadedProfile = profileResult.profile || EMPTY_PROFILE;
         setProfile(loadedProfile);
@@ -108,11 +96,9 @@ export default function MyPage({ colorsOnly = false }) {
         setDraftName(loadedProfile.display_name || 'no name');
         setDraftAvatar(loadedProfile.avatar_data || '');
         setDraftFriendCode(loadedProfile.friend_code || '');
-        const all = tournamentResult.tournaments || [];
-        writeTournamentCache(all);
-        const myTournaments = all.filter(item => item.isOwner || (item.joinedPlayers || []).some(player => !player.isDemo && String(player.userId || player.id) === String(currentSession.user.id)));
-        setTournaments(myTournaments);
-        writeTabSnapshot('mypage-' + currentSession.user.id, { profile: loadedProfile, tournaments: myTournaments, colors: JSON.parse(localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]') });
+        // Only profile and color settings are rendered here. Never load the
+        // entire tournament history just to enter My Page or My Colors.
+        writeTabSnapshot('mypage-' + currentSession.user.id, { profile: loadedProfile, colors: JSON.parse(localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]') });
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
@@ -246,7 +232,6 @@ export default function MyPage({ colorsOnly = false }) {
       // Clear account-specific in-memory state and avoid showing stale profile.
       setSession(null);
       setProfile(EMPTY_PROFILE);
-      setTournaments([]);
       setMyColors([]);
       setEditing(false);
       setError('');
