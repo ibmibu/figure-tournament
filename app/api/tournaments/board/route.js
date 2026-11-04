@@ -67,10 +67,13 @@ export async function POST(request) {
     const body = String(text || '').trim();
     if (!tournamentId || !body || body.length > 1000) return fail('本文は1〜1000文字で入力してください。', 400);
     const db = adminClient();
-    const { data: row, error: readError } = await db.from('tournaments').select('data').eq('id', tournamentId).maybeSingle();
+    const { data: tournament, error: readError } = await db.from('tournaments')
+      .select('ownerUserId:data->>ownerUserId,joinedPlayers:data->joinedPlayers')
+      .eq('id', tournamentId).maybeSingle();
     if (readError) return databaseFailure(readError, '投稿');
-    if (!row) return fail('大会が見つかりません。', 404);
-    const tournament = row.data || {};
+    if (!tournament) return fail('大会が見つかりません。', 404);
+    // Membership and organizer rights need only the roster, not the entire
+    // score history, stage actions, images and tournament logs.
     const organizer = String(tournament.ownerUserId || '') === String(user.id);
     const player = (tournament.joinedPlayers || []).find(p => !p.isDemo && String(p.userId || p.id) === String(user.id));
     if (!organizer && !player) return fail('主催者と大会参加者のみ投稿できます。', 403);

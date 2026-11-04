@@ -3,7 +3,11 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// The home OG card is identical for all visitors until the next release.
+// Let Next.js prerender/cache this instead of invoking an image-rendering
+// function every time a crawler requests the preview.
+export const dynamic = 'force-static';
+export const revalidate = 86400;
 const size = { width: 1200, height: 630 };
 
 export async function GET() {

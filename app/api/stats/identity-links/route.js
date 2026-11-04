@@ -89,7 +89,12 @@ export async function GET(request) {
         }));
       const tournaments = results.sort(compareByScheduledStart)
         .map(row => snapshotToPublicResult(row.id, row.data, linkMap));
-      return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'no-store' } });
+      // All viewers receive the same public finished results. The browser has a
+      // longer local cache; this short CDN cache also prevents a burst of
+      // anonymous visitors from rerunning Vercel's CPU-intensive rating map.
+      return NextResponse.json({ tournaments }, { headers: {
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+      } });
     } catch (archiveError) {
       console.warn('GitHub stats archive unavailable; using compact Supabase snapshot fallback:', archiveError.message);
     }
@@ -142,7 +147,12 @@ export async function GET(request) {
 
     const tournaments = entries.sort(compareByScheduledStart)
       .map(row => snapshotToPublicResult(row.id, row.data, linkMap));
-    return NextResponse.json({ tournaments }, { headers: { 'Cache-Control': 'no-store' } });
+    // All viewers receive the same public finished results. The browser has a
+      // longer local cache; this short CDN cache also prevents a burst of
+      // anonymous visitors from rerunning Vercel's CPU-intensive rating map.
+      return NextResponse.json({ tournaments }, { headers: {
+        'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300',
+      } });
   } catch (error) {
     console.error('Stats identity links:', error);
     return NextResponse.json({ error: '旧ID連携情報を取得できませんでした。' }, { status: 500 });

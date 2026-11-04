@@ -5,7 +5,59 @@ import {getPlayerAchievements} from '../../lib/stats-data';
 const aliases={'99450':'145071','118591':'149650','148400':'164481','80108':'142959','100389':'167992','159344':'167992','156108':'156414'};
 function canonical(id){let value=String(id),n=0;while(aliases[value]&&n++<10)value=aliases[value];return value;}
 export default function LinkedStatsSummary(){const [data,setData]=useState(null),[archive,setArchive]=useState(null),[tag,setTag]=useState('all'),[error,setError]=useState('');
- useEffect(()=>{let active=true;(async()=>{try{const {data:{session}}=await getSupabaseBrowserClient().auth.getSession();if(!session)return;const response=await fetch('/api/stats/my',{headers:{Authorization:'Bearer '+session.access_token},cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error);if(!active)return;setData(result);if(result.legacyPlayerId){const a=await fetch('/api/ningyogeki-archive',{cache:'force-cache'});if(!a.ok)throw Error('過去の人形劇戦績を読み込めませんでした。');const body=await a.json();if(active)setArchive(body.data);}}catch(e){if(active)setError(e.message)}})();return()=>{active=false}},[]);
+ useEffect(() => {
+   let active = true;
+   (async () => {
+     try {
+       const { data: { session } } = await getSupabaseBrowserClient().auth.getSession();
+       if (!session) return;
+       const statsKey = 'amiconne-my-series-summary-v1-' + session.user.id;
+       let result = null;
+       try {
+         const stored = JSON.parse(localStorage.getItem(statsKey) || 'null');
+         if (stored?.version === 1 && stored?.savedAt <= Date.now() &&
+             Date.now() - stored.savedAt < 30 * 60 * 1000 && stored.data?.series)
+           result = stored.data;
+       } catch {}
+       if (!result) {
+         const response = await fetch('/api/stats/my', {
+           headers: { Authorization: 'Bearer ' + session.access_token },
+           cache: 'no-store',
+         });
+         result = await response.json();
+         if (!response.ok) throw Error(result.error || '戦績の読み込みに失敗しました。');
+         try {
+           localStorage.setItem(statsKey, JSON.stringify({
+             version: 1, savedAt: Date.now(), data: result,
+           }));
+         } catch {}
+       }
+       if (!active) return;
+       setData(result);
+       if (result.legacyPlayerId) {
+         // The 人形劇 historical archive is fixed. The stats page already
+         // stores it locally; reuse that data rather than requesting it again.
+         let historical = null;
+         try {
+           const stored = JSON.parse(localStorage.getItem('ningyogeki-archive-cache-v1') || 'null');
+           if (stored?.data?.records && stored?.data?.tournaments)
+             historical = stored.data;
+         } catch {}
+         if (!historical) {
+           const response = await fetch('/api/ningyogeki-archive', { cache: 'force-cache' });
+           if (!response.ok) throw Error('過去の人形劇戦績を読み込めませんでした。');
+           const body = await response.json();
+           historical = body.data || body;
+           try {
+             localStorage.setItem('ningyogeki-archive-cache-v1', JSON.stringify({ data: historical }));
+           } catch {}
+         }
+         if (active) setArchive(historical);
+       }
+     } catch (error) { if (active) setError(error.message); }
+   })();
+   return () => { active = false; };
+ }, []);
  if(!data&&!error)return null;
  const current=data?.series?.[tag]||data?.series?.all;
  const legacyId=data?.legacyPlayerId?canonical(data.legacyPlayerId):null;
