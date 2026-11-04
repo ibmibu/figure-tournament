@@ -191,14 +191,10 @@ export async function GET(request) {
         if (String(row.data.ownerUserId || '') !== String(owner)) row = null;
         sourceRole = 'organizer';
       }
-      // If an old selection is no longer valid, re-resolve rather than showing
-      // a different person's tournament under the account OBS URL.
-      if (!row) {
-        const selected = await selectOverlay(db, owner, player);
-        row = selected?.row || null;
-        personalMatch = selected?.personalMatch || null;
-        sourceRole = selected?.role || null;
-      }
+      // Keep the selected tournament fixed until OBS reloads. If the event
+      // was removed or access no longer matches, show an unassigned overlay
+      // instead of unexpectedly switching to another tournament.
+      // Score and round changes in the same tournament remain live.
     } else {
       const selected = await selectOverlay(db, owner, player);
       row = selected?.row || null;

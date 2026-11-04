@@ -31,30 +31,26 @@ export default function TournamentOverlay() {
     let holdTimer;
     let fallbackTimer;
     let inFlight = false;
-    let pendingSelection = false;
     let pendingForce = false;
     let requestVersion = 0;
     let selectedId = '';
     let selectedRole = '';
     let knownSelection = false;
-    let lastSelectionAt = 0;
     let overlayVersion = '';
     const dynamicSource = Boolean(player || owner);
     const source = player ? 'player=' + encodeURIComponent(player)
       : owner ? 'owner=' + encodeURIComponent(owner)
       : 'id=' + encodeURIComponent(id);
-    const refresh = async (selectAgain = false, forceData = false) => {
+    const refresh = async (forceData = false) => {
       if (!active) return;
       if (inFlight) {
-        pendingSelection ||= selectAgain;
         pendingForce ||= forceData;
         return;
       }
-      // OBS needs just one selected tournament every 2.5 seconds. Search the
-      // owner's/participant's tournament list at most every 30 seconds, or
-      // immediately when an unrelated tournament change signal arrives.
-      const lookup = dynamicSource && (selectAgain || !knownSelection ||
-        Date.now() - lastSelectionAt >= 30000);
+      // Select the tournament only when OBS starts/reloads. The current
+      // tournament's match, score and round stay live without searching
+      // unrelated events or the organizer's history again.
+      const lookup = dynamicSource && !knownSelection;
       if (dynamicSource && !lookup && !selectedId) return;
       inFlight = true;
       const version = ++requestVersion;
@@ -80,14 +76,14 @@ export default function TournamentOverlay() {
         }
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
-        if (lookup) {
-          knownSelection = true;
-          lastSelectionAt = Date.now();
-        }
+        if (lookup) knownSelection = true;
         if (dynamicSource) {
           selectedId = result.selectedTournamentId || '';
           selectedRole = result.selectedRole || '';
         }
+        // Subscribe to the selected tournament only, not every change from
+        // all tournaments. A different tournament is selected on OBS reload.
+        subscribeToSelectedTournament(selectedId || id);
         overlayVersion = response.headers.get('x-overlay-version') || '';
         setData(result);
         setMatchLoaded(true);
@@ -96,7 +92,7 @@ export default function TournamentOverlay() {
           const remaining = Date.parse(result.holdUntil) - Date.now();
           // The hold period expires without a database write or revision bump.
           // A forced full read clears the finished match at the right time.
-          if (remaining > 0) holdTimer = setTimeout(() => refresh(false, true), remaining + 100);
+          if (remaining > 0) holdTimer = setTimeout(() => refresh(true), remaining + 100);
         }
         setLoadError('');
       } catch (error) {
@@ -106,41 +102,35 @@ export default function TournamentOverlay() {
         }
       } finally {
         inFlight = false;
-        if (active && (pendingSelection || pendingForce)) {
-          const nextSelection = pendingSelection;
-          const nextForce = pendingForce;
-          pendingSelection = false;
+        if (active && pendingForce) {
           pendingForce = false;
-          void refresh(nextSelection, nextForce);
+          void refresh(true);
         }
       }
     };
-    const scheduleRefresh = (selectAgain = false) => {
+    const scheduleRefresh = () => {
       clearTimeout(debounce);
-      debounce = setTimeout(() => refresh(selectAgain), 250);
+      debounce = setTimeout(() => refresh(), 250);
     };
-    // Only tournament IDs / revisions are broadcast; never subscribe to the
-    // private tournament JSON. For owner/player URLs, other tournaments can
-    // become the preferred stream source, so reselect on their change signal.
-    try {
-      const supabase = getSupabaseBrowserClient();
-      channel = supabase.channel('obs-overlay-' + (player || owner || id))
-        .on('postgres_changes', {
-          event: '*', schema: 'public', table: 'tournament_change_signals',
-          ...(id && !dynamicSource ? { filter: 'tournament_id=eq.' + id } : {}),
-        }, payload => {
-          const changedId = String(payload?.new?.tournament_id || payload?.old?.tournament_id || '');
-          const otherTournament = dynamicSource &&
-            (!selectedId || (changedId && changedId !== selectedId));
-          scheduleRefresh(Boolean(otherTournament && Date.now() - lastSelectionAt >= 5000));
-        })
-        .subscribe(status => {
-          if (status === 'SUBSCRIBED') void refresh();
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
-            setLoadError('Realtimeの接続が切れました。再接続を待っています。');
-        });
-    } catch (error) {
-      setLoadError(error.message || 'Realtimeに接続できませんでした。');
+    // Realtime remains enabled for score and round changes within the
+    // selected event. There is no cross-tournament subscription or timer.
+    function subscribeToSelectedTournament(tournamentId) {
+      if (!active || channel || !tournamentId) return;
+      try {
+        const supabase = getSupabaseBrowserClient();
+        channel = supabase.channel('obs-overlay-' + tournamentId)
+          .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'tournament_change_signals',
+            filter: 'tournament_id=eq.' + tournamentId,
+          }, scheduleRefresh)
+          .subscribe(status => {
+            if (status === 'SUBSCRIBED') void refresh();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+              setLoadError('Realtimeの接続が切れました。再接続を待っています。');
+          });
+      } catch (error) {
+        setLoadError(error.message || 'Realtimeに接続できませんでした。');
+      }
     }
     // The score fallback remains 2.5 seconds. After the first response, an
     // unchanged tournament is only a tiny revision query; a changed result
