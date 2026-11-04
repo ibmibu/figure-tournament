@@ -69,7 +69,13 @@ export default function Home() {
     };
 
     refreshRef.current = () => refresh(true);
-    void refresh();
+    // A visible cached homepage is sufficient for a short period. A manual
+    // refresh always bypasses this check; active events remain available by
+    // opening their page directly and keep their own live sync.
+    let updatedAt = 0;
+    try { updatedAt = Number(sessionStorage.getItem('figure-home-summary-updated') || 0); } catch {}
+    if (!(snapshot && updatedAt > 0 && Date.now() - updatedAt < 60000))
+      void refresh();
     return () => {
       active = false;
       refreshRef.current = null;
