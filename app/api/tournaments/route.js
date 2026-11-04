@@ -113,6 +113,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
   delete publicData.matchLogs;
   delete publicData.adminLog;
   delete publicData.adminHistory;
+  delete publicData.participantAvatars;
   delete publicData.statsSnapshot;
   return { ...publicData, characterReports: visibleReports, isOwner, ...(isOwner ? { overlayOwnerId: ownerUserId } : {}), effectiveStreamMatchId };
 }
@@ -228,11 +229,15 @@ export async function GET(request) {
     const id = searchParams.get('id');
     const legacyOwnerToken = searchParams.get('ownerToken') || '';
     if (id) {
-      const liveMode = searchParams.get('view') === 'live';
+      const requestedView = searchParams.get('view');
+      const liveMode = requestedView === 'live';
+      // The first page load needs participant avatars, but not the full
+      // tournaments.data document. Reuse the live projection for its metadata.
+      const compactPageMode = requestedView === 'page';
       // Explicit server-side opt-in only. If the projection is absent or fails,
       // preserve the existing full-row behavior for all callers.
       let data;
-      if (liveMode && process.env.TOURNAMENT_LIVE_PROJECTION_ENABLED === 'true') {
+      if ((liveMode || compactPageMode) && process.env.TOURNAMENT_LIVE_PROJECTION_ENABLED === 'true') {
         try {
           data = await readLiveTournamentProjection(supabase, id);
         } catch (projectionError) {
