@@ -93,6 +93,7 @@ export default function TournamentPage() {
   const avatarMapRef = useRef({});
   const avatarRosterRef = useRef('');
   const boardSnapshotRef = useRef('');
+  const boardEtagRef = useRef('');
   const boardInFlightRef = useRef(false);
   const autoStartAttemptRef = useRef(new Set());
 
@@ -136,11 +137,16 @@ export default function TournamentPage() {
     setTournament(next);
   }
 
-  async function refreshBoard() {
+  async function refreshBoard(force = false) {
     if (!id || boardInFlightRef.current) return;
     boardInFlightRef.current = true;
     try {
-      const response = await fetch(`/api/tournaments/board?id=${encodeURIComponent(id)}`, { cache: 'no-store' });
+      const url = `/api/tournaments/board?id=${encodeURIComponent(id)}` + (force ? '&fresh=1' : '');
+      const headers = !force && boardEtagRef.current ? { 'If-None-Match': boardEtagRef.current } : {};
+      const response = await fetch(url, { cache: 'no-store', headers });
+      if (response.status === 304) return;
+      const etag = response.headers.get('etag');
+      if (etag) boardEtagRef.current = etag;
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'コメントを読み込めませんでした。');
       const messages = data.messages || [];
@@ -160,6 +166,7 @@ export default function TournamentPage() {
   const boardFinished = Boolean(tournament?.bracket?.complete);
   useEffect(() => {
     if (!boardVisible) return;
+    boardEtagRef.current = '';
     void refreshBoard();
     if (boardFinished) return;
     const timer = setInterval(() => {
@@ -184,7 +191,7 @@ export default function TournamentPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '投稿できませんでした。');
       setBoardText('');
-      await refreshBoard();
+      await refreshBoard(true);
     } catch (error) { setBoardError(error.message || '投稿できませんでした。'); }
     finally { setBoardBusy(false); }
   }
