@@ -8,6 +8,15 @@ import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockR
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
+
+// Images live in profiles, not the tournament document. Refresh them only
+// when the registration roster changes, never on every live state poll.
+function avatarRosterKey(players) {
+  return (Array.isArray(players) ? players : [])
+    .filter(player => !player.isDemo)
+    .map(player => String(player.userId || player.id || ''))
+    .filter(Boolean).sort().join('|');
+}
 const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
 
 export default function TournamentPage() {
@@ -60,6 +69,7 @@ export default function TournamentPage() {
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
   const avatarMapRef = useRef({});
+  const avatarRosterRef = useRef('');
   const boardSnapshotRef = useRef('');
   const boardInFlightRef = useRef(false);
   const autoStartAttemptRef = useRef(new Set());
@@ -67,7 +77,10 @@ export default function TournamentPage() {
   function applyTournamentSnapshot(next) {
     // Live polling omits the base64 avatar collection; retain the map fetched
     // on the initial full read. This avoids refreshing N images every 2-5s.
-    if (next?.participantAvatars) avatarMapRef.current = next.participantAvatars;
+    if (next?.participantAvatars) {
+      avatarMapRef.current = next.participantAvatars;
+      avatarRosterRef.current = avatarRosterKey(next.joinedPlayers);
+    }
     else if (next) next = { ...next, participantAvatars: avatarMapRef.current };
     const signature = JSON.stringify(next);
     if (signature === tournamentSnapshotRef.current) return;
@@ -156,7 +169,7 @@ export default function TournamentPage() {
         }
       } catch {}
       const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}`, { cache: 'no-store', headers: { ...headers, ...(tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
+      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=page`, { cache: 'no-store', headers: { ...headers, ...(tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
         if (response.status === 304) return;
         const newEtag = response.headers.get('etag');
         if (newEtag) tournamentEtagRef.current = newEtag;
@@ -179,6 +192,38 @@ export default function TournamentPage() {
 
   useEffect(() => { loadTournament(); }, [id]);
 
+  // While registration is open, live polling updates the roster without
+  // transferring avatar base64. One compact page request hydrates the images
+  // only when a newly registered participant changes the roster.
+  const currentRosterKey = tournament && !tournament.bracket
+    ? avatarRosterKey(tournament.joinedPlayers) : '';
+  useEffect(() => {
+    if (!tournament || tournament.bracket || currentRosterKey === avatarRosterRef.current) return;
+    let cancelled = false;
+    const owner = localStorage.getItem(OWNER_KEY) || '';
+    const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=page`;
+    fetch(url, { cache: 'no-store', headers })
+      .then(async response => {
+        if (!response.ok) return;
+        const result = await response.json();
+        const next = result.tournament;
+        if (cancelled || !next || avatarRosterKey(next.joinedPlayers) !== currentRosterKey) return;
+        const avatars = next.participantAvatars;
+        if (!avatars || typeof avatars !== 'object') return;
+        avatarMapRef.current = avatars;
+        avatarRosterRef.current = currentRosterKey;
+        setTournament(previous => {
+          if (!previous || avatarRosterKey(previous.joinedPlayers) !== currentRosterKey) return previous;
+          const updated = { ...previous, participantAvatars: avatars };
+          tournamentSnapshotRef.current = JSON.stringify(updated);
+          return updated;
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [id, currentRosterKey, Boolean(tournament?.bracket), accessToken]);
+
   // A single tournament sync loop covers the overview, declarations and live bracket.
   // Avoid overlapping four-second requests from separate UI sections.
   // Keep tournament state synchronized without flashing the loading screen.
@@ -199,12 +244,10 @@ export default function TournamentPage() {
       try {
         const owner = localStorage.getItem(OWNER_KEY) || '';
         const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-        // After the bracket starts, the players' roster is fixed. Read only
-        // the live match state, not all participants' base64 profile avatars.
-        // Keep polling the full view while registration is still open.
-        const live = Boolean(tournament?.bracket);
-        if (live && liveEtagRef.current) headers['If-None-Match'] = liveEtagRef.current;
-        const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}` + (live ? '&view=live' : '') + (fresh ? '&fresh=1' : '');
+        // Both registration and matches use the compact live projection.
+        // Avatar images are requested separately only after roster changes.
+        if (liveEtagRef.current) headers['If-None-Match'] = liveEtagRef.current;
+        const url = `/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=live` + (fresh ? '&fresh=1' : '');
         const response = await fetch(url, { cache: 'no-store', headers });
         if (cancelled) return;
         if (response.status === 304) {
@@ -213,7 +256,7 @@ export default function TournamentPage() {
         }
         if (!response.ok) return;
         const etag = response.headers.get('etag');
-        if (live && etag) liveEtagRef.current = etag;
+        if (etag) liveEtagRef.current = etag;
         const result = await response.json();
         if (!cancelled && result.tournament) {
           applyTournamentSnapshot(result.tournament);
