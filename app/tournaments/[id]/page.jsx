@@ -209,16 +209,7 @@ export default function TournamentPage() {
         accessToken = data.session?.access_token || '';
         setAccessToken(accessToken);
         setCurrentUserId(data.session?.user?.id || '');
-        if (accessToken) {
-          // Profile is supplemental: never block the tournament request on it.
-          fetch('/api/profile?view=basic', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
-            .then(async response => {
-              if (!response.ok) return;
-              const profileResult = await response.json();
-              setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
-              setSavedFriendCode(String(profileResult.profile?.friend_code || '').trim());
-            }).catch(() => {});
-        }
+
       } catch {}
       // Completed public tournaments have immutable, GitHub-tracked bracket
       // and placement details. Visitors should not download the full
@@ -246,9 +237,11 @@ export default function TournamentPage() {
                   // These public avatar URLs are independently CDN-cached.
                   // Missing images are hidden by the image error handler.
                   const cached = readCachedAvatars(id);
-                  const avatars = cached?.avatars || Object.fromEntries(
+                  const roster = avatarRosterKey(archive.joinedPlayers);
+                  const avatars = cached?.rosterKey === roster ? cached.avatars : Object.fromEntries(
                     (archive.joinedPlayers || [])
-                      .filter(player => !player.isDemo && player.userId)
+                      .filter(player => !player.isDemo &&
+                        /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(player.userId || '')))
                       .map(player => [String(player.userId),
                         '/api/profile/avatar?userId=' + encodeURIComponent(player.userId)])
                   );
@@ -267,6 +260,18 @@ export default function TournamentPage() {
           // normal live/history path or an organizer's editing controls.
           console.warn('Historical tournament archive fallback:', archiveError);
         }
+      }
+      if (accessToken) {
+        // Profile fields are only needed for upcoming/live tournament
+        // operations; a read-only completed archive needs neither GET.
+        fetch('/api/profile?view=basic', {
+          headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store',
+        }).then(async response => {
+          if (!response.ok) return;
+          const profileResult = await response.json();
+          setAccountName(String(profileResult.profile?.display_name || 'no name').trim());
+          setSavedFriendCode(String(profileResult.profile?.friend_code || '').trim());
+        }).catch(() => {});
       }
       // F5 reuses already-loaded icons in this tab. The live tournament
       // path still obtains roster avatar URLs when needed.
