@@ -220,8 +220,56 @@ export default function TournamentPage() {
             }).catch(() => {});
         }
       } catch {}
-      // F5 reuses already-loaded icons in this tab. A first visit (or an
-      // expired browser cache) still loads them from the profiles table.
+      // Completed public tournaments have immutable, GitHub-tracked bracket
+      // and placement details. Visitors should not download the full
+      // historical Supabase row just to read a result. Organizer access and
+      // reopened tournaments keep the authoritative existing DB path.
+      if (/^[A-Za-z0-9_-]{1,128}$/.test(id)) {
+        try {
+          const archiveResponse = await fetch(
+            '/data/tournament-archive/tournaments/' + encodeURIComponent(id) + '.json'
+          );
+          if (archiveResponse.ok) {
+            const archive = await archiveResponse.json();
+            if (archive?.id === id && archive.bracket?.complete === true &&
+                Array.isArray(archive.bracket?.rounds) && archive.bracket.rounds.length &&
+                typeof archive.description === 'string' && archive.stageSettings) {
+              const accessResponse = await fetch(
+                '/api/tournaments?id=' + encodeURIComponent(id) +
+                '&ownerToken=' + encodeURIComponent(owner) + '&view=access',
+                { cache: 'no-store',
+                  headers: accessToken ? { Authorization: 'Bearer ' + accessToken } : {} }
+              );
+              if (accessResponse.ok) {
+                const access = await accessResponse.json();
+                if (access.completed && !access.isOwner) {
+                  // These public avatar URLs are independently CDN-cached.
+                  // Missing images are hidden by the image error handler.
+                  const cached = readCachedAvatars(id);
+                  const avatars = cached?.avatars || Object.fromEntries(
+                    (archive.joinedPlayers || [])
+                      .filter(player => !player.isDemo && player.userId)
+                      .map(player => [String(player.userId),
+                        '/api/profile/avatar?userId=' + encodeURIComponent(player.userId)])
+                  );
+                  avatarMapRef.current = avatars;
+                  avatarRosterRef.current = avatarRosterKey(archive.joinedPlayers);
+                  applyTournamentSnapshot({ ...archive, isOwner: false,
+                    participantAvatars: avatars });
+                  return;
+                }
+              }
+            }
+          }
+        } catch (archiveError) {
+          // Static files are eventually deployed after the archive action.
+          // A missing, outdated or unavailable archive must never block the
+          // normal live/history path or an organizer's editing controls.
+          console.warn('Historical tournament archive fallback:', archiveError);
+        }
+      }
+      // F5 reuses already-loaded icons in this tab. The live tournament
+      // path still obtains roster avatar URLs when needed.
       const cachedAvatars = readCachedAvatars(id);
       avatarMapRef.current = cachedAvatars?.avatars || {};
       avatarRosterRef.current = cachedAvatars?.rosterKey || '';
