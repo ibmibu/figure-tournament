@@ -27,6 +27,11 @@ const CANDIDATE_BATCH_SIZE = 4;
 function expandOverlayRow(raw) {
   if (!raw) return null;
   const { id, created_at, ...data } = raw;
+  // JSON path extraction returns null for absent keys. The legacy overlay
+  // distinguishes an omitted streamMatchId (automatic owner selection) from
+  // an explicit null paired with streamMatchManual=true (manual clear).
+  if (data.streamMatchId == null && data.streamMatchManual !== true)
+    delete data.streamMatchId;
   return { id, created_at, data };
 }
 function overlayAt(row) {
