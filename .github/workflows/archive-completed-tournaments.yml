@@ -1,5 +1,5 @@
 name: Archive completed tournaments
-# Schema 2: backfill the public stats snapshot and match-result summary after deployment.
+# Schema 3: backfill public completed-tournament detail/score data after deployment.
 on:
   # Initial sync after rollout; later archive commits do not trigger this
   # workflow because they only touch data, not this workflow file.
