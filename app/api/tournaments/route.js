@@ -109,11 +109,11 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     [match.player1, match.player2].some(p => p && String(p.userId || p.id) === String(user.id))
   ));
   if (!isOwner && !isStreamPlayer) delete publicData.streamFriendCode;
-  publicData.matchLogs = (data.matchLogs || []).map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
-  delete publicData.statsSnapshot;
-  // Rollback snapshots are never needed by the page or the live polling API.
+  // Result status and scores live in the bracket, not in operation logs.
+  delete publicData.matchLogs;
+  delete publicData.adminLog;
   delete publicData.adminHistory;
-  if (!isOwner) delete publicData.adminLog;
+  delete publicData.statsSnapshot;
   return { ...publicData, characterReports: visibleReports, isOwner, ...(isOwner ? { overlayOwnerId: ownerUserId } : {}), effectiveStreamMatchId };
 }
 

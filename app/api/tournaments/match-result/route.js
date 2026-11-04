@@ -2,7 +2,6 @@ import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getBracketPlacements, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
-import { appendMatchLog } from '../../../../lib/tournament-match-log';
 
 export const dynamic = 'force-dynamic';
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -10,8 +9,7 @@ const auth = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.en
 const fail = (error, status = 400) => NextResponse.json({ error }, { status });
 
 function safeTournament(data, user) {
-  const { ownerId, ownerUserId, adminHistory, adminLog, ...publicData } = data;
-  publicData.matchLogs = (data.matchLogs || []).map(({ id, matchId, at, actor, action }) => ({ id, matchId, at, actor, action }));
+  const { ownerId, ownerUserId, matchLogs, adminHistory, adminLog, ...publicData } = data;
   const isOwner = ownerUserId === user.id;
   const visible = new Set([String(user.id)]);
   for (const match of (data.bracket?.rounds || []).flat()) {
@@ -49,8 +47,6 @@ function safeTournament(data, user) {
     }
     const streamMatch = (data.bracket?.rounds || []).flat().find(m => String(m.id) === String(data.streamMatchId));
     if (!streamMatch || ![streamMatch.player1, streamMatch.player2].some(p => p && String(p.userId || p.id) === String(user.id))) delete publicData.streamFriendCode;
-  } else {
-    publicData.adminLog = adminLog;
   }
   return { ...publicData, isOwner };
 }
@@ -113,7 +109,6 @@ export async function POST(request) {
       const isStreamResult = Boolean(found.winnerId) && String(current.streamMatchId ?? '') === String(matchId);
       const streamHold = isStreamResult ? { streamHoldMatchId: matchId, streamHoldUntil: new Date(Date.now() + 60000).toISOString() } : {};
       const updated = { ...current, ...streamHold, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
-      appendMatchLog(updated, current, matchId, actorPlayer.name, `第${gameNumber}ゲーム ${result === 'win' ? '勝利' : '敗北'}報告${found.winnerId ? '・セット確定' : ''}`);
       updated.stageActionRevision = (revision ?? 0) + 1;
       let update = db.from('tournaments').update({ data: withStatsSnapshot(updated) }).eq('id', id);
       update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));

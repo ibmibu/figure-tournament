@@ -1,7 +1,6 @@
 import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { appendMatchLog } from '../../../../lib/tournament-match-log';
 import { repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
 import { getMatchReportMode } from '../../../../lib/tournament-set-result';
 export const dynamic = 'force-dynamic';
@@ -91,10 +90,6 @@ export async function POST(request) {
           game.stage = stage;
         }
       }
-      const label = action === 'start' ? '対戦開始' : action === 'reject'
-        ? `第${match.matchState.gameNumber}ゲーム 拒否：${stages.join('、')}`
-        : `第${match.matchState.gameNumber}ゲーム ステージ決定：${stage}`;
-      appendMatchLog(next, original, matchId, actor?.name || (owner ? '主催者' : ''), label);
       next.stageActionRevision = (revision ?? 0) + 1;
       let update = db.from('tournaments').update({ data: withStatsSnapshot(next) }).eq('id', id);
       update = revision === null ? update.is('data->>stageActionRevision', null) : update.eq('data->>stageActionRevision', String(revision));
