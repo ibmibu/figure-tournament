@@ -8,6 +8,7 @@ import json
 import os
 import pathlib
 import re
+import time
 import urllib.parse
 import urllib.request
 
@@ -22,11 +23,19 @@ INDEX = ROOT / "index.json"
 def request(params):
     url = API + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "AmiconneArchiveBot/1"})
-    with urllib.request.urlopen(req, timeout=90) as response:
-        payload = json.load(response)
-    if payload.get("version") != 1 or not isinstance(payload.get("records"), list):
-        raise ValueError("Unexpected archive export response")
-    return payload["records"]
+    # The Action can start before the accompanying production deployment.
+    # Never overwrite the archive from an older schema: wait for Vercel to
+    # deploy the exporter, then fail safely and retry on the next run.
+    attempts = 15 if params.get("mode") == "index" else 1
+    for attempt in range(attempts):
+        with urllib.request.urlopen(req, timeout=90) as response:
+            payload = json.load(response)
+        if payload.get("version") == 1 and payload.get("archiveSchema", 0) >= 2 and isinstance(payload.get("records"), list):
+            return payload["records"]
+        if attempt < attempts - 1:
+            print("Waiting for updated production archive exporter...", flush=True)
+            time.sleep(15)
+    raise ValueError("Archive exporter is not yet deployed with schema 2")
 
 
 def save(path, obj):
