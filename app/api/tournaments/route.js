@@ -50,7 +50,7 @@ async function getUser(request, required = true) {
 
 function publicTournament(row, user, legacyOwnerToken = '') {
   const data = repairPrematureAdvances(row.data || {});
-  const { ownerId, ownerUserId, ...publicData } = data;
+  const { ownerId, ownerUserId, ownerToken, owner_token, ...publicData } = data;
   const isOwner = Boolean(user && (
     ownerUserId === user.id ||
     (!ownerUserId && legacyOwnerToken && row.owner_token === legacyOwnerToken)
