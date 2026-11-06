@@ -9,7 +9,8 @@ const auth = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.en
 const fail = (error, status = 400) => NextResponse.json({ error }, { status });
 
 function safeTournament(data, user) {
-  const { ownerId, ownerUserId, matchLogs, adminHistory, adminLog, ...publicData } = data;
+  const { ownerId, ownerUserId, ownerToken, owner_token, matchLogs, adminHistory, adminLog,
+    participantAvatars, statsSnapshot, overlayOwnerId, ...publicData } = data;
   const isOwner = ownerUserId === user.id;
   const visible = new Set([String(user.id)]);
   for (const match of (data.bracket?.rounds || []).flat()) {
