@@ -8,7 +8,7 @@ on:
     paths:
       - '.github/workflows/archive-completed-tournaments.yml'
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '17 3 * * *'  # Once per day, 12:17 JST
   workflow_dispatch:
 
 permissions:
