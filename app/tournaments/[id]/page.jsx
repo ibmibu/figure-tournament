@@ -64,6 +64,7 @@ export default function TournamentPage() {
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
+  const [preferOwnMatchForStreamId, setPreferOwnMatchForStreamId] = useState('');
   const [adminScore, setAdminScore] = useState({ first: 0, second: 0 });
   const [scoreClock, setScoreClock] = useState(() => Date.now());
   const [scoreDraft, setScoreDraft] = useState(null);
@@ -1316,6 +1317,16 @@ export default function TournamentPage() {
   const streamControlMatch = streamMatchId == null ? null : bracketRounds.flat().find(match =>
     String(match.id) === String(streamMatchId) && match.player1 && match.player2 && !match.winnerId
   );
+  // The organizer scores the active stream match in the existing match panel.
+  // If the organizer is also playing another match, allow switching views.
+  const hostStreamMatch = isOwner && !tournament.stageRejects && streamControlMatch &&
+    getMatchReportMode(tournament, streamControlMatch) === 'stream' ? streamControlMatch : null;
+  const hasSeparateOwnMatch = Boolean(hostStreamMatch && activeMatchId &&
+    String(hostStreamMatch.id) !== String(activeMatchId));
+  const showingOwnMatch = hasSeparateOwnMatch &&
+    preferOwnMatchForStreamId === String(hostStreamMatch.id);
+  const displayedMatchId = hostStreamMatch && !showingOwnMatch
+    ? String(hostStreamMatch.id) : activeMatchId;
 
   // Declaration is its own phase, not a section hidden below the overview.
   if (tournament.characterDeclaration && tournament.declarationPhase === 'collecting') {
@@ -1350,44 +1361,17 @@ export default function TournamentPage() {
       </div>
     </section>
       {!showTournamentOverview && error && <p className="form-error" role="alert">{error}</p>}
-      {isOwner && tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && !tournament.stageRejects && streamControlMatch &&
-         getMatchReportMode(tournament, streamControlMatch) === 'stream' && (() => {
-           const target = Number(tournament.bestOf) === 5 ? 3 : 2;
-           const unsaved = scoreDraft?.matchId === String(streamControlMatch.id);
-           const scores = unsaved ? scoreDraft.scores : editableSetScores(tournament, streamControlMatch);
-           const first = Number(scores[streamControlMatch.player1.id] || 0);
-           const second = Number(scores[streamControlMatch.player2.id] || 0);
-           const serverVersion = Number(streamControlMatch.matchState?.scoreVersion || 0);
-           const version = scoreLastAckRef.current?.matchId === String(streamControlMatch.id)
-             ? Math.max(serverVersion, Number(scoreLastAckRef.current.version)) : serverVersion;
-           return <section className="tournament-stream-score-panel" aria-label="配信台のスコア操作">
-             <div className="tournament-stream-score-heading"><strong>● 配信台のスコア</strong>
-               <span>{streamControlMatch.player1.name} VS {streamControlMatch.player2.name}</span></div>
-             <MatchScoreEditor
-               firstName={streamControlMatch.player1.name} secondName={streamControlMatch.player2.name}
-               firstScore={first} secondScore={second} target={target}
-               onFirstChange={next => queueLiveScore(streamControlMatch, streamControlMatch.player1.id, next > first ? 1 : -1)}
-               onSecondChange={next => queueLiveScore(streamControlMatch, streamControlMatch.player2.id, next > second ? 1 : -1)}
-               disabled={savingBracket}
-               disableFirstIncrease={second === target && first >= target - 1}
-               disableSecondIncrease={first === target && second >= target - 1} />
-             <button type="button" className="set-score-primary" disabled={savingBracket || unsaved ||
-               !((first === target && second < target) || (second === target && first < target))}
-               onClick={() => {
-                 if (window.confirm(streamControlMatch.player1.name + ' ' + first + ' - ' +
-                   second + ' ' + streamControlMatch.player2.name + ' の結果を確定しますか？')) {
-                   submitSetAction(streamControlMatch, 'stream-confirm', {
-                     scoreFirst: first, scoreSecond: second, scoreVersion: version,
-                   });
-                 }
-               }}>{unsaved ? '保存中…' : '結果を確定'}</button>
-           </section>;
-         })()}
-       {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
-        {activeMatchId && !tournament.bracket.complete && (() => {
+      {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
+        {hasSeparateOwnMatch && <div className="tournament-match-view-switch" role="group" aria-label="表示する対戦">
+          <button type="button" className={!showingOwnMatch ? 'active' : ''} aria-pressed={!showingOwnMatch}
+            onClick={() => setPreferOwnMatchForStreamId('')}>配信台の対戦</button>
+          <button type="button" className={showingOwnMatch ? 'active' : ''} aria-pressed={showingOwnMatch}
+            onClick={() => setPreferOwnMatchForStreamId(String(hostStreamMatch.id))}>自分の対戦</button>
+        </div>}
+        {displayedMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
-            if (match.id === activeMatchId) selected = { roundIndex: ri, matchIndex: mi, match };
+            if (String(match.id) === String(displayedMatchId)) selected = { roundIndex: ri, matchIndex: mi, match };
           }));
           if (!selected || !selected.match.player1 || !selected.match.player2 || selected.match.winnerId) return null;
           const { roundIndex: ri, matchIndex: mi, match } = selected;
@@ -1416,7 +1400,7 @@ export default function TournamentPage() {
           const canActFor = id => String(id) === String(viewingPlayerId);
           const waitingFor = id => <p className="setting-help match-turn-waiting">{[match.player1,match.player2].find(p => String(p.id) === String(id))?.name || '相手'} の入力を待っています…</p>;
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
-            {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>配信台に入室して試合を進めてください。</span></div>}
+            {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>{isOwner ? '主催者はここで配信台のスコアを操作できます。' : '配信台に入室して試合を進めてください。'}</span></div>}
 
             <div className="game-top">
               <div className="current-score">{liveDisplay[p1Id] || 0}<span> - </span>{liveDisplay[match.player2.id] || 0}</div>
@@ -1558,7 +1542,7 @@ export default function TournamentPage() {
             </>}
           </section>;
         })()}
-{!activeMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
+{!displayedMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="コメント">
         <div className="tournament-board-scroll" role="region" aria-label="コメント履歴" tabIndex={0}>
