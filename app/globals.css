@@ -2030,16 +2030,6 @@ body .tournament-detail-page .bracket-admin-log-dot{
   .tournament-detail-page .set-score-stepper button {width:36px}
 }
 
-/* Organizer's live stream score controls: always visible above the bracket. */
-.tournament-detail-page .tournament-stream-score-panel{
-  margin:16px 0 12px;padding:16px 20px;background:#fff;
-  border:1px solid #dfe6ec;border-left:4px solid #7650ba;
-  display:flex;flex-direction:column;align-items:stretch;gap:12px;
-}
-.tournament-stream-score-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.tournament-stream-score-heading strong{color:#6446a1}
-.tournament-stream-score-heading span{font-weight:600;overflow-wrap:anywhere}
-.tournament-stream-score-panel .set-score-primary{align-self:stretch;min-height:42px}
 .match-opponent-friend-code .friend-code-reveal{
   border:0;background:#171b22;color:#fff;cursor:pointer;
   min-width:180px;min-height:46px;padding:7px 12px;
@@ -2053,6 +2043,20 @@ body .tournament-detail-page .bracket-admin-log-dot{
 .match-opponent-friend-code .friend-code-reveal.is-revealed small{color:#4c5f77}
 .match-opponent-friend-code .friend-code-reveal:focus-visible{outline:3px solid #7650ba;outline-offset:3px}
 @media(max-width:600px){
-  .tournament-detail-page .tournament-stream-score-panel{padding:14px 12px}
   .match-opponent-friend-code .friend-code-reveal{width:100%}
+}
+
+/* One organizer match panel handles both the stream table and their own match. */
+.tournament-detail-page .tournament-match-view-switch{
+  display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px;
+}
+.tournament-detail-page .tournament-match-view-switch button{
+  border:1px solid #c9c1df;background:#fff;color:#5d4886;
+  padding:9px 14px;min-height:40px;font-size:13px;font-weight:700;cursor:pointer;
+}
+.tournament-detail-page .tournament-match-view-switch button.active{
+  border-color:#6946aa;background:#6946aa;color:#fff;
+}
+.tournament-detail-page .tournament-match-view-switch button:focus-visible{
+  outline:3px solid #7650ba;outline-offset:2px;
 }
