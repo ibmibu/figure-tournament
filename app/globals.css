@@ -2029,3 +2029,30 @@ body .tournament-detail-page .bracket-admin-log-dot{
   .tournament-detail-page .set-score-player {padding:12px 4px}
   .tournament-detail-page .set-score-stepper button {width:36px}
 }
+
+/* Organizer's live stream score controls: always visible above the bracket. */
+.tournament-detail-page .tournament-stream-score-panel{
+  margin:16px 0 12px;padding:16px 20px;background:#fff;
+  border:1px solid #dfe6ec;border-left:4px solid #7650ba;
+  display:flex;flex-direction:column;align-items:stretch;gap:12px;
+}
+.tournament-stream-score-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tournament-stream-score-heading strong{color:#6446a1}
+.tournament-stream-score-heading span{font-weight:600;overflow-wrap:anywhere}
+.tournament-stream-score-panel .set-score-primary{align-self:stretch;min-height:42px}
+.match-opponent-friend-code .friend-code-reveal{
+  border:0;background:#171b22;color:#fff;cursor:pointer;
+  min-width:180px;min-height:46px;padding:7px 12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:15px;letter-spacing:.06em;font-weight:700;
+}
+.match-opponent-friend-code .friend-code-reveal small{
+  color:#cfd5df;font-size:10px;font-weight:500;letter-spacing:0;
+}
+.match-opponent-friend-code .friend-code-reveal.is-revealed{background:#eaf1fb;color:#101b2d;border:1px solid #9eb8df}
+.match-opponent-friend-code .friend-code-reveal.is-revealed small{color:#4c5f77}
+.match-opponent-friend-code .friend-code-reveal:focus-visible{outline:3px solid #7650ba;outline-offset:3px}
+@media(max-width:600px){
+  .tournament-detail-page .tournament-stream-score-panel{padding:14px 12px}
+  .match-opponent-friend-code .friend-code-reveal{width:100%}
+}
