@@ -64,7 +64,6 @@ export default function TournamentPage() {
   const [adminMatchSelection, setAdminMatchSelection] = useState(null);
   const [showForfeitChoices, setShowForfeitChoices] = useState(false);
   const [showScoreEditor, setShowScoreEditor] = useState(false);
-  const [preferOwnMatchForStreamId, setPreferOwnMatchForStreamId] = useState('');
   const [adminScore, setAdminScore] = useState({ first: 0, second: 0 });
   const [scoreClock, setScoreClock] = useState(() => Date.now());
   const [scoreDraft, setScoreDraft] = useState(null);
@@ -1317,16 +1316,11 @@ export default function TournamentPage() {
   const streamControlMatch = streamMatchId == null ? null : bracketRounds.flat().find(match =>
     String(match.id) === String(streamMatchId) && match.player1 && match.player2 && !match.winnerId
   );
-  // The organizer scores the active stream match in the existing match panel.
-  // If the organizer is also playing another match, allow switching views.
+  // The organizer uses the same match panel for the stream table, whether
+  // or not they are one of the players. There is no separate score editor.
   const hostStreamMatch = isOwner && !tournament.stageRejects && streamControlMatch &&
     getMatchReportMode(tournament, streamControlMatch) === 'stream' ? streamControlMatch : null;
-  const hasSeparateOwnMatch = Boolean(hostStreamMatch && activeMatchId &&
-    String(hostStreamMatch.id) !== String(activeMatchId));
-  const showingOwnMatch = hasSeparateOwnMatch &&
-    preferOwnMatchForStreamId === String(hostStreamMatch.id);
-  const displayedMatchId = hostStreamMatch && !showingOwnMatch
-    ? String(hostStreamMatch.id) : activeMatchId;
+  const displayedMatchId = hostStreamMatch ? String(hostStreamMatch.id) : activeMatchId;
 
   // Declaration is its own phase, not a section hidden below the overview.
   if (tournament.characterDeclaration && tournament.declarationPhase === 'collecting') {
@@ -1362,12 +1356,6 @@ export default function TournamentPage() {
     </section>
       {!showTournamentOverview && error && <p className="form-error" role="alert">{error}</p>}
       {tournament.bracket && !showTournamentOverview && !tournament.bracket.complete && <div className="tournament-match-area">
-        {hasSeparateOwnMatch && <div className="tournament-match-view-switch" role="group" aria-label="表示する対戦">
-          <button type="button" className={!showingOwnMatch ? 'active' : ''} aria-pressed={!showingOwnMatch}
-            onClick={() => setPreferOwnMatchForStreamId('')}>配信台の対戦</button>
-          <button type="button" className={showingOwnMatch ? 'active' : ''} aria-pressed={showingOwnMatch}
-            onClick={() => setPreferOwnMatchForStreamId(String(hostStreamMatch.id))}>自分の対戦</button>
-        </div>}
         {displayedMatchId && !tournament.bracket.complete && (() => {
           let selected = null;
           tournament.bracket.rounds.forEach((round, ri) => round.forEach((match, mi) => {
