@@ -17,6 +17,16 @@ function formatStartDate(value) {
 
 function isFinished(t) { return t.bracket?.complete === true || ['終了','終了済み','大会終了'].includes(t.status); }
 function finishedAt(t) { const n = Date.parse(t.completedAt || t.date || ''); return Number.isFinite(n) ? n : 0; }
+function startAt(t) { const n = Date.parse(t.date || ''); return Number.isFinite(n) ? n : Number.MAX_SAFE_INTEGER; }
+function isOngoing(t) { return ['対戦中', '開催中', '進行中'].includes(t.status); }
+function sortActiveTournaments(a, b, now) {
+  if (isOngoing(a) !== isOngoing(b)) return isOngoing(a) ? -1 : 1;
+  const aStart = startAt(a), bStart = startAt(b);
+  // Old, uncompleted events should not appear ahead of upcoming events.
+  const aPast = aStart < now, bPast = bStart < now;
+  if (aPast !== bPast) return aPast ? 1 : -1;
+  return aPast ? bStart - aStart : aStart - bStart;
+}
 function TournamentTable({items}) {
  return <div className="home-tournament-table-wrap"><table className="home-tournament-table">
  <thead><tr><th scope="col">大会名</th><th scope="col">開催日時</th><th scope="col">参加人数</th><th scope="col">主催者</th></tr></thead>
@@ -82,7 +92,8 @@ export default function Home() {
     };
   }, []);
 
-  const active = tournaments.filter(t=>!isFinished(t));
+  const now = Date.now();
+  const active = tournaments.filter(t=>!isFinished(t)).sort((a,b)=>sortActiveTournaments(a,b,now));
   const cutoff = Date.now()-14*24*60*60*1000;
   const finished = tournaments.filter(t=>isFinished(t)&&finishedAt(t)>=cutoff).sort((a,b)=>finishedAt(b)-finishedAt(a));
   return <main className="page">
