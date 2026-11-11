@@ -1300,10 +1300,11 @@ export default function TournamentPage() {
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
-  // Prefer the deepest round with a playable unresolved match. Earlier rounds may
-  // retain incomplete/bye cards even after the final has become playable.
+  // Announce the earliest round with an unresolved playable match.
+  // Byes can populate later rounds before round one has finished, so
+  // choosing the deepest playable round would announce round two too early.
   const bracketRounds = tournament.bracket?.rounds || [];
-  const activeRoundIndex = bracketRounds.findLastIndex(round => round.some(match => !match.winnerId && match.player1 && match.player2));
+  const activeRoundIndex = bracketRounds.findIndex(round => round.some(match => !match.winnerId && match.player1 && match.player2));
   const pendingRoundIndex = bracketRounds.findIndex(round => round.some(match => !match.winnerId && (match.player1 || match.player2)));
   const currentRoundNumber = (activeRoundIndex >= 0 ? activeRoundIndex : pendingRoundIndex >= 0 ? pendingRoundIndex : Math.max(0, bracketRounds.length - 1)) + 1;
   const roundCount = tournament.bracket?.rounds?.length || 0;
