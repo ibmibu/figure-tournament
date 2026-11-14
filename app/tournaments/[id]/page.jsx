@@ -41,6 +41,77 @@ const BOARD_SOUND_LAST_KEY_PREFIX = 'amiconne-board-notification-last-v1:';
 
 // A small local MP3 is loaded only when sound notifications are used.
 const BOARD_NOTIFICATION_MP3 = '/sounds/board-comment.mp3';
+const STAGE_TURN_SOUND_PREF_KEY = 'amiconne-stage-turn-sound-v1';
+
+// Alert for stage striking and stage picking only, never for results or scores.
+// This distinct two-note sound is synthesized locally, without an audio fetch.
+async function playStageTurnSound(audioContextRef) {
+  try {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return false;
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed')
+      audioContextRef.current = new Context();
+    const context = audioContextRef.current;
+    if (context.state !== 'running') await context.resume();
+    if (context.state !== 'running') return false;
+    const now = context.currentTime;
+    for (const [frequency, offset] of [[523.25, 0], [783.99, 0.17]]) {
+      const tone = context.createOscillator();
+      const gain = context.createGain();
+      tone.type = 'sine';
+      tone.frequency.setValueAtTime(frequency, now + offset);
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + offset + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.26);
+      tone.connect(gain);
+      gain.connect(context.destination);
+      tone.start(now + offset);
+      tone.stop(now + offset + 0.28);
+    }
+    return true;
+  } catch (error) {
+    console.warn('Stage turn notification sound could not play:', error);
+    return false;
+  }
+}
+
+function getOwnStageTurnKey(tournament, currentUserId) {
+  if (!currentUserId || !tournament?.stageRejects || !tournament.bracket ||
+      tournament.bracket.complete) return '';
+  const userId = String(currentUserId);
+  const settings = tournament.stageSettings || {};
+  for (const round of tournament.bracket.rounds || []) {
+    for (const match of round) {
+      if (!match.player1 || !match.player2 || match.winnerId) continue;
+      if (![match.player1, match.player2].some(player =>
+        String(player.userId || player.id) === userId)) continue;
+      const state = match.matchState;
+      const game = state?.currentGame;
+      if (!game || game.stage) continue;
+      const firstId = game.firstPlayerId;
+      const secondId = String(match.player1.id) === String(firstId)
+        ? match.player2.id : match.player1.id;
+      const firstRejectDone = !firstId || Number(settings.firstPlayerRejects ?? 1) === 0 ||
+        Boolean(game.rejectVotes?.[firstId]);
+      const secondRejectDone = !secondId || Number(settings.secondPlayerRejects ?? 2) === 0 ||
+        Boolean(game.rejectVotes?.[secondId]);
+      const rejectsDone = Number(state.gameNumber) === 1
+        ? firstRejectDone && secondRejectDone
+        : (game.rejects?.length || 0) >= Number(settings.laterRejects ?? 3);
+      const rejectTurnId = Number(state.gameNumber) === 1
+        ? (!game.rejectVotes?.[firstId] && Number(settings.firstPlayerRejects ?? 1) > 0
+            ? firstId : secondId)
+        : game.previousWinnerId;
+      const chooserId = Number(state.gameNumber) === 1 ? firstId
+        : (String(game.previousWinnerId) === String(match.player1.id)
+            ? match.player2.id : match.player1.id);
+      const turnId = rejectsDone ? chooserId : rejectTurnId;
+      if (!turnId || String(turnId) !== userId) continue;
+      return [match.id, state.gameNumber, rejectsDone ? 'choose' : 'reject', turnId].join(':');
+    }
+  }
+  return '';
+}
 async function playBoardNotification(audioContextRef, audioBufferRef) {
   try {
     const Context = window.AudioContext || window.webkitAudioContext;
@@ -121,6 +192,11 @@ export default function TournamentPage() {
   const [boardError, setBoardError] = useState('');
   const [boardSoundEnabled, setBoardSoundEnabled] = useState(false);
   const [boardSoundError, setBoardSoundError] = useState('');
+  const [stageSoundEnabled, setStageSoundEnabled] = useState(true);
+  const [stageSoundError, setStageSoundError] = useState('');
+  const stageSoundEnabledRef = useRef(true);
+  const stageAudioContextRef = useRef(null);
+  const stageAnnouncedTurnKeysRef = useRef(new Set());
   const boardSoundEnabledRef = useRef(false);
   const boardAudioContextRef = useRef(null);
   const boardAudioBufferRef = useRef(null);
@@ -142,6 +218,69 @@ export default function TournamentPage() {
   const boardEtagRef = useRef('');
   const boardInFlightRef = useRef(false);
   const autoStartAttemptRef = useRef(new Set());
+
+  const stageTurnKey = getOwnStageTurnKey(tournament, currentUserId);
+
+  useEffect(() => {
+    const applyPreference = enabled => {
+      stageSoundEnabledRef.current = enabled;
+      setStageSoundEnabled(enabled);
+    };
+    try { applyPreference(localStorage.getItem(STAGE_TURN_SOUND_PREF_KEY) !== '0'); } catch {}
+    const onStorage = event => {
+      if (event.key === STAGE_TURN_SOUND_PREF_KEY) applyPreference(event.newValue !== '0');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  useEffect(() => {
+    stageAnnouncedTurnKeysRef.current.clear();
+  }, [id, currentUserId]);
+
+  // A new actionable stage turn is announced exactly once per match/game/phase.
+  // In particular, result reporting and non-striking (score) matches never alert.
+  useEffect(() => {
+    if (!stageTurnKey || stageAnnouncedTurnKeysRef.current.has(stageTurnKey)) return;
+    stageAnnouncedTurnKeysRef.current.add(stageTurnKey);
+    if (stageSoundEnabledRef.current) void playStageTurnSound(stageAudioContextRef);
+  }, [stageTurnKey]);
+
+  // Unlock Web Audio on the next interaction, as required on many browsers.
+  useEffect(() => {
+    if (!stageSoundEnabled) return;
+    const unlockAudio = () => {
+      try {
+        const Context = window.AudioContext || window.webkitAudioContext;
+        if (!Context) return;
+        if (!stageAudioContextRef.current || stageAudioContextRef.current.state === 'closed')
+          stageAudioContextRef.current = new Context();
+        if (stageAudioContextRef.current.state === 'suspended')
+          void stageAudioContextRef.current.resume().catch(() => {});
+      } catch {}
+    };
+    window.addEventListener('pointerdown', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, [stageSoundEnabled]);
+
+  async function previewStageSound() {
+    setStageSoundError('');
+    const played = await playStageTurnSound(stageAudioContextRef);
+    if (!played) setStageSoundError('ステージ通知音を再生できませんでした。ブラウザの音声設定を確認してください。');
+  }
+
+  function toggleStageSound() {
+    const enabled = !stageSoundEnabledRef.current;
+    stageSoundEnabledRef.current = enabled;
+    setStageSoundEnabled(enabled);
+    setStageSoundError('');
+    try { localStorage.setItem(STAGE_TURN_SOUND_PREF_KEY, enabled ? '1' : '0'); } catch {}
+    if (enabled) void previewStageSound();
+  }
 
   useEffect(() => {
     const applyPreference = enabled => {
@@ -1513,6 +1652,18 @@ export default function TournamentPage() {
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>{isOwner ? '主催者はここで配信台のスコアを操作できます。' : '配信台に入室して試合を進めてください。'}</span></div>}
 
+            {tournament.stageRejects && [match.player1, match.player2].some(player =>
+              String(player.userId || player.id) === String(currentUserId)) && <>
+              <div className="tournament-board-sound-control" aria-label="ステージ操作通知音">
+                <button type="button" className="tournament-board-sound-toggle"
+                  aria-pressed={stageSoundEnabled} onClick={toggleStageSound}>
+                  {stageSoundEnabled ? '🔔 ステージ通知 ON' : '🔕 ステージ通知 OFF'}
+                </button>
+                <button type="button" className="tournament-board-sound-toggle"
+                  onClick={() => void previewStageSound()}>♪ 試聴</button>
+              </div>
+              {stageSoundError && <p className="setting-help" role="alert">{stageSoundError}</p>}
+            </>}
             <div className="game-top">
               <div className="current-score">{liveDisplay[p1Id] || 0}<span> - </span>{liveDisplay[match.player2.id] || 0}</div>
             </div>
