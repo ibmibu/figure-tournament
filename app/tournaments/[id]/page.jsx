@@ -44,27 +44,31 @@ const BOARD_NOTIFICATION_MP3 = '/sounds/board-comment.mp3';
 async function playBoardNotification(audioContextRef, audioBufferRef) {
   try {
     const Context = window.AudioContext || window.webkitAudioContext;
-    if (!Context) return;
+    if (!Context) return false;
     if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
       audioContextRef.current = new Context();
     }
     const context = audioContextRef.current;
     if (context.state !== 'running') await context.resume();
-    if (context.state !== 'running') return;
+    if (context.state !== 'running') return false;
     if (!audioBufferRef.current) {
       const response = await fetch(BOARD_NOTIFICATION_MP3);
-      if (!response.ok) return;
+      if (!response.ok) return false;
       audioBufferRef.current = await context.decodeAudioData(await response.arrayBuffer());
     }
     const source = context.createBufferSource();
     source.buffer = audioBufferRef.current;
     const gain = context.createGain();
-    gain.gain.setValueAtTime(0.7, context.currentTime);
+    // The uploaded sound is quiet; amplify it without modifying the MP3.
+    gain.gain.setValueAtTime(2, context.currentTime);
     source.connect(gain);
     gain.connect(context.destination);
     source.start();
-  } catch {
+    return true;
+  } catch (error) {
+    console.warn('Comment notification sound could not play:', error);
     // Audio playback may require a user gesture on this device.
+    return false;
   }
 }
 
@@ -116,6 +120,7 @@ export default function TournamentPage() {
   const [boardOpen, setBoardOpen] = useState(false);
   const [boardError, setBoardError] = useState('');
   const [boardSoundEnabled, setBoardSoundEnabled] = useState(false);
+  const [boardSoundError, setBoardSoundError] = useState('');
   const boardSoundEnabledRef = useRef(false);
   const boardAudioContextRef = useRef(null);
   const boardAudioBufferRef = useRef(null);
@@ -174,12 +179,19 @@ export default function TournamentPage() {
     };
   }, [boardSoundEnabled]);
 
+  async function previewBoardSound() {
+    setBoardSoundError('');
+    const played = await playBoardNotification(boardAudioContextRef, boardAudioBufferRef);
+    if (!played) setBoardSoundError('音声を再生できませんでした。ブラウザのサイト音声設定と端末の音量を確認してください。');
+  }
+
   function toggleBoardSound() {
     const enabled = !boardSoundEnabledRef.current;
     boardSoundEnabledRef.current = enabled;
     setBoardSoundEnabled(enabled);
+    setBoardSoundError('');
     try { localStorage.setItem(BOARD_SOUND_PREF_KEY, enabled ? '1' : '0'); } catch {}
-    if (enabled) void playBoardNotification(boardAudioContextRef, boardAudioBufferRef); // Preview + unlock on click
+    if (enabled) void previewBoardSound(); // Preview + unlock on click
     else if (boardAudioContextRef.current?.state === 'running')
       void boardAudioContextRef.current.suspend().catch(() => {});
   }
@@ -1650,7 +1662,10 @@ export default function TournamentPage() {
             title="コメントの新着通知音を切り替えます">
             {boardSoundEnabled ? '🔔 通知音 ON' : '🔕 通知音 OFF'}
           </button>
+          <button type="button" className="tournament-board-sound-toggle"
+            onClick={() => void previewBoardSound()} title="通知音を試聴する">♪ 試聴</button>
         </div>
+        {boardSoundError && <p className="setting-help" role="alert">{boardSoundError}</p>}
         <div className="tournament-board-scroll" role="region" aria-label="コメント履歴" tabIndex={0}>
           {boardMessages.length ? boardMessages.slice().reverse().map(message => <article className="tournament-board-entry" key={message.id}>
             <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
