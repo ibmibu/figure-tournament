@@ -36,6 +36,42 @@ function avatarRosterKey(players) {
 }
 const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
 
+const BOARD_SOUND_PREF_KEY = 'amiconne-board-notification-sound-v1';
+const BOARD_SOUND_LAST_KEY_PREFIX = 'amiconne-board-notification-last-v1:';
+
+// Short, locally synthesized chime; no audio file or network request.
+function playBoardNotification(audioContextRef) {
+  try {
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if (!Context) return;
+    if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+      audioContextRef.current = new Context();
+    }
+    const context = audioContextRef.current;
+    const requestedAt = Date.now();
+    const sound = () => {
+      if (context.state !== 'running' || Date.now() - requestedAt > 1500) return;
+      const start = context.currentTime;
+      const tone = context.createOscillator();
+      const volume = context.createGain();
+      tone.type = 'sine';
+      tone.frequency.setValueAtTime(784, start);
+      tone.frequency.linearRampToValueAtTime(1047, start + 0.14);
+      volume.gain.setValueAtTime(0.0001, start);
+      volume.gain.exponentialRampToValueAtTime(0.07, start + 0.018);
+      volume.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+      tone.connect(volume);
+      volume.connect(context.destination);
+      tone.start(start);
+      tone.stop(start + 0.34);
+    };
+    if (context.state === 'running') sound();
+    else void context.resume().then(sound).catch(() => {});
+  } catch {
+    // Some browsers/devices disable Web Audio until a user gesture.
+  }
+}
+
 export default function TournamentPage() {
   const params = useParams();
   const id = decodeURIComponent(String(params.id || ''));
@@ -83,6 +119,12 @@ export default function TournamentPage() {
   const [boardBusy, setBoardBusy] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [boardError, setBoardError] = useState('');
+  const [boardSoundEnabled, setBoardSoundEnabled] = useState(false);
+  const boardSoundEnabledRef = useRef(false);
+  const boardAudioContextRef = useRef(null);
+  const boardSeenIdsRef = useRef(null);
+  const boardOwnPostIdsRef = useRef(new Set());
+  const boardPostingRef = useRef(false);
   const tournamentSnapshotRef = useRef('');
   const tournamentEtagRef = useRef('');
   const liveEtagRef = useRef('');
@@ -98,6 +140,64 @@ export default function TournamentPage() {
   const boardEtagRef = useRef('');
   const boardInFlightRef = useRef(false);
   const autoStartAttemptRef = useRef(new Set());
+
+  useEffect(() => {
+    const applyPreference = enabled => {
+      boardSoundEnabledRef.current = enabled;
+      setBoardSoundEnabled(enabled);
+    };
+    try { applyPreference(localStorage.getItem(BOARD_SOUND_PREF_KEY) === '1'); } catch {}
+    const onStorage = event => {
+      if (event.key === BOARD_SOUND_PREF_KEY) applyPreference(event.newValue === '1');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Restore sound permission on the next user interaction after a reload.
+  // Browsers may otherwise block autoplay even when a preference is saved.
+  useEffect(() => {
+    if (!boardSoundEnabled) return;
+    const unlockAudio = () => {
+      try {
+        const Context = window.AudioContext || window.webkitAudioContext;
+        if (!Context) return;
+        if (!boardAudioContextRef.current || boardAudioContextRef.current.state === 'closed') {
+          boardAudioContextRef.current = new Context();
+        }
+        if (boardAudioContextRef.current.state === 'suspended')
+          void boardAudioContextRef.current.resume().catch(() => {});
+      } catch {}
+    };
+    window.addEventListener('pointerdown', unlockAudio);
+    window.addEventListener('keydown', unlockAudio);
+    return () => {
+      window.removeEventListener('pointerdown', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+    };
+  }, [boardSoundEnabled]);
+
+  function toggleBoardSound() {
+    const enabled = !boardSoundEnabledRef.current;
+    boardSoundEnabledRef.current = enabled;
+    setBoardSoundEnabled(enabled);
+    try { localStorage.setItem(BOARD_SOUND_PREF_KEY, enabled ? '1' : '0'); } catch {}
+    if (enabled) playBoardNotification(boardAudioContextRef); // Preview + unlock on click
+    else if (boardAudioContextRef.current?.state === 'running')
+      void boardAudioContextRef.current.suspend().catch(() => {});
+  }
+
+  function notifyNewBoardMessage() {
+    if (!boardSoundEnabledRef.current || boardPostingRef.current) return;
+    // De-duplicate a burst of messages (and simultaneous open tabs).
+    const now = Date.now();
+    try {
+      const key = BOARD_SOUND_LAST_KEY_PREFIX + id;
+      if (now - Number(localStorage.getItem(key) || 0) < 4000) return;
+      localStorage.setItem(key, String(now));
+    } catch {}
+    playBoardNotification(boardAudioContextRef);
+  }
 
   function saveAvatarsToSession(avatars, players) {
     try {
@@ -152,6 +252,13 @@ export default function TournamentPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'コメントを読み込めませんでした。');
       const messages = data.messages || [];
+      const seenBefore = boardSeenIdsRef.current;
+      const nextIds = new Set(messages.map(message => String(message.id)));
+      // The first fetch establishes a baseline: do not sound for history.
+      if (seenBefore && messages.some(message =>
+        !seenBefore.has(String(message.id)) && !boardOwnPostIdsRef.current.has(String(message.id))
+      )) notifyNewBoardMessage();
+      boardSeenIdsRef.current = nextIds;
       const signature = JSON.stringify(messages);
       if (signature !== boardSnapshotRef.current) {
         boardSnapshotRef.current = signature;
@@ -169,6 +276,7 @@ export default function TournamentPage() {
   useEffect(() => {
     if (!boardVisible) return;
     boardEtagRef.current = '';
+    boardSeenIdsRef.current = null;
     void refreshBoard();
     if (boardFinished) return;
     const timer = setInterval(() => {
@@ -180,6 +288,7 @@ export default function TournamentPage() {
   async function postBoardMessage(event) {
     event.preventDefault();
     if (!boardText.trim() || boardBusy) return;
+    boardPostingRef.current = true;
     setBoardBusy(true);
     setBoardError('');
     try {
@@ -192,10 +301,14 @@ export default function TournamentPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '投稿できませんでした。');
+      if (result.messageId) boardOwnPostIdsRef.current.add(String(result.messageId));
       setBoardText('');
       await refreshBoard(true);
     } catch (error) { setBoardError(error.message || '投稿できませんでした。'); }
-    finally { setBoardBusy(false); }
+    finally {
+      boardPostingRef.current = false;
+      setBoardBusy(false);
+    }
   }
 
   async function loadTournament() {
@@ -1534,6 +1647,13 @@ export default function TournamentPage() {
 {!displayedMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="コメント">
+        <div className="tournament-board-sound-control">
+          <button type="button" className="tournament-board-sound-toggle"
+            aria-pressed={boardSoundEnabled} onClick={toggleBoardSound}
+            title="コメントの新着通知音を切り替えます">
+            {boardSoundEnabled ? '🔔 通知音 ON' : '🔕 通知音 OFF'}
+          </button>
+        </div>
         <div className="tournament-board-scroll" role="region" aria-label="コメント履歴" tabIndex={0}>
           {boardMessages.length ? boardMessages.slice().reverse().map(message => <article className="tournament-board-entry" key={message.id}>
             <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
