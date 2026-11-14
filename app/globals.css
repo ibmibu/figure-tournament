@@ -1056,7 +1056,7 @@ footer{border-top:1px solid var(--line);padding:24px 0;color:#8792a0;font:10px '
 
 /* Tournament board */
 .tournament-board{margin:20px 0;padding:20px;background:#fff;border:1px solid #dedbe6;border-radius:12px}
-.tournament-board-sound-control{display:flex;justify-content:flex-end;margin:0 0 9px}
+.tournament-board-sound-control{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 9px}
 .tournament-board-sound-toggle{padding:7px 11px;border:1px solid #c9c1df;border-radius:8px;background:#fff;color:#5d4886;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .tournament-board-sound-toggle[aria-pressed="true"]{background:#f3eefb;border-color:#8064b7;color:#453487}
 .tournament-board-sound-toggle:focus-visible{outline:3px solid #8064b7;outline-offset:2px}
