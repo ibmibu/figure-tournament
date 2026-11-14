@@ -39,8 +39,9 @@ const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','�
 const BOARD_SOUND_PREF_KEY = 'amiconne-board-notification-sound-v1';
 const BOARD_SOUND_LAST_KEY_PREFIX = 'amiconne-board-notification-last-v1:';
 
-// Short, locally synthesized chime; no audio file or network request.
-function playBoardNotification(audioContextRef) {
+// A small local MP3 is loaded only when sound notifications are used.
+const BOARD_NOTIFICATION_MP3 = '/sounds/board-comment.mp3';
+async function playBoardNotification(audioContextRef, audioBufferRef) {
   try {
     const Context = window.AudioContext || window.webkitAudioContext;
     if (!Context) return;
@@ -48,27 +49,22 @@ function playBoardNotification(audioContextRef) {
       audioContextRef.current = new Context();
     }
     const context = audioContextRef.current;
-    const requestedAt = Date.now();
-    const sound = () => {
-      if (context.state !== 'running' || Date.now() - requestedAt > 1500) return;
-      const start = context.currentTime;
-      const tone = context.createOscillator();
-      const volume = context.createGain();
-      tone.type = 'sine';
-      tone.frequency.setValueAtTime(784, start);
-      tone.frequency.linearRampToValueAtTime(1047, start + 0.14);
-      volume.gain.setValueAtTime(0.0001, start);
-      volume.gain.exponentialRampToValueAtTime(0.07, start + 0.018);
-      volume.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
-      tone.connect(volume);
-      volume.connect(context.destination);
-      tone.start(start);
-      tone.stop(start + 0.34);
-    };
-    if (context.state === 'running') sound();
-    else void context.resume().then(sound).catch(() => {});
+    if (context.state !== 'running') await context.resume();
+    if (context.state !== 'running') return;
+    if (!audioBufferRef.current) {
+      const response = await fetch(BOARD_NOTIFICATION_MP3);
+      if (!response.ok) return;
+      audioBufferRef.current = await context.decodeAudioData(await response.arrayBuffer());
+    }
+    const source = context.createBufferSource();
+    source.buffer = audioBufferRef.current;
+    const gain = context.createGain();
+    gain.gain.setValueAtTime(0.7, context.currentTime);
+    source.connect(gain);
+    gain.connect(context.destination);
+    source.start();
   } catch {
-    // Some browsers/devices disable Web Audio until a user gesture.
+    // Audio playback may require a user gesture on this device.
   }
 }
 
@@ -122,6 +118,7 @@ export default function TournamentPage() {
   const [boardSoundEnabled, setBoardSoundEnabled] = useState(false);
   const boardSoundEnabledRef = useRef(false);
   const boardAudioContextRef = useRef(null);
+  const boardAudioBufferRef = useRef(null);
   const boardSeenIdsRef = useRef(null);
   const boardOwnPostIdsRef = useRef(new Set());
   const boardPostingRef = useRef(false);
@@ -182,7 +179,7 @@ export default function TournamentPage() {
     boardSoundEnabledRef.current = enabled;
     setBoardSoundEnabled(enabled);
     try { localStorage.setItem(BOARD_SOUND_PREF_KEY, enabled ? '1' : '0'); } catch {}
-    if (enabled) playBoardNotification(boardAudioContextRef); // Preview + unlock on click
+    if (enabled) void playBoardNotification(boardAudioContextRef, boardAudioBufferRef); // Preview + unlock on click
     else if (boardAudioContextRef.current?.state === 'running')
       void boardAudioContextRef.current.suspend().catch(() => {});
   }
@@ -196,7 +193,7 @@ export default function TournamentPage() {
       if (now - Number(localStorage.getItem(key) || 0) < 4000) return;
       localStorage.setItem(key, String(now));
     } catch {}
-    playBoardNotification(boardAudioContextRef);
+    void playBoardNotification(boardAudioContextRef, boardAudioBufferRef);
   }
 
   function saveAvatarsToSession(avatars, players) {
@@ -281,7 +278,7 @@ export default function TournamentPage() {
     if (boardFinished) return;
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') void refreshBoard();
-    }, 30000);
+    }, 10000);
     return () => clearInterval(timer);
   }, [id, boardVisible, boardFinished]);
 
