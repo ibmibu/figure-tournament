@@ -84,12 +84,13 @@ export async function POST(request) {
     if (recentError) return databaseFailure(recentError, '投稿制限の確認');
     if (recent?.length) return fail('連続投稿は5秒以上あけてください。', 429);
     const authorName = String(player?.name || user.user_metadata?.full_name || user.user_metadata?.name || '主催者').trim().slice(0, 80);
-    const { error } = await db.from('tournament_board_messages').insert({
+    const { data: postedMessage, error } = await db.from('tournament_board_messages').insert({
       tournament_id: tournamentId, author_id: user.id, author_name: authorName,
       is_organizer: organizer, body,
-    });
+    }).select('id').single();
     if (error) return databaseFailure(error, '投稿');
-    return NextResponse.json({ ok: true }, { status: 201 });
+    // The client uses this ID to avoid sounding an alert for its own post.
+    return NextResponse.json({ ok: true, messageId: postedMessage.id }, { status: 201 });
   } catch (error) {
     console.error('Tournament board post failed', error);
     return fail('投稿できませんでした。', 500);
