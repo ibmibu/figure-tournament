@@ -36,12 +36,10 @@ function avatarRosterKey(players) {
 }
 const FIGHTERS = ['マリオ','ドンキーコング','リンク','サムス','ダークサムス','ヨッシー','カービィ','フォックス','ピカチュウ','ルイージ','ネス','キャプテン・ファルコン','プリン','ピーチ','デイジー','クッパ','アイスクライマー','シーク','ゼルダ','ドクターマリオ','ピチュー','ファルコ','マルス','ルキナ','こどもリンク','ガノンドロフ','ミュウツー','ロイ','クロム','Mr.ゲーム＆ウォッチ','メタナイト','ピット','ブラックピット','ゼロスーツサムス','ワリオ','スネーク','アイク','ゼニガメ','フシギソウ','リザードン','ディディーコング','リュカ','ソニック','デデデ','ピクミン＆オリマー','ルカリオ','ロボット','トゥーンリンク','ウルフ','むらびと','ロックマン','Wii Fit トレーナー','ロゼッタ＆チコ','リトル・マック','ゲッコウガ','Mii 格闘タイプ','Mii 剣術タイプ','Mii 射撃タイプ','パルテナ','パックマン','ルフレ','シュルク','クッパJr.','ダックハント','リュウ','ケン','クラウド','カムイ','ベヨネッタ','インクリング','リドリー','シモン','リヒター','キングクルール','しずえ','ガオガエン','パックンフラワー','ジョーカー','勇者','バンジョー＆カズーイ','テリー','ベレト／ベレス','ミェンミェン','スティーブ','セフィロス','ホムラ／ヒカリ','カズヤ','ソラ'];
 
-const BOARD_SOUND_PREF_KEY = 'amiconne-board-notification-sound-v1';
 const BOARD_SOUND_LAST_KEY_PREFIX = 'amiconne-board-notification-last-v1:';
 
 // A small local MP3 is loaded only when sound notifications are used.
 const BOARD_NOTIFICATION_MP3 = '/sounds/board-comment.mp3';
-const STAGE_TURN_SOUND_PREF_KEY = 'amiconne-stage-turn-sound-v1';
 
 // Alert for stage striking and stage picking only, never for results or scores.
 // This distinct two-note sound is synthesized locally, without an audio fetch.
@@ -190,14 +188,8 @@ export default function TournamentPage() {
   const [boardBusy, setBoardBusy] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [boardError, setBoardError] = useState('');
-  const [boardSoundEnabled, setBoardSoundEnabled] = useState(false);
-  const [boardSoundError, setBoardSoundError] = useState('');
-  const [stageSoundEnabled, setStageSoundEnabled] = useState(true);
-  const [stageSoundError, setStageSoundError] = useState('');
-  const stageSoundEnabledRef = useRef(true);
   const stageAudioContextRef = useRef(null);
   const stageAnnouncedTurnKeysRef = useRef(new Set());
-  const boardSoundEnabledRef = useRef(false);
   const boardAudioContextRef = useRef(null);
   const boardAudioBufferRef = useRef(null);
   const boardSeenIdsRef = useRef(null);
@@ -222,19 +214,6 @@ export default function TournamentPage() {
   const stageTurnKey = getOwnStageTurnKey(tournament, currentUserId);
 
   useEffect(() => {
-    const applyPreference = enabled => {
-      stageSoundEnabledRef.current = enabled;
-      setStageSoundEnabled(enabled);
-    };
-    try { applyPreference(localStorage.getItem(STAGE_TURN_SOUND_PREF_KEY) !== '0'); } catch {}
-    const onStorage = event => {
-      if (event.key === STAGE_TURN_SOUND_PREF_KEY) applyPreference(event.newValue !== '0');
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  useEffect(() => {
     stageAnnouncedTurnKeysRef.current.clear();
   }, [id, currentUserId]);
 
@@ -243,21 +222,22 @@ export default function TournamentPage() {
   useEffect(() => {
     if (!stageTurnKey || stageAnnouncedTurnKeysRef.current.has(stageTurnKey)) return;
     stageAnnouncedTurnKeysRef.current.add(stageTurnKey);
-    if (stageSoundEnabledRef.current) void playStageTurnSound(stageAudioContextRef);
+    void playStageTurnSound(stageAudioContextRef);
   }, [stageTurnKey]);
 
-  // Unlock Web Audio on the next interaction, as required on many browsers.
+  // Autoplay is only guaranteed after a normal interaction with the site.
+  // Unlock both notification sounds without adding controls to the UI.
   useEffect(() => {
-    if (!stageSoundEnabled) return;
     const unlockAudio = () => {
-      try {
-        const Context = window.AudioContext || window.webkitAudioContext;
-        if (!Context) return;
-        if (!stageAudioContextRef.current || stageAudioContextRef.current.state === 'closed')
-          stageAudioContextRef.current = new Context();
-        if (stageAudioContextRef.current.state === 'suspended')
-          void stageAudioContextRef.current.resume().catch(() => {});
-      } catch {}
+      const Context = window.AudioContext || window.webkitAudioContext;
+      if (!Context) return;
+      for (const ref of [stageAudioContextRef, boardAudioContextRef]) {
+        try {
+          if (!ref.current || ref.current.state === 'closed') ref.current = new Context();
+          if (ref.current.state === 'suspended')
+            void ref.current.resume().catch(() => {});
+        } catch {}
+      }
     };
     window.addEventListener('pointerdown', unlockAudio);
     window.addEventListener('keydown', unlockAudio);
@@ -265,78 +245,10 @@ export default function TournamentPage() {
       window.removeEventListener('pointerdown', unlockAudio);
       window.removeEventListener('keydown', unlockAudio);
     };
-  }, [stageSoundEnabled]);
-
-  async function previewStageSound() {
-    setStageSoundError('');
-    const played = await playStageTurnSound(stageAudioContextRef);
-    if (!played) setStageSoundError('ステージ通知音を再生できませんでした。ブラウザの音声設定を確認してください。');
-  }
-
-  function toggleStageSound() {
-    const enabled = !stageSoundEnabledRef.current;
-    stageSoundEnabledRef.current = enabled;
-    setStageSoundEnabled(enabled);
-    setStageSoundError('');
-    try { localStorage.setItem(STAGE_TURN_SOUND_PREF_KEY, enabled ? '1' : '0'); } catch {}
-    if (enabled) void previewStageSound();
-  }
-
-  useEffect(() => {
-    const applyPreference = enabled => {
-      boardSoundEnabledRef.current = enabled;
-      setBoardSoundEnabled(enabled);
-    };
-    try { applyPreference(localStorage.getItem(BOARD_SOUND_PREF_KEY) === '1'); } catch {}
-    const onStorage = event => {
-      if (event.key === BOARD_SOUND_PREF_KEY) applyPreference(event.newValue === '1');
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Restore sound permission on the next user interaction after a reload.
-  // Browsers may otherwise block autoplay even when a preference is saved.
-  useEffect(() => {
-    if (!boardSoundEnabled) return;
-    const unlockAudio = () => {
-      try {
-        const Context = window.AudioContext || window.webkitAudioContext;
-        if (!Context) return;
-        if (!boardAudioContextRef.current || boardAudioContextRef.current.state === 'closed') {
-          boardAudioContextRef.current = new Context();
-        }
-        if (boardAudioContextRef.current.state === 'suspended')
-          void boardAudioContextRef.current.resume().catch(() => {});
-      } catch {}
-    };
-    window.addEventListener('pointerdown', unlockAudio);
-    window.addEventListener('keydown', unlockAudio);
-    return () => {
-      window.removeEventListener('pointerdown', unlockAudio);
-      window.removeEventListener('keydown', unlockAudio);
-    };
-  }, [boardSoundEnabled]);
-
-  async function previewBoardSound() {
-    setBoardSoundError('');
-    const played = await playBoardNotification(boardAudioContextRef, boardAudioBufferRef);
-    if (!played) setBoardSoundError('音声を再生できませんでした。ブラウザのサイト音声設定と端末の音量を確認してください。');
-  }
-
-  function toggleBoardSound() {
-    const enabled = !boardSoundEnabledRef.current;
-    boardSoundEnabledRef.current = enabled;
-    setBoardSoundEnabled(enabled);
-    setBoardSoundError('');
-    try { localStorage.setItem(BOARD_SOUND_PREF_KEY, enabled ? '1' : '0'); } catch {}
-    if (enabled) void previewBoardSound(); // Preview + unlock on click
-    else if (boardAudioContextRef.current?.state === 'running')
-      void boardAudioContextRef.current.suspend().catch(() => {});
-  }
-
   function notifyNewBoardMessage() {
-    if (!boardSoundEnabledRef.current || boardPostingRef.current) return;
+    if (boardPostingRef.current) return;
     // De-duplicate a burst of messages (and simultaneous open tabs).
     const now = Date.now();
     try {
@@ -1652,18 +1564,6 @@ export default function TournamentPage() {
           return <section className={`bracket-panel match-controls-below${String(streamMatchId) === String(match.id) ? " match-controls-streaming" : ""}`} aria-label="対戦操作">
             {String(streamMatchId) === String(match.id) && <div className="match-stream-announcement"><strong>● 配信台の対戦</strong><span>{isOwner ? '主催者はここで配信台のスコアを操作できます。' : '配信台に入室して試合を進めてください。'}</span></div>}
 
-            {tournament.stageRejects && [match.player1, match.player2].some(player =>
-              String(player.userId || player.id) === String(currentUserId)) && <>
-              <div className="tournament-board-sound-control" aria-label="ステージ操作通知音">
-                <button type="button" className="tournament-board-sound-toggle"
-                  aria-pressed={stageSoundEnabled} onClick={toggleStageSound}>
-                  {stageSoundEnabled ? '🔔 ステージ通知 ON' : '🔕 ステージ通知 OFF'}
-                </button>
-                <button type="button" className="tournament-board-sound-toggle"
-                  onClick={() => void previewStageSound()}>♪ 試聴</button>
-              </div>
-              {stageSoundError && <p className="setting-help" role="alert">{stageSoundError}</p>}
-            </>}
             <div className="game-top">
               <div className="current-score">{liveDisplay[p1Id] || 0}<span> - </span>{liveDisplay[match.player2.id] || 0}</div>
             </div>
@@ -1807,16 +1707,6 @@ export default function TournamentPage() {
 {!displayedMatchId && !tournament.bracket.complete && <section className="bracket-panel match-controls-below"><h3>対戦画面</h3><p className="setting-help">{currentUserId ? '現在、自分の進行中の対戦はありません。' : 'ログインして参加登録すると、自分の対戦が自動表示されます。'}</p></section>}
       </div>}
       {tournament.bracket && !showTournamentOverview && <section className="tournament-board" aria-label="コメント">
-        <div className="tournament-board-sound-control">
-          <button type="button" className="tournament-board-sound-toggle"
-            aria-pressed={boardSoundEnabled} onClick={toggleBoardSound}
-            title="コメントの新着通知音を切り替えます">
-            {boardSoundEnabled ? '🔔 通知音 ON' : '🔕 通知音 OFF'}
-          </button>
-          <button type="button" className="tournament-board-sound-toggle"
-            onClick={() => void previewBoardSound()} title="通知音を試聴する">♪ 試聴</button>
-        </div>
-        {boardSoundError && <p className="setting-help" role="alert">{boardSoundError}</p>}
         <div className="tournament-board-scroll" role="region" aria-label="コメント履歴" tabIndex={0}>
           {boardMessages.length ? boardMessages.slice().reverse().map(message => <article className="tournament-board-entry" key={message.id}>
             <div className="tournament-board-meta"><strong>{message.author_name}{message.is_organizer ? '（主催者）' : ''}</strong><time dateTime={message.created_at}>{new Date(message.created_at).toLocaleString('ja-JP')}</time></div>
