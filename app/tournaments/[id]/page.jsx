@@ -423,6 +423,7 @@ export default function TournamentPage() {
                   avatarRosterRef.current = avatarRosterKey(archive.joinedPlayers);
                   applyTournamentSnapshot({
                     ...archive, isOwner: false,
+                    canEditSettings: access.canEditSettings === true,
                     description: access.description || '',
                     streamUrl: access.streamUrl || '',
                     participantAvatars: avatars,
@@ -1857,7 +1858,7 @@ export default function TournamentPage() {
       <div className="overview-actions">
         {isOwner && !tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit overview-start-button" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメント表へ' : '大会を開始する'}</button>}
         {tournament.bracket && <button className="overview-bracket-button" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
-        {isOwner && !tournament.bracket && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
+        {(tournament.canEditSettings || (isOwner && !tournament.bracket)) && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
         {!tournament.bracket && !joinedPlayers.some(player => String(player.userId || player.id) === String(currentUserId)) && (
           joinedPlayers.length >= Number(tournament.participants || 8)
             ? <p className="setting-help overview-join-status">定員に達しています。</p>
@@ -1876,6 +1877,7 @@ export default function TournamentPage() {
         <div><span>参加人数</span><strong>{joinedPlayers.length}/{tournament.participants || 8}人</strong></div>
         <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
+        <div><span>キャラ制限</span><strong>{tournament.characterRestriction ? 'あり' : 'なし'}</strong></div>
       </div>
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
         <h3>キャラ宣言</h3>
