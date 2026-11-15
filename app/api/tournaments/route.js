@@ -148,14 +148,32 @@ function isFinishedTournamentRow(row) {
   return tournament.bracket?.complete === true ||
     ['終了', '終了済み', '大会終了'].includes(tournament.status);
 }
-// Disabled by default until the SQL view is installed and verified.
-// This is an opt-in path: the legacy full-row read remains the fallback.
+// Opt-in, compact read from the authoritative tournament JSON. Selecting
+// individual JSON paths prevents large stats/log fields from crossing the
+// Supabase -> Vercel boundary. Unlike the old SQL view, new public setting
+// fields such as characterRestriction cannot silently be omitted.
+const LIVE_TOURNAMENT_FIELDS = [
+  'name', 'date', 'status', 'format', 'bestOf', 'participants',
+  'joinedPlayers', 'bracket', 'stages', 'stageRejects', 'stageSettings',
+  'stageActionRevision', 'ownerUserId', 'characterDeclaration',
+  'characterRestriction', 'declarationPhase', 'characterDeclarations',
+  'characterReports', 'streamUrl', 'streamFriendCode', 'seriesTags',
+  'organizerName', 'createdAt', 'completedAt', 'description',
+  'streamMatchId', 'streamHoldMatchId', 'streamHoldUntil',
+  'streamMatchManual', 'resultPlacements', 'autoSeed', 'overlaySettings',
+];
+const LIVE_TOURNAMENT_SELECT = [
+  'id', 'created_at', 'owner_token', 'recordId:data->id',
+  ...LIVE_TOURNAMENT_FIELDS.map(field => field + ':data->' + field),
+].join(',');
 async function readLiveTournamentProjection(supabase, id) {
-  const { data, error } = await supabase.from('tournament_live_projection')
-    .select('id,created_at,owner_token,live_data').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('tournaments')
+    .select(LIVE_TOURNAMENT_SELECT).eq('id', id).maybeSingle();
   if (error) throw error;
-  return data ? { id: data.id, created_at: data.created_at,
-    owner_token: data.owner_token, data: data.live_data || {} } : null;
+  if (!data) return null;
+  const { id: rowId, created_at, owner_token, recordId, ...fields } = data;
+  return { id: rowId, created_at, owner_token,
+    data: { id: recordId || rowId, ...fields } };
 }
 
 async function readTournamentRow(supabase, id, bypassCache = false) {
@@ -300,8 +318,8 @@ export async function GET(request) {
           console.warn('Tournament revision check unavailable:', revisionError.message);
         }
       }
-      // Explicit server-side opt-in only. If the projection is absent or fails,
-      // preserve the existing full-row behavior for all callers.
+      // Explicit server-side opt-in. On failure, fall back to the full row;
+      // do not sacrifice live tournament availability for a compact read.
       let data;
       if ((liveMode || compactPageMode) && process.env.TOURNAMENT_LIVE_PROJECTION_ENABLED === 'true') {
         try {
