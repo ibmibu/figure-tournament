@@ -8,6 +8,12 @@ import { randomUUID, createHash } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+// Reuse the existing server-only admin allowlist. Never trust client claims.
+function isSiteAdministrator(user) {
+  return Boolean(user?.id && process.env.FIGURE_STATS_ADMIN_USER_ID &&
+    String(user.id) === String(process.env.FIGURE_STATS_ADMIN_USER_ID));
+}
+
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -55,6 +61,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     ownerUserId === user.id ||
     (!ownerUserId && legacyOwnerToken && row.owner_token === legacyOwnerToken)
   ));
+  const siteAdmin = isSiteAdministrator(user);
   const activeMatches = (data.bracket?.rounds || []).flat();
   // Reuse the exact server-side assignment policy used by score-write
   // permissions: no automatic broadcast without a configured stream URL.
@@ -87,7 +94,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
       }
     }
   }
-  const canSeeCode = p => isOwner || (user && (String(p.userId || p.id) === String(user.id) || visibleCodeIds.has(String(p.userId || p.id))));
+  const canSeeCode = p => isOwner || siteAdmin || (user && (String(p.userId || p.id) === String(user.id) || visibleCodeIds.has(String(p.userId || p.id))));
   const redactPlayer = p => {
     if (!p || typeof p !== 'object') return p;
     const { friendCode, email, avatar_data, ...safe } = p;
@@ -108,14 +115,16 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     String(match.id) === String(effectiveStreamMatchId) && !match.winnerId &&
     [match.player1, match.player2].some(p => p && String(p.userId || p.id) === String(user.id))
   ));
-  if (!isOwner && !isStreamPlayer) delete publicData.streamFriendCode;
+  if (!isOwner && !siteAdmin && !isStreamPlayer) delete publicData.streamFriendCode;
   // Result status and scores live in the bracket, not in operation logs.
   delete publicData.matchLogs;
   delete publicData.adminLog;
   delete publicData.adminHistory;
   delete publicData.participantAvatars;
   delete publicData.statsSnapshot;
-  return { ...publicData, characterReports: visibleReports, isOwner, ...(isOwner ? { overlayOwnerId: ownerUserId } : {}), effectiveStreamMatchId };
+  return { ...publicData, characterReports: visibleReports, isOwner,
+    canEditSettings: siteAdmin || (isOwner && !data.bracket),
+    ...(isOwner ? { overlayOwnerId: ownerUserId } : {}), effectiveStreamMatchId };
 }
 
 function errorResponse(error, fallback) {
@@ -256,6 +265,7 @@ export async function GET(request) {
         return NextResponse.json({
           completed: access.complete === true || access.complete === 'true',
           isOwner,
+          canEditSettings: isSiteAdministrator(user) || (isOwner && !(access.complete === true || access.complete === 'true')),
           description: String(access.description || ''),
           streamUrl: String(access.streamUrl || ''),
         }, { headers: { 'Cache-Control': 'private, no-store' } });
@@ -433,11 +443,13 @@ export async function POST(request) {
     // Explicit allowlist: client input must never initialize privileged or match-result fields.
     const allowed = ['id', 'description', 'streamUrl', 'streamFriendCode', 'name', 'seriesTags',
       'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed',
-      'characterDeclaration', 'stageSettings'];
+      'characterDeclaration', 'characterRestriction', 'stageSettings'];
     const safeTournament = Object.fromEntries(allowed.filter(key =>
       Object.prototype.hasOwnProperty.call(input, key)).map(key => [key, input[key]]));
-    const tournament = { ...safeTournament, name, status: '募集中',
-      createdAt: new Date().toISOString(), ownerUserId: user.id };
+    if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
+      return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
+    const tournament = { ...safeTournament, characterRestriction: input.characterRestriction === true,
+      name, status: '募集中', createdAt: new Date().toISOString(), ownerUserId: user.id };
     const supabase = getAdminClient();
     // Preserve legacy tournament IDs, but reject matching existing records.
     const { data: existing, error: lookupError } = await supabase.from('tournaments')
@@ -487,6 +499,53 @@ export async function PUT(request) {
     const isCurrentOwner = existingOwnerId
       ? existingOwnerId === user.id
       : Boolean(legacyOwnerToken && row.owner_token === legacyOwnerToken);
+    const siteAdmin = isSiteAdministrator(user);
+
+    // Settings editing is isolated from match updates. Only the owner before
+    // starting, or the one server-verified site administrator for any event,
+    // may edit these allowlisted fields. Never accept a client-supplied bracket.
+    if (body?.editSettings === true) {
+      if (!isCurrentOwner && !siteAdmin)
+        return NextResponse.json({ error: '大会設定を編集する権限がありません。' }, { status: 403 });
+      if (existing.bracket && !siteAdmin)
+        return NextResponse.json({ error: '大会開始後は設定を編集できません。' }, { status: 409 });
+      if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
+        return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
+
+      const allSettings = [
+        'name', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags',
+        'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects',
+        'autoSeed', 'characterDeclaration', 'characterRestriction', 'stageSettings',
+      ];
+      // Do not change a live event's rules, bracket size or seeding partway
+      // through competition. Metadata and character-restriction labels are safe.
+      const inProgress = Boolean(existing.bracket && !existing.bracket.complete);
+      const editableFields = inProgress
+        ? ['name', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags', 'date', 'characterRestriction']
+        : allSettings;
+      const updatedSettings = { ...existing };
+      for (const field of allSettings) {
+        if (!Object.prototype.hasOwnProperty.call(input, field)) continue;
+        if (!editableFields.includes(field)) {
+          if (JSON.stringify(input[field] ?? null) !== JSON.stringify(existing[field] ?? null))
+            return NextResponse.json({ error: '進行中の大会では対戦ルールを変更できません。' }, { status: 409 });
+          continue;
+        }
+        updatedSettings[field] = input[field];
+      }
+      if (typeof updatedSettings.name !== 'string' || !updatedSettings.name.trim() || updatedSettings.name.length > 120)
+        return NextResponse.json({ error: '大会名が正しくありません。' }, { status: 400 });
+      updatedSettings.name = updatedSettings.name.trim();
+      if (Number(updatedSettings.participants) < (existing.joinedPlayers || []).length)
+        return NextResponse.json({ error: '参加人数を現在の登録者数より少なくできません。' }, { status: 400 });
+
+      const { data: saved, error: saveError } = await saveTournamentRevision(supabase, id, existing, updatedSettings);
+      if (saveError) throw saveError;
+      if (!saved?.length)
+        return NextResponse.json({ error: '他の操作が先に保存されました。画面を更新してやり直してください。' }, { status: 409 });
+      return NextResponse.json({ ok: true });
+    }
+
     const existingMatches = (existing.bracket?.rounds || []).flat();
     const inputMatches = (input.bracket?.rounds || []).flat();
     const isParticipant = (existing.joinedPlayers || []).some(player =>
@@ -610,29 +669,6 @@ export async function PUT(request) {
           return NextResponse.json({ error: '大会設定や参加者情報は変更できません。' }, { status: 403 });
         }
       }
-    }
-
-    // Settings edits must never replace the tournament document or erase registrations.
-    // Only explicitly editable settings are copied onto the latest server version.
-    if (body?.editSettings === true) {
-      if (!isCurrentOwner) return NextResponse.json({ error: '大会設定を編集する権限がありません。' }, { status: 403 });
-      if (existing.bracket) return NextResponse.json({ error: '大会開始後は設定を編集できません。' }, { status: 409 });
-      const editableFields = [
-        'name', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags',
-        'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects',
-        'autoSeed', 'characterDeclaration', 'stageSettings',
-      ];
-      const updatedSettings = { ...existing };
-      for (const field of editableFields) {
-        if (Object.prototype.hasOwnProperty.call(input, field)) updatedSettings[field] = input[field];
-      }
-      if (Number(updatedSettings.participants) < (existing.joinedPlayers || []).length) {
-        return NextResponse.json({ error: '参加人数を現在の登録者数より少なくできません。' }, { status: 400 });
-      }
-      const { data: saved, error: saveError } = await saveTournamentRevision(supabase, id, existing, updatedSettings);
-      if (saveError) throw saveError;
-      if (!saved?.length) return NextResponse.json({ error: '他の操作が先に保存されました。画面を更新してやり直してください。' }, { status: 409 });
-      return NextResponse.json({ ok: true });
     }
 
     const { ownerId, ownerUserId, ...safeInput } = input;
