@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { findParticipantOverlay, ownOverlayMatch } from '../../../../lib/overlay-participant-match';
-import { editableSetScores, getMatchReportMode, hasStreamUrl } from '../../../../lib/tournament-set-result';
+import { editableSetScores, getMatchReportMode } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,11 +27,8 @@ const CANDIDATE_BATCH_SIZE = 4;
 function expandOverlayRow(raw) {
   if (!raw) return null;
   const { id, created_at, ...data } = raw;
-  // JSON path extraction returns null for absent keys. The legacy overlay
-  // distinguishes an omitted streamMatchId (automatic owner selection) from
-  // an explicit null paired with streamMatchManual=true (manual clear).
-  if (data.streamMatchId == null && data.streamMatchManual !== true)
-    delete data.streamMatchId;
+  // Missing or null assignments both mean no streaming table.
+  // Keep the explicit selection in tournament data for the overlay.
   return { id, created_at, data };
 }
 function overlayAt(row) {
@@ -215,20 +212,18 @@ export async function GET(request) {
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
     const matches = rounds.flat();
-    const organizerMatch = hasStreamUrl(t)
-      ? matches.find(m => (t.bracket?.complete || !m.winnerId) && m.player1 && m.player2 &&
-          [m.player1, m.player2].some(p => !p.isDemo && String(p.userId || p.id) === String(t.ownerUserId)))
-      : null;
-    const explicit = t.streamMatchManual === true || t.streamMatchId !== undefined;
-    // Keep the assigned match visible after its winner is confirmed until the organizer changes or clears the assignment.
+    // Organizer broadcasts must always be assigned explicitly. The stream URL
+    // is only metadata and cannot auto-assign the organizer's own match.
+    const assigned = t.streamMatchId == null ? null : matches.find(m =>
+      String(m.id) === String(t.streamMatchId) && m.player1 && m.player2);
+    // Preserve a just-finished assigned match briefly, but never override a
+    // newly assigned match or resurrect one after the organizer clears it.
     const holdUntil = Date.parse(t.streamHoldUntil || '') || 0;
-    const held = holdUntil > Date.now()
-      ? matches.find(m => String(m.id) === String(t.streamHoldMatchId) && m.winnerId && m.player1 && m.player2)
-      : null;
-    const selected = personalMatch ? personalMatch.match : held || (explicit
-      ? matches.find(m => t.streamMatchId != null && String(m.id) === String(t.streamMatchId) && m.player1 && m.player2)
-      : organizerMatch);
-    if (!selected) return reply({ name: t.name || '', match: null, status: explicit && t.streamMatchId == null ? 'unassigned' : 'not-found', ownerId: t.ownerUserId || null });
+    const held = assigned && holdUntil > Date.now() &&
+      String(assigned.id) === String(t.streamHoldMatchId) && assigned.winnerId
+      ? assigned : null;
+    const selected = personalMatch ? personalMatch.match : held || assigned;
+    if (!selected) return reply({ name: t.name || '', match: null, status: 'unassigned', ownerId: t.ownerUserId || null });
     const roundIndex = personalMatch
       ? personalMatch.roundIndex
       : rounds.findIndex(round => round.some(m => String(m.id) === String(selected.id)));
