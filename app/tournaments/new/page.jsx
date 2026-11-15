@@ -117,7 +117,7 @@ export default function NewTournamentPage() {
         const { data } = await getSupabaseBrowserClient().auth.getSession();
         const session = data.session;
         if (!session) { window.location.href = `/login?next=${encodeURIComponent('/tournaments/new?edit=' + editId)}`; return; }
-        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(editId)}`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' });
+        const response = await fetch(`/api/tournaments?id=${encodeURIComponent(editId)}&fresh=1`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会情報を読み込めませんでした。');
         const t = result.tournament;
@@ -238,7 +238,15 @@ export default function NewTournamentPage() {
       const response = await fetch('/api/tournaments', {
         method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ tournament, editSettings: Boolean(editId) }),
+        body: JSON.stringify({
+          tournament: editingStarted ? Object.fromEntries(
+            Object.entries(tournament).filter(([key]) => ![
+              'format', 'bestOf', 'participants', 'stages', 'stageRejects',
+              'autoSeed', 'characterDeclaration', 'stageSettings',
+            ].includes(key))
+          ) : tournament,
+          editSettings: Boolean(editId),
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '保存できませんでした。');
@@ -265,6 +273,7 @@ export default function NewTournamentPage() {
 
     <section className="create-panel">
       {loadingEdit ? <p className="setting-help">大会情報を読み込み中…</p> : <form onSubmit={createTournament}>
+        {editingStarted && <p className="setting-help">大会進行中のため、対戦形式・参加人数・ステージなど試合のルールは変更できません。大会名・タグ・日時・配信情報・説明・キャラ制限は編集できます。</p>}
         <label>大会名 <span className="required">必須</span>
           <input value={name} onChange={event => setName(event.target.value)} placeholder="大会名を入力" maxLength={80} autoFocus required />
         </label>
@@ -275,7 +284,7 @@ export default function NewTournamentPage() {
           <small className="setting-help">同じタグの大会を戦績ページでまとめて表示できます。</small>
         </label>
 
-        <fieldset className="setup-group">
+        <fieldset className="setup-group" disabled={editingStarted}>
           <legend>対戦形式</legend>
           <div className="format-options">
             <button type="button" className={format === 3 ? 'format-option selected' : 'format-option'} aria-pressed={format === 3} onClick={() => setFormat(3)}><strong>BO3</strong><small>2本先取</small></button>
@@ -286,7 +295,7 @@ export default function NewTournamentPage() {
 
 
         <label>参加人数
-          <select value={participants} onChange={event => setParticipants(Number(event.target.value))}>
+          <select value={participants} disabled={editingStarted} onChange={event => setParticipants(Number(event.target.value))}>
             {[2, 4, 8, 16, 32, 64, 128].map(count => <option key={count} value={count}>{count}人</option>)}
           </select>
         </label>
@@ -306,7 +315,7 @@ export default function NewTournamentPage() {
           </label>
         </fieldset>
 
-        <fieldset className="setup-group">
+        <fieldset className="setup-group" disabled={editingStarted}>
           <legend>使用ステージ</legend>
           <div className="stage-checkbox-grid">
             {stageOptions.map(stage => <label className="stage-checkbox" key={stage}>
@@ -317,7 +326,7 @@ export default function NewTournamentPage() {
           <div className="custom-stage-entry"><label htmlFor="customStageName">追加ステージ（1行につき1つ）</label><div className="custom-stage-input"><input id="customStageName" type="text" maxLength={40} value={customStageName} onChange={e => setCustomStageName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomStage(); } }} /><button type="button" onClick={addCustomStage} disabled={!customStageName.trim()}>追加</button></div></div>
         </fieldset>
 
-        <fieldset className="setup-group">
+        <fieldset className="setup-group" disabled={editingStarted}>
           <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">拒否ステージ</span></span><label className="create-switch-control"><span className="create-switch-status">{stageRejects ? 'あり' : 'なし'}</span><input type="checkbox" checked={stageRejects} onChange={event => setStageRejects(event.target.checked)} aria-label="拒否ステージ" /><span className="create-switch-track" aria-hidden="true" /></label></div>
           {stageRejects && <div className="reject-settings">
             <p className="setting-help">使用ステージの中から、スターターとカウンターピックを選択してください。</p>
@@ -349,11 +358,11 @@ export default function NewTournamentPage() {
           </div>}
         </fieldset>
 
-        <fieldset className="setup-group">
+        <fieldset className="setup-group" disabled={editingStarted}>
           <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">自動シード</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="自動シードの説明">?</summary><span className="create-help-popover">参加者のレート上位25%（最低2名）を離して配置します。その他はランダムです。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{autoSeed ? 'あり' : 'なし'}</span><input type="checkbox" checked={autoSeed} onChange={event => setAutoSeed(event.target.checked)} aria-label="自動シード" /><span className="create-switch-track" aria-hidden="true" /></label></div>
         </fieldset>
 
-        <fieldset className="setup-group">
+        <fieldset className="setup-group" disabled={editingStarted}>
           <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ宣言</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="キャラ宣言の説明">?</summary><span className="create-help-popover">参加者が使用キャラクターとカラーを大会前に宣言します。送信後は変更できません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterDeclaration ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterDeclaration} onChange={event => setCharacterDeclaration(event.target.checked)} aria-label="キャラ宣言" /><span className="create-switch-track" aria-hidden="true" /></label></div>
         </fieldset>
         <fieldset className="setup-group">
