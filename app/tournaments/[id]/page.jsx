@@ -385,6 +385,7 @@ export default function TournamentPage() {
         setCurrentUserId(data.session?.user?.id || '');
 
       } catch {}
+      let adminHistoricalView = false;
       // Completed public tournaments have immutable, GitHub-tracked bracket
       // and placement details. Visitors should not download the full
       // historical Supabase row just to read a result. Organizer access and
@@ -407,7 +408,8 @@ export default function TournamentPage() {
               );
               if (accessResponse.ok) {
                 const access = await accessResponse.json();
-                if (access.completed && !access.isOwner) {
+                adminHistoricalView = access.completed && access.canEditSettings === true;
+                if (access.completed && !access.isOwner && !access.canEditSettings) {
                   // These public avatar URLs are independently CDN-cached.
                   // Missing images are hidden by the image error handler.
                   const cached = readCachedAvatars(id);
@@ -457,9 +459,10 @@ export default function TournamentPage() {
       const cachedAvatars = readCachedAvatars(id);
       avatarMapRef.current = cachedAvatars?.avatars || {};
       avatarRosterRef.current = cachedAvatars?.rosterKey || '';
-      const view = cachedAvatars ? 'live' : 'page';
+      const view = adminHistoricalView ? 'full' : cachedAvatars ? 'live' : 'page';
       const headers = accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
-      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=${view}`, { cache: 'no-store', headers: { ...headers, ...(!cachedAvatars && tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
+      const fresh = adminHistoricalView ? '&fresh=1' : '';
+      const response = await fetch(`/api/tournaments?id=${encodeURIComponent(id)}&ownerToken=${encodeURIComponent(owner)}&view=${view}${fresh}`, { cache: 'no-store', headers: { ...headers, ...(!adminHistoricalView && !cachedAvatars && tournamentEtagRef.current ? { 'If-None-Match': tournamentEtagRef.current } : {}) } });
         if (response.status === 304) return;
         const newEtag = response.headers.get('etag');
         if (newEtag) tournamentEtagRef.current = newEtag;
