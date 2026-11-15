@@ -68,7 +68,7 @@ export default function PlayerResultsPage() {
             <span className="results-participant-count">参加者{(t.joinedPlayers || []).length}名</span>
             <span className="results-tournament-title">{t.name}</span>
           </Link>}
-          <span className={`results-table-placement${(t.isLegacy ? t.myPlacement : placement(t, player)) === '優勝' ? ' results-placement-winner' : ''}`}>{t.isLegacy ? (['優勝', '準優勝', '3位'].includes(t.myPlacement) ? t.myPlacement : '') : placement(t, player)}</span>
+          <span className={`results-table-placement${(t.isLegacy ? t.myPlacement : placement(t, player)) === '優勝' ? ' results-placement-winner' : ''}`}>{['優勝', '準優勝', '3位'].includes(t.isLegacy ? t.myPlacement : placement(t, player)) ? (t.isLegacy ? t.myPlacement : placement(t, player)) : ''}</span>
         </div>)}
       </div>}
     </section>
