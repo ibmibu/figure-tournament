@@ -187,7 +187,7 @@ export default function StatsPage() {
     // must not create gaps or advance the season / inactivity counter.
     selectedNew.forEach((t, index) => {
       const number = maxArchiveNumber + index + 1;
-      tournaments.push({ number, name: t.name, players: t.players.length, participantIds: [...new Set([...t.players.map(p => canonicalAccountId(p.id)), ...(t.demoTierIds || [])])], id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], isNewTournament: true });
+      tournaments.push({ number, name: t.name, players: t.players.length, participantIds: [...new Set([...t.players.map(p => canonicalAccountId(p.id)), ...(t.demoTierIds || [])])], id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], characterRestriction: t.characterRestriction === true, isNewTournament: true });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
         if (!players.has(id)) players.set(id, { id, name: player.name });
@@ -867,8 +867,13 @@ export default function StatsPage() {
       }
     }
     const playerId = targetCanonicalId;
+    // Character-restricted cups don't qualify for single-character titles.
+    // Character use and championship history remain fully counted.
+    const restrictedTournamentNumbers = new Set((data.tournaments || [])
+      .filter(t => t.characterRestriction === true)
+      .map(t => Number(t.number)));
     const soloAchievements = [...reportedByTournament.entries()]
-      .filter(([number, characters]) => champions.get(number) === playerId && characters.size === 1)
+      .filter(([number, characters]) => champions.get(number) === playerId && characters.size === 1 && !restrictedTournamentNumbers.has(number))
       .map(([number, characters]) => ({ number, character: [...characters][0] }))
       .sort((a, b) => b.number - a.number);
     return { counts: [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')), total: [...counts.values()].reduce((sum, value) => sum + value, 0), tournaments: seenTournaments.size, soloAchievements, matchedComments, parsedComments, targetId: String(characterTargetPlayer.id), fetchedComments: (characterComments || []).reduce((sum, item) => sum + (item.comments?.length || 0), 0), fetchErrors: (characterComments || []).filter((item) => item.error).length };
