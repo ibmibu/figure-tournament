@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { findParticipantOverlay, ownOverlayMatch } from '../../../../lib/overlay-participant-match';
-import { editableSetScores, getMatchReportMode } from '../../../../lib/tournament-set-result';
+import { editableSetScores } from '../../../../lib/tournament-set-result';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,6 @@ const OVERLAY_SELECT = [
   'id', 'created_at', 'name:data->>name', 'createdAt:data->>createdAt',
   'ownerUserId:data->>ownerUserId', 'status:data->>status',
   'bracket:data->bracket', 'joinedPlayers:data->joinedPlayers',
-  'streamUrl:data->>streamUrl', 'streamMatchManual:data->streamMatchManual',
   'streamMatchId:data->streamMatchId', 'streamHoldMatchId:data->streamHoldMatchId',
   'streamHoldUntil:data->>streamHoldUntil', 'bestOf:data->bestOf',
   'stageRejects:data->stageRejects', 'stageActionRevision:data->stageActionRevision',
@@ -27,8 +26,7 @@ const CANDIDATE_BATCH_SIZE = 4;
 function expandOverlayRow(raw) {
   if (!raw) return null;
   const { id, created_at, ...data } = raw;
-  // Missing or null assignments both mean no streaming table.
-  // Keep the explicit selection in tournament data for the overlay.
+  // Only the fields required to render the chosen overlay are loaded.
   return { id, created_at, data };
 }
 function overlayAt(row) {
