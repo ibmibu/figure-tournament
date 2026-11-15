@@ -6,14 +6,14 @@ import { completedArchiveRecord, completedArchiveDetail } from '../../../../lib/
 export const dynamic = 'force-dynamic';
 const MAX_BATCH = 20;
 // Bump when exported public archive fields change: refresh all GitHub JSON.
-const ARCHIVE_SCHEMA = 3;
+const ARCHIVE_SCHEMA = 4;
 const INDEX_FIELDS = [
   'id', 'complete:data->bracket->>complete',
   'revision:data->>stageActionRevision',
   'name:data->>name', 'date:data->>date',
   'completedAt:data->>completedAt',
   'tags:data->seriesTags', 'placements:data->resultPlacements',
-  'reports:data->characterReports',
+  'reports:data->characterReports', 'characterRestriction:data->characterRestriction',
 ].join(',');
 function db() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -27,7 +27,7 @@ function fingerprint(row, signalRevision = '') {
   return createHash('sha256').update(JSON.stringify(signalRevision
     ? [ARCHIVE_SCHEMA, row.id, 'signal', signalRevision]
     : [ARCHIVE_SCHEMA, row.id, row.revision, row.name, row.date,
-      row.completedAt, row.tags, row.placements, row.reports]
+      row.completedAt, row.tags, row.placements, row.reports, row.characterRestriction]
   )).digest('hex').slice(0, 24);
 }
 async function readSignals(database, ids = null) {
