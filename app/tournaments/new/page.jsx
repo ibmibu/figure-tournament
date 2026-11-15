@@ -97,6 +97,8 @@ export default function NewTournamentPage() {
   const [stageRejects, setStageRejects] = useState(false);
   const [autoSeed, setAutoSeed] = useState(false);
   const [characterDeclaration, setCharacterDeclaration] = useState(false);
+  const [characterRestriction, setCharacterRestriction] = useState(false);
+  const [editingStarted, setEditingStarted] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
   const [counterpickStages, setCounterpickStages] = useState([...DEFAULT_COUNTERPICKS]);
   const [firstPlayerRejects, setFirstPlayerRejects] = useState(1);
@@ -119,7 +121,7 @@ export default function NewTournamentPage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '大会情報を読み込めませんでした。');
         const t = result.tournament;
-        if (!t.isOwner) throw new Error('この大会を編集する権限がありません。');
+        if (!t.canEditSettings && !t.isOwner) throw new Error('この大会を編集する権限がありません。');
         if (!active) return;
         setName(t.name || '');
         setStreamUrl(t.streamUrl || '');
@@ -133,6 +135,8 @@ export default function NewTournamentPage() {
         setStageRejects(Boolean(t.stageRejects));
         setAutoSeed(Boolean(t.autoSeed));
         setCharacterDeclaration(Boolean(t.characterDeclaration));
+        setCharacterRestriction(Boolean(t.characterRestriction));
+        setEditingStarted(Boolean(t.bracket && !t.bracket.complete));
         setStarterStages(t.stageSettings?.starterStages || [...DEFAULT_STARTERS]);
         setCounterpickStages(t.stageSettings?.counterpickStages || [...DEFAULT_COUNTERPICKS]);
         setFirstPlayerRejects(Number(t.stageSettings?.firstPlayerRejects) || 1);
@@ -218,6 +222,7 @@ export default function NewTournamentPage() {
       stageRejects,
       autoSeed,
       characterDeclaration,
+      characterRestriction,
       stageSettings: stageRejects ? {
         starterStages: effectiveStarters,
         counterpickStages: effectiveCounterpicks,
@@ -350,6 +355,9 @@ export default function NewTournamentPage() {
 
         <fieldset className="setup-group">
           <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ宣言</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="キャラ宣言の説明">?</summary><span className="create-help-popover">参加者が使用キャラクターとカラーを大会前に宣言します。送信後は変更できません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterDeclaration ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterDeclaration} onChange={event => setCharacterDeclaration(event.target.checked)} aria-label="キャラ宣言" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+        </fieldset>
+        <fieldset className="setup-group">
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ制限</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="キャラ制限の説明">?</summary><span className="create-help-popover">使用できるキャラを限定する大会では「あり」にしてください。優勝と使用キャラ回数は通常どおり集計し、単騎達成にはカウントしません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterRestriction ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterRestriction} onChange={event => setCharacterRestriction(event.target.checked)} aria-label="キャラ制限" /><span className="create-switch-track" aria-hidden="true" /></label></div>
         </fieldset>
 
         <label>配信先URL
