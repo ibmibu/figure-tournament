@@ -1,3 +1,4 @@
+import { REPORT_FIGHTERS } from '../../../../lib/fighter-order';
 import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -28,7 +29,7 @@ export async function POST(request) {
       if (!player) return NextResponse.json({ error: '大会参加者のみ宣言できます。' }, { status: 403 });
       if (declarations[String(player.id)]) return NextResponse.json({ error: '宣言済みの内容は変更できません。' }, { status: 409 });
       const name = String(character || '').trim();
-      if (!name || name.length > 60 || !/^[1-8]P$/.test(String(color))) return NextResponse.json({ error: 'キャラクター名とカラーを確認してください。' }, { status: 400 });
+      if (!REPORT_FIGHTERS.includes(name) || !/^[1-8]P$/.test(String(color))) return NextResponse.json({ error: 'キャラクター名とカラーを確認してください。' }, { status: 400 });
       next = { ...t, characterDeclarations: { ...declarations, [String(player.id)]: { character: name, color: String(color) } } };
     } else if (action === 'publish') {
       if (t.ownerUserId !== auth.user.id) return NextResponse.json({ error: '主催者のみ公開できます。' }, { status: 403 });
