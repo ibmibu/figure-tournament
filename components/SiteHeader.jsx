@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const isObsOverlay = (/^\/tournaments\/[^/]+\/overlay\/?$/.test(pathname || '') || pathname === '/overlay');
+  const isObsOverlay = (/^\/tournaments\/[^/]+\/overlay\/?$/.test(pathname || '') || /^\/overlay(?:\/bracket)?\/?$/.test(pathname || ''));
 
   const tabs = [
     { label: '戦績', href: '/stats' },
