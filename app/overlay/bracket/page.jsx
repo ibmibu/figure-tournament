@@ -262,7 +262,7 @@ export default function ObsBracketOverlay() {
         width:100vw!important;height:100vh!important;
         max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;
         margin:0!important;padding:0!important;
-        overflow:hidden!important;background:rgba(28,41,57,.75)!important;
+        overflow:hidden!important;background:rgba(24,34,49,.85)!important;
         font-family:Arial,"Noto Sans JP",sans-serif;
       }
       .tournament-bracket-overlay .bracket-overlay-scale{
