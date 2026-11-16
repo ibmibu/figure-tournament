@@ -14,13 +14,12 @@ function roundName(index, total) {
     : index === total - 2 ? '準決勝' : `第${index + 1}回戦`;
 }
 
-function MatchCard({ match, rounds, round, matchIndex, streamMatchId }) {
+function MatchCard({ match, rounds, round, matchIndex }) {
   const { player1, player2, winnerId, resultType } = match;
   const bye = round === 0 && Boolean(player1) !== Boolean(player2);
   const top = 64 + (((matchIndex + 0.5) * (2 ** round)) - 0.5) * STEP;
   if (bye) return <div className="bracket-bye-spacer" style={{ top }} aria-hidden="true" />;
 
-  const isStreaming = streamMatchId && String(match.id) === String(streamMatchId);
   const isWinner = player => player && winnerId != null &&
     String(player.id) === String(winnerId);
   const isLoser = player => player && winnerId != null && !isWinner(player);
@@ -28,9 +27,8 @@ function MatchCard({ match, rounds, round, matchIndex, streamMatchId }) {
     Boolean(rounds[round - 1]?.[matchIndex * 2 + side]?.winnerId);
   const isLastRound = round === rounds.length - 1;
   const siblings = rounds[round] || [];
-  return <div className={`bracket-match${isStreaming ? ' match-streaming' : ''}`}
+  return <div className="bracket-match"
     style={{ top }} aria-label={[player1?.name || '未定', player2?.name || '未定'].join(' 対 ')}>
-    {isStreaming && <span className="bracket-stream-badge">● 配信台</span>}
     <div className="match-players">
       {[player1, player2].map((player, side) =>
         <div key={side}
@@ -208,8 +206,7 @@ export default function ObsBracketOverlay() {
               <strong>{roundName(roundIndex, rounds.length)}</strong>
               {round.map((match, index) =>
                 <MatchCard key={match.id || index} match={match} rounds={rounds}
-                  round={roundIndex} matchIndex={index}
-                  streamMatchId={data?.streamMatchId} />)}
+                  round={roundIndex} matchIndex={index} />)}
             </div>)}
         </div>
       </section>
