@@ -17,6 +17,16 @@ const OVERLAY_SELECT = [
   'streamHoldUntil:data->>streamHoldUntil', 'bestOf:data->bestOf',
   'stageRejects:data->stageRejects', 'stageActionRevision:data->stageActionRevision',
 ].join(',');
+// Full-bracket OBS does not need registration lists, historical metadata,
+// scoreboard hold settings or other unrelated tournament fields. Keep the
+// stream match ID server-side solely for accurate provisional score selection.
+const BRACKET_OVERLAY_SELECT = [
+  'id', 'name:data->>name', 'ownerUserId:data->>ownerUserId',
+  'bracket:data->bracket', 'bestOf:data->bestOf',
+  'stageRejects:data->stageRejects', 'streamMatchId:data->streamMatchId',
+  'stageActionRevision:data->stageActionRevision',
+].join(',');
+const BRACKET_PARTICIPANT_SELECT = BRACKET_OVERLAY_SELECT + ',joinedPlayers:data->joinedPlayers';
 const OVERLAY_INDEX_SELECT = [
   'id', 'created_at', 'createdAt:data->>createdAt', 'status:data->>status',
   'complete:data->bracket->>complete',
@@ -32,9 +42,12 @@ function expandOverlayRow(raw) {
 function overlayAt(row) {
   return Date.parse(row?.data?.createdAt || row?.createdAt || row?.created_at || '') || 0;
 }
-async function readOverlayRow(db, id) {
+async function readOverlayRow(db, id, bracketView = false, participant = false) {
+  const select = bracketView
+    ? (participant ? BRACKET_PARTICIPANT_SELECT : BRACKET_OVERLAY_SELECT)
+    : OVERLAY_SELECT;
   const { data, error } = await db.from('tournaments')
-    .select(OVERLAY_SELECT).eq('id', id).maybeSingle();
+    .select(select).eq('id', id).maybeSingle();
   if (error) throw error;
   return expandOverlayRow(data);
 }
@@ -150,6 +163,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'オーバーレイの選択が不正です。' }, { status: 400 });
     }
     const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const bracketView = params.get('view') === 'bracket';
     const targetId = selectedId || id;
     const role = selectedId ? selectedRole : id ? 'direct' : null;
     const selector = owner || player || '';
@@ -175,9 +189,10 @@ export async function GET(request) {
     let personalMatch = null;
     let sourceRole = role;
     if (id) {
-      row = await readOverlayRow(db, id);
+      row = await readOverlayRow(db, id, bracketView);
     } else if (selectedId) {
-      row = await readOverlayRow(db, selectedId);
+      row = await readOverlayRow(db, selectedId, bracketView,
+        selectedRole === 'participant' || Boolean(player));
       if (row && (selectedRole === 'participant' || player)) {
         personalMatch = ownOverlayMatch(row.data, selector);
         if (!personalMatch) row = null;
@@ -209,8 +224,7 @@ export async function GET(request) {
     if (!row) return reply({ name: '', match: null, status: 'unassigned' });
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
-    const matches = rounds.flat();
-    if (params.get('view') === 'bracket') {
+    if (bracketView) {
       // This browser source is view-only. Never expose the original bracket
       // JSON, which can contain player account and game-report metadata.
       const publicRounds = rounds.map(round => round.map(match => {
@@ -232,10 +246,10 @@ export async function GET(request) {
       }));
       return reply({
         name: t.name || '', bestOf: Number(t.bestOf) === 5 ? 5 : 3,
-        streamMatchId: t.streamMatchId == null ? null : String(t.streamMatchId),
-        rounds: publicRounds, complete: t.bracket?.complete === true,
+        rounds: publicRounds,
       });
     }
+    const matches = rounds.flat();
     // Organizer broadcasts must always be assigned explicitly. The stream URL
     // is only metadata and cannot auto-assign the organizer's own match.
     const assigned = t.streamMatchId == null ? null : matches.find(m =>
