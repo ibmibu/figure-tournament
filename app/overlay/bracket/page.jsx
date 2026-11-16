@@ -172,13 +172,21 @@ export default function ObsBracketOverlay() {
   const rounds = Array.isArray(data?.rounds) ? data.rounds : [];
   const geometry = useMemo(() => {
     if (!rounds.length) return null;
+    // Match the actual layout: 24px padding on each side; a 48px
+    // title row, 20px bracket top + 28px bottom padding.
+    // Include the header in totalHeight: excluding it was making the
+    // calculated scale too large and could crop the lower matches.
     const totalWidth = rounds.length * CARD_WIDTH + (rounds.length - 1) * ROUND_GAP + 48;
     const contentHeight = 64 + (rounds[0]?.length || 1) * STEP;
-    const totalHeight = contentHeight + 52;
-    const scale = Math.min(1.35,
-      Math.max(1, viewport.width - 64) / totalWidth,
-      Math.max(1, viewport.height - 64) / totalHeight);
-    return { totalWidth, contentHeight, totalHeight, scale };
+    const bracketHeight = contentHeight + 52;
+    const totalHeight = 48 + bracketHeight;
+    // Use approximately 94% of the OBS width / 92% of the OBS height.
+    // Unlike the old 1.35x limit, small brackets grow substantially, while
+    // large brackets shrink until the entire diagram is visible.
+    const scale = Math.min(3,
+      Math.max(1, viewport.width * 0.94) / totalWidth,
+      Math.max(1, viewport.height * 0.92) / totalHeight);
+    return { totalWidth, contentHeight, bracketHeight, totalHeight, scale };
   }, [rounds, viewport.width, viewport.height]);
 
   return <main className="tournament-detail-page tournament-bracket-overlay" aria-label="配信用トーナメント表">
@@ -193,7 +201,7 @@ export default function ObsBracketOverlay() {
         </div>
         <div className="bracket-rounds" style={{
           '--bracket-height': geometry.contentHeight + 'px',
-          width: geometry.totalWidth, height: geometry.contentHeight + 52,
+          width: geometry.totalWidth, height: geometry.bracketHeight,
         }}>
           {rounds.map((round, roundIndex) =>
             <div className="bracket-round" key={roundIndex}>
@@ -211,6 +219,9 @@ export default function ObsBracketOverlay() {
     </p>}
     <style jsx global>{`
       html,body{margin:0!important;padding:0!important;overflow:hidden!important;background:transparent!important}
+      body{padding-bottom:0!important}
+      body:has(.tournament-bracket-overlay) .site-header,
+      body:has(.tournament-bracket-overlay) .bottom-tab-bar{display:none!important}
       .tournament-bracket-overlay{
         position:fixed!important;inset:0!important;
         box-sizing:border-box!important;
