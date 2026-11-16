@@ -215,21 +215,17 @@ export default function ObsBracketOverlay() {
   const rounds = Array.isArray(data?.rounds) ? data.rounds : [];
   const geometry = useMemo(() => {
     if (!rounds.length) return null;
-    // Match the actual layout: 24px padding on each side; a 48px
-    // title row, 20px bracket top + 28px bottom padding.
-    // Include the header in totalHeight: excluding it was making the
-    // calculated scale too large and could crop the lower matches.
+    // Fit the bracket itself (no title/BO header). Its CSS has 24px horizontal
+    // padding and 20px/28px vertical padding around the round geometry.
     const totalWidth = rounds.length * CARD_WIDTH + (rounds.length - 1) * ROUND_GAP + 48;
     const contentHeight = 64 + (rounds[0]?.length || 1) * STEP;
-    const bracketHeight = contentHeight + 52;
-    const totalHeight = 48 + bracketHeight;
-    // Use approximately 94% of the OBS width / 92% of the OBS height.
-    // Unlike the old 1.35x limit, small brackets grow substantially, while
-    // large brackets shrink until the entire diagram is visible.
+    const bracketHeight = contentHeight + 48;
+    // Give the actual diagram up to 96% of OBS width/height. Keeping
+    // all scaling on the outer wrapper preserves the website's bracket layout.
     const scale = Math.min(3,
-      Math.max(1, viewport.width * 0.94) / totalWidth,
-      Math.max(1, viewport.height * 0.92) / totalHeight);
-    return { totalWidth, contentHeight, bracketHeight, totalHeight, scale };
+      Math.max(1, viewport.width * 0.96) / totalWidth,
+      Math.max(1, viewport.height * 0.96) / bracketHeight);
+    return { totalWidth, contentHeight, bracketHeight, totalHeight: bracketHeight, scale };
   }, [rounds, viewport.width, viewport.height]);
 
   return <main className="tournament-detail-page tournament-bracket-overlay" aria-label="配信用トーナメント表">
@@ -238,10 +234,6 @@ export default function ObsBracketOverlay() {
       transform: `translate(-50%, -50%) scale(${geometry.scale})`,
     }}>
       <section className="tournament-live-panel">
-        <div className="bracket-header">
-          <h2>{data?.name || 'トーナメント表'}</h2>
-          <span className="bracket-overlay-format">BO{data?.bestOf || 3}</span>
-        </div>
         <div className="bracket-rounds" style={{
           '--bracket-height': geometry.contentHeight + 'px',
           width: geometry.totalWidth, height: geometry.bracketHeight,
@@ -280,17 +272,6 @@ export default function ObsBracketOverlay() {
         box-sizing:border-box!important;width:100%;height:100%;margin:0!important;
         padding:0!important;border:0!important;background:transparent!important;
         box-shadow:none!important;overflow:visible!important;
-      }
-      .tournament-bracket-overlay .tournament-live-panel .bracket-header{
-        box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
-        height:48px;padding:0 24px!important;margin:0!important;background:transparent!important;
-      }
-      .tournament-bracket-overlay .bracket-header h2{
-        margin:0!important;color:#f5f8fc!important;font-size:24px!important;font-weight:800!important;
-        overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-      }
-      .tournament-bracket-overlay .bracket-overlay-format{
-        margin-left:16px;color:#badcff!important;font-size:16px;font-weight:700;white-space:nowrap;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-rounds{
         box-sizing:border-box!important;overflow:visible!important;margin:0!important;
