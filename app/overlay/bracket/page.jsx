@@ -52,19 +52,19 @@ function MatchCard({ match, rounds, round, matchIndex }) {
         <path d={nextVisible
           ? `M 0 0 H 19 V ${distance} M 19 ${distance / 2} H 38`
           : `M 0 0 H 19 V ${distance / 2} H 38`}
-          fill="none" stroke="#3170b8" strokeWidth="2" />
+          fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>;
     })()}
     {!isLastRound && matchIndex % 2 === 1 &&
       !(round === 0 && Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2)) &&
       <svg className="bracket-connector" width="19" height="2" viewBox="0 0 19 2" aria-hidden="true">
-        <path d="M 0 1 H 19" fill="none" stroke="#3170b8" strokeWidth="2" />
+        <path d="M 0 1 H 19" fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>}
     {!isLastRound && matchIndex % 2 === 1 && round === 0 &&
       Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2) &&
       <svg className="bracket-connector bracket-connector-up" width="38" height="104"
         viewBox="0 0 38 104" aria-hidden="true">
-        <path d="M 0 104 H 19 V 52 H 38" fill="none" stroke="#3170b8" strokeWidth="2" />
+        <path d="M 0 104 H 19 V 52 H 38" fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>}
   </div>;
 }
