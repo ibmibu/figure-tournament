@@ -196,7 +196,7 @@ export default function ObsBracketOverlay() {
     // revision, then replies 304 if unchanged. Hidden OBS sources skip it.
     fallbackTimer = setInterval(() => {
       if (document.visibilityState !== 'hidden') void refresh();
-    }, 2500);
+    }, 60000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
@@ -270,7 +270,7 @@ export default function ObsBracketOverlay() {
         width:100vw!important;height:100vh!important;
         max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;
         margin:0!important;padding:0!important;
-        overflow:hidden!important;background:#e9edf2!important;
+        overflow:hidden!important;background:#cfd6df!important;
         font-family:Arial,"Noto Sans JP",sans-serif;
       }
       .tournament-bracket-overlay .bracket-overlay-scale{
@@ -278,12 +278,12 @@ export default function ObsBracketOverlay() {
       }
       .tournament-bracket-overlay .tournament-live-panel{
         box-sizing:border-box!important;width:100%;height:100%;margin:0!important;
-        padding:0!important;border:0!important;background:#e9edf2!important;
+        padding:0!important;border:0!important;background:#cfd6df!important;
         box-shadow:none!important;overflow:visible!important;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-header{
         box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
-        height:48px;padding:0 24px!important;margin:0!important;background:#e9edf2!important;
+        height:48px;padding:0 24px!important;margin:0!important;background:#cfd6df!important;
       }
       .tournament-bracket-overlay .bracket-header h2{
         margin:0!important;color:#101b2d!important;font-size:24px!important;font-weight:800!important;
@@ -294,7 +294,7 @@ export default function ObsBracketOverlay() {
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-rounds{
         box-sizing:border-box!important;overflow:visible!important;margin:0!important;
-        border-radius:0!important;background:#e9edf2!important;
+        border-radius:0!important;background:#cfd6df!important;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-round{
         flex:0 0 ${CARD_WIDTH}px!important;min-width:${CARD_WIDTH}px!important;width:${CARD_WIDTH}px!important;
