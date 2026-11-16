@@ -210,6 +210,32 @@ export async function GET(request) {
     const t = row.data || {};
     const rounds = t.bracket?.rounds || [];
     const matches = rounds.flat();
+    if (params.get('view') === 'bracket') {
+      // This browser source is view-only. Never expose the original bracket
+      // JSON, which can contain player account and game-report metadata.
+      const publicRounds = rounds.map(round => round.map(match => {
+        const player = p => p ? {
+          id: String(p.id || ''), name: String(p.name || ''),
+          isDemo: p.isDemo === true,
+        } : null;
+        const scores = !t.stageRejects && !match.winnerId
+          ? editableSetScores(t, match) : match.matchState?.score || {};
+        const numeric = p => p ? Number(scores[p.id] ?? 0) || 0 : null;
+        return {
+          id: String(match.id || ''),
+          player1: player(match.player1),
+          player2: player(match.player2),
+          score1: numeric(match.player1), score2: numeric(match.player2),
+          winnerId: match.winnerId == null ? null : String(match.winnerId),
+          resultType: match.resultType === 'forfeit' ? 'forfeit' : null,
+        };
+      }));
+      return reply({
+        name: t.name || '', bestOf: Number(t.bestOf) === 5 ? 5 : 3,
+        streamMatchId: t.streamMatchId == null ? null : String(t.streamMatchId),
+        rounds: publicRounds, complete: t.bracket?.complete === true,
+      });
+    }
     // Organizer broadcasts must always be assigned explicitly. The stream URL
     // is only metadata and cannot auto-assign the organizer's own match.
     const assigned = t.streamMatchId == null ? null : matches.find(m =>
