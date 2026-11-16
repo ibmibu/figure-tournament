@@ -21,12 +21,14 @@ const OVERLAY_SELECT = [
 // scoreboard hold settings or other unrelated tournament fields. Keep the
 // stream match ID server-side solely for accurate provisional score selection.
 const BRACKET_OVERLAY_SELECT = [
-  'id', 'name:data->>name', 'ownerUserId:data->>ownerUserId',
+  'id', 'created_at', 'createdAt:data->>createdAt',
+  'name:data->>name', 'ownerUserId:data->>ownerUserId',
   'bracket:data->bracket', 'bestOf:data->bestOf',
   'stageRejects:data->stageRejects', 'streamMatchId:data->streamMatchId',
   'stageActionRevision:data->stageActionRevision',
 ].join(',');
-const BRACKET_PARTICIPANT_SELECT = BRACKET_OVERLAY_SELECT + ',joinedPlayers:data->joinedPlayers';
+const BRACKET_PARTICIPANT_SELECT = BRACKET_OVERLAY_SELECT +
+  ',status:data->>status,joinedPlayers:data->joinedPlayers';
 const OVERLAY_INDEX_SELECT = [
   'id', 'created_at', 'createdAt:data->>createdAt', 'status:data->>status',
   'complete:data->bracket->>complete',
@@ -60,17 +62,17 @@ async function readOverlayIndex(db, contains) {
 }
 // Return exact match detail for only the few candidate tournaments that might
 // actually be shown. Preserve the previous 100-row cap and selection priority.
-async function readCandidateBatch(db, indexRows) {
+async function readCandidateBatch(db, indexRows, select = OVERLAY_SELECT) {
   if (!indexRows.length) return [];
   const { data, error } = await db.from('tournaments')
-    .select(OVERLAY_SELECT).in('id', indexRows.map(row => row.id));
+    .select(select).in('id', indexRows.map(row => row.id));
   if (error) throw error;
   const byId = new Map((data || []).map(row => [String(row.id), expandOverlayRow(row)]));
   return indexRows.map(row => byId.get(String(row.id))).filter(Boolean);
 }
-async function firstOrganizer(db, indexRows) {
+async function firstOrganizer(db, indexRows, select = OVERLAY_SELECT) {
   for (let offset = 0; offset < indexRows.length; offset += CANDIDATE_BATCH_SIZE) {
-    const rows = await readCandidateBatch(db, indexRows.slice(offset, offset + CANDIDATE_BATCH_SIZE));
+    const rows = await readCandidateBatch(db, indexRows.slice(offset, offset + CANDIDATE_BATCH_SIZE), select);
     const found = rows.find(row => row.data?.bracket?.rounds?.length);
     if (found) return found;
   }
@@ -80,13 +82,13 @@ function activeParticipantIndex(row) {
   return row.complete !== 'true' &&
     ['対戦中', 'キャラ宣言中', '開始'].includes(row.status);
 }
-async function bestParticipant(db, indexRows, userId) {
+async function bestParticipant(db, indexRows, userId, select = OVERLAY_SELECT) {
   // Playing (priority 3) beats another live event already played (priority 2),
   // regardless of its date. Completed matches (priority 1) come last.
   const active = indexRows.filter(activeParticipantIndex);
   let waiting = null;
   for (let offset = 0; offset < active.length; offset += CANDIDATE_BATCH_SIZE) {
-    const rows = await readCandidateBatch(db, active.slice(offset, offset + CANDIDATE_BATCH_SIZE));
+    const rows = await readCandidateBatch(db, active.slice(offset, offset + CANDIDATE_BATCH_SIZE), select);
     const found = findParticipantOverlay(rows, userId);
     if (found?.priority === 3) return found;
     if (!waiting && found?.priority === 2) waiting = found;
@@ -94,38 +96,40 @@ async function bestParticipant(db, indexRows, userId) {
   if (waiting) return waiting;
   const completed = indexRows.filter(row => !activeParticipantIndex(row));
   for (let offset = 0; offset < completed.length; offset += CANDIDATE_BATCH_SIZE) {
-    const rows = await readCandidateBatch(db, completed.slice(offset, offset + CANDIDATE_BATCH_SIZE));
+    const rows = await readCandidateBatch(db, completed.slice(offset, offset + CANDIDATE_BATCH_SIZE), select);
     const found = findParticipantOverlay(rows, userId);
     if (found) return found;
   }
   return null;
 }
-async function selectOverlay(db, owner, player) {
+async function selectOverlay(db, owner, player, bracketView = false) {
+  const organizerFields = bracketView ? BRACKET_OVERLAY_SELECT : OVERLAY_SELECT;
+  const participantFields = bracketView ? BRACKET_PARTICIPANT_SELECT : OVERLAY_SELECT;
   if (player) {
     let rows = await readOverlayIndex(db, { joinedPlayers: [{ userId: player }] });
-    let selected = await bestParticipant(db, rows, player);
+    let selected = await bestParticipant(db, rows, player, participantFields);
     if (!selected && !rows.length) {
       rows = await readOverlayIndex(db, { joinedPlayers: [{ id: player }] });
-      selected = await bestParticipant(db, rows, player);
+      selected = await bestParticipant(db, rows, player, participantFields);
     }
     return selected ? { row: selected.row, personalMatch: selected.item, role: 'participant' } : null;
   }
   const owned = await readOverlayIndex(db, { ownerUserId: owner });
   const running = owned.filter(row => row.status === '対戦中' && row.complete !== 'true');
-  const currentOrganizer = await firstOrganizer(db, running);
+  const currentOrganizer = await firstOrganizer(db, running, organizerFields);
   if (currentOrganizer) return { row: currentOrganizer, personalMatch: null, role: 'organizer' };
 
   let entered = await readOverlayIndex(db, { joinedPlayers: [{ userId: owner }] });
-  let participant = await bestParticipant(db, entered, owner);
+  let participant = await bestParticipant(db, entered, owner, participantFields);
   if (!participant && !entered.length) {
     entered = await readOverlayIndex(db, { joinedPlayers: [{ id: owner }] });
-    participant = await bestParticipant(db, entered, owner);
+    participant = await bestParticipant(db, entered, owner, participantFields);
   }
   if (participant?.priority > 1)
     return { row: participant.row, personalMatch: participant.item, role: 'participant' };
   const finished = owned.filter(row =>
     row.status === '対戦中' || row.status === '終了' || row.complete === 'true');
-  const finishedOrganizer = await firstOrganizer(db, finished);
+  const finishedOrganizer = await firstOrganizer(db, finished, organizerFields);
   if (participant && (!finishedOrganizer ||
       overlayAt(participant.row) > overlayAt(finishedOrganizer))) {
     return { row: participant.row, personalMatch: participant.item, role: 'participant' };
@@ -206,7 +210,7 @@ export async function GET(request) {
       // instead of unexpectedly switching to another tournament.
       // Score and round changes in the same tournament remain live.
     } else {
-      const selected = await selectOverlay(db, owner, player);
+      const selected = await selectOverlay(db, owner, player, bracketView);
       row = selected?.row || null;
       personalMatch = selected?.personalMatch || null;
       sourceRole = selected?.role || null;
