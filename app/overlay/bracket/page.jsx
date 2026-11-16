@@ -270,7 +270,7 @@ export default function ObsBracketOverlay() {
         width:100vw!important;height:100vh!important;
         max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;
         margin:0!important;padding:0!important;
-        overflow:hidden!important;background:#cfd6df!important;
+        overflow:hidden!important;background:rgba(28,41,57,.75)!important;
         font-family:Arial,"Noto Sans JP",sans-serif;
       }
       .tournament-bracket-overlay .bracket-overlay-scale{
@@ -278,26 +278,29 @@ export default function ObsBracketOverlay() {
       }
       .tournament-bracket-overlay .tournament-live-panel{
         box-sizing:border-box!important;width:100%;height:100%;margin:0!important;
-        padding:0!important;border:0!important;background:#cfd6df!important;
+        padding:0!important;border:0!important;background:transparent!important;
         box-shadow:none!important;overflow:visible!important;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-header{
         box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;
-        height:48px;padding:0 24px!important;margin:0!important;background:#cfd6df!important;
+        height:48px;padding:0 24px!important;margin:0!important;background:transparent!important;
       }
       .tournament-bracket-overlay .bracket-header h2{
-        margin:0!important;color:#101b2d!important;font-size:24px!important;font-weight:800!important;
+        margin:0!important;color:#f5f8fc!important;font-size:24px!important;font-weight:800!important;
         overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
       }
       .tournament-bracket-overlay .bracket-overlay-format{
-        margin-left:16px;color:#3170b8;font-size:16px;font-weight:700;white-space:nowrap;
+        margin-left:16px;color:#badcff!important;font-size:16px;font-weight:700;white-space:nowrap;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-rounds{
         box-sizing:border-box!important;overflow:visible!important;margin:0!important;
-        border-radius:0!important;background:#cfd6df!important;
+        border-radius:0!important;background:transparent!important;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-round{
         flex:0 0 ${CARD_WIDTH}px!important;min-width:${CARD_WIDTH}px!important;width:${CARD_WIDTH}px!important;
+      }
+      .tournament-bracket-overlay .tournament-live-panel .bracket-round>strong{
+        color:#f5f8fc!important;border-bottom-color:rgba(255,255,255,.36)!important;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-match{
         cursor:default!important;pointer-events:none!important;
