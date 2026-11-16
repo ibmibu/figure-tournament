@@ -97,93 +97,117 @@ export default function ObsBracketOverlay() {
   useEffect(() => {
     if (!owner) return;
     let active = true;
-    let channel = null;
-    let timer = null;
-    let debounce = null;
+    let channel;
+    let controller;
+    let debounce;
+    let fallbackTimer;
     let inFlight = false;
-    let pending = false;
+    let pendingForce = false;
+    let requestVersion = 0;
     let selectedId = '';
     let selectedRole = '';
-    let version = '';
-    let lastCheckedAt = 0;
-    let realtimeConnected = false;
+    let knownSelection = false;
+    let overlayVersion = '';
+    const source = 'owner=' + encodeURIComponent(owner);
 
-    async function refresh(force = false) {
+    // Keep the selection and refresh rules consistent with the existing OBS
+    // scoreboard. Only discover the event at OBS start/reload; afterward
+    // watch that event alone, without scanning unrelated tournament histories.
+    const refresh = async (forceData = false) => {
       if (!active) return;
-      if (inFlight) { pending ||= force; return; }
+      if (inFlight) {
+        pendingForce ||= forceData;
+        return;
+      }
+      const lookup = !knownSelection;
+      if (!lookup && !selectedId) return;
       inFlight = true;
+      const version = ++requestVersion;
+      controller?.abort();
+      controller = new AbortController();
       try {
-        // As in the existing scoreboard, the event is selected on OBS load
-        // and remains fixed until the browser source is reloaded.
-        const hint = selectedId
+        const hint = !lookup
           ? '&selectedId=' + encodeURIComponent(selectedId) +
             '&selectedRole=' + encodeURIComponent(selectedRole)
           : '';
-        const source = 'owner=' + encodeURIComponent(owner);
+        const fullRead = forceData || lookup;
         const url = '/api/tournaments/overlay?view=bracket&' + source + hint +
-          (force ? '&fresh=1' : '');
-        const headers = version && !force && selectedId
-          ? { 'X-Overlay-Version': version } : {};
-        const response = await fetch(url, { headers, cache: 'no-store' });
-        if (!active) return;
+          (forceData ? '&fresh=1' : '');
+        const headers = overlayVersion && !fullRead
+          ? { 'X-Overlay-Version': overlayVersion } : {};
+        const response = await fetch(url, {
+          cache: 'no-store', headers, signal: controller.signal,
+        });
+        if (!active || version !== requestVersion) return;
         if (response.status === 304) {
-          lastCheckedAt = Date.now();
+          setError('');
           return;
         }
         const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'トーナメント表を取得できませんでした。');
-        if (result.selectedTournamentId && !selectedId) {
-          selectedId = result.selectedTournamentId;
-          selectedRole = result.selectedRole || 'organizer';
-          try {
-            const supabase = getSupabaseBrowserClient();
-            channel = supabase.channel('obs-bracket-' + selectedId)
-              .on('postgres_changes', {
-                event: '*', schema: 'public', table: 'tournament_change_signals',
-                filter: 'tournament_id=eq.' + selectedId,
-              }, () => {
-                // OBS does not need hidden-source data until it is shown again.
-                if (document.visibilityState !== 'visible') return;
-                clearTimeout(debounce);
-                debounce = setTimeout(() => { void refresh(); }, 250);
-              }).subscribe(status => {
-                realtimeConnected = status === 'SUBSCRIBED';
-              });
-          } catch (connectionError) {
-            console.warn('OBS bracket Realtime unavailable:', connectionError);
-          }
-        }
-        version = response.headers.get('x-overlay-version') || '';
+        if (!response.ok) throw new Error(result.error || 'HTTP ' + response.status);
+        if (lookup) knownSelection = true;
+        selectedId = result.selectedTournamentId || '';
+        selectedRole = result.selectedRole || '';
+        subscribeToSelectedTournament(selectedId);
+        overlayVersion = response.headers.get('x-overlay-version') || '';
         setData(result);
-        lastCheckedAt = Date.now();
         setError('');
       } catch (err) {
-        if (active) setError(err.message || '通信に失敗しました。');
+        if (active && version === requestVersion && err.name !== 'AbortError')
+          setError(err.message || '通信に失敗しました。');
       } finally {
         inFlight = false;
-        if (active && pending) { pending = false; void refresh(true); }
+        if (active && pendingForce) {
+          pendingForce = false;
+          void refresh(true);
+        }
+      }
+    };
+
+    const scheduleRefresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      clearTimeout(debounce);
+      debounce = setTimeout(() => { void refresh(); }, 250);
+    };
+
+    // Realtime notification + lightweight revision fallback, as in the OBS
+    // scoreboard. The larger bracket JSON is fetched only when its revision
+    // actually changed. The API's bracket-specific field selection stays intact.
+    function subscribeToSelectedTournament(tournamentId) {
+      if (!active || channel || !tournamentId) return;
+      try {
+        const supabase = getSupabaseBrowserClient();
+        channel = supabase.channel('obs-bracket-' + tournamentId)
+          .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'tournament_change_signals',
+            filter: 'tournament_id=eq.' + tournamentId,
+          }, scheduleRefresh)
+          .subscribe(status => {
+            if (status === 'SUBSCRIBED') void refresh();
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT')
+              setError('Realtimeの接続が切れました。再接続を待っています。');
+          });
+      } catch (err) {
+        setError(err.message || 'Realtimeに接続できませんでした。');
       }
     }
 
-    // Realtime handles routine updates. Only make a tiny revision check as a
-    // safety net: every 2 minutes while connected, or every 45 seconds when
-    // disconnected. Frequent matches reset the clock, avoiding extra queries.
-    const checkFallback = () => {
-      if (!active || document.visibilityState !== 'visible') return;
-      const thresholdMs = realtimeConnected ? 120000 : 45000;
-      if (Date.now() - lastCheckedAt >= thresholdMs) void refresh();
-    };
+    // Scoreboard-equivalent 2.5s safeguard: the server checks only a tiny
+    // revision, then replies 304 if unchanged. Hidden OBS sources skip it.
+    fallbackTimer = setInterval(() => {
+      if (document.visibilityState !== 'hidden') void refresh();
+    }, 2500);
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refresh();
     };
-    timer = setInterval(checkFallback, 15000); // local timer, not a network poll
     document.addEventListener('visibilitychange', onVisible);
     void refresh();
     return () => {
       active = false;
-      clearInterval(timer);
+      clearInterval(fallbackTimer);
       clearTimeout(debounce);
       document.removeEventListener('visibilitychange', onVisible);
+      controller?.abort();
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
     };
   }, [owner]);
