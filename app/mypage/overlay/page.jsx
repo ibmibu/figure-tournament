@@ -69,7 +69,9 @@ function ScaleField({ label, value, min, max, step = 1, onChange, unit = 'px' })
 export default function MyOverlayPage() {
   const [ownerId, setOwnerId] = useState('');
   const [url, setUrl] = useState('');
+  const [bracketUrl, setBracketUrl] = useState('');
   const [copied, setCopied] = useState(false);
+  const [bracketCopied, setBracketCopied] = useState(false);
   const [error, setError] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -105,6 +107,7 @@ export default function MyOverlayPage() {
         }
         setOwnerId(session.user.id);
         setUrl(window.location.origin + '/overlay?owner=' + encodeURIComponent(session.user.id));
+        setBracketUrl(window.location.origin + '/overlay/bracket?owner=' + encodeURIComponent(session.user.id));
         const response = await fetch('/api/overlay-design', {
           headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store',
         });
@@ -211,6 +214,14 @@ export default function MyOverlayPage() {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      setError('');
+    } catch { setError('URLをコピーできませんでした。'); }
+  }
+  async function copyBracketUrl() {
+    if (!bracketUrl) return;
+    try {
+      await navigator.clipboard.writeText(bracketUrl);
+      setBracketCopied(true);
       setError('');
     } catch { setError('URLをコピーできませんでした。'); }
   }
@@ -375,6 +386,15 @@ export default function MyOverlayPage() {
             style={{ flex: '1 1 260px', minWidth: 0 }} onFocus={e => e.target.select()} />
           <button type="button" className="submit" disabled={!url} onClick={copyUrl}>
             {copied ? 'コピーしました' : 'URLをコピー'}
+          </button>
+        </div>
+        <h2 style={{ marginTop: 28 }}>トーナメント表のURL</h2>
+        <p className="setting-help">サイト内と同じトーナメント表をOBSで表示します。スコアボードとは別のブラウザソースに登録して、OBSの目のアイコンで表示・非表示を切り替えてください。</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginTop: 14 }}>
+          <input aria-label="トーナメント表オーバーレイURL" readOnly value={bracketUrl} placeholder="読み込み中…"
+            style={{ flex: '1 1 260px', minWidth: 0 }} onFocus={e => e.target.select()} />
+          <button type="button" className="submit" disabled={!bracketUrl} onClick={copyBracketUrl}>
+            {bracketCopied ? 'コピーしました' : 'URLをコピー'}
           </button>
         </div>
         <h2 style={{ marginTop: 28 }}>OBSのブラウザソース設定</h2>
