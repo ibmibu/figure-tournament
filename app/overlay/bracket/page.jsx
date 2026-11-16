@@ -105,6 +105,8 @@ export default function ObsBracketOverlay() {
     let selectedId = '';
     let selectedRole = '';
     let version = '';
+    let lastCheckedAt = 0;
+    let realtimeConnected = false;
 
     async function refresh(force = false) {
       if (!active) return;
@@ -124,7 +126,10 @@ export default function ObsBracketOverlay() {
           ? { 'X-Overlay-Version': version } : {};
         const response = await fetch(url, { headers, cache: 'no-store' });
         if (!active) return;
-        if (response.status === 304) return;
+        if (response.status === 304) {
+          lastCheckedAt = Date.now();
+          return;
+        }
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || 'トーナメント表を取得できませんでした。');
         if (result.selectedTournamentId && !selectedId) {
@@ -137,15 +142,20 @@ export default function ObsBracketOverlay() {
                 event: '*', schema: 'public', table: 'tournament_change_signals',
                 filter: 'tournament_id=eq.' + selectedId,
               }, () => {
+                // OBS does not need hidden-source data until it is shown again.
+                if (document.visibilityState !== 'visible') return;
                 clearTimeout(debounce);
                 debounce = setTimeout(() => { void refresh(); }, 250);
-              }).subscribe();
+              }).subscribe(status => {
+                realtimeConnected = status === 'SUBSCRIBED';
+              });
           } catch (connectionError) {
             console.warn('OBS bracket Realtime unavailable:', connectionError);
           }
         }
         version = response.headers.get('x-overlay-version') || '';
         setData(result);
+        lastCheckedAt = Date.now();
         setError('');
       } catch (err) {
         if (active) setError(err.message || '通信に失敗しました。');
@@ -155,14 +165,25 @@ export default function ObsBracketOverlay() {
       }
     }
 
-    // One lightweight revision check every 15s if no change signal arrives.
-    // This is intentionally slower than the live scoreboard's score polling.
-    timer = setInterval(() => { void refresh(); }, 15000);
+    // Realtime handles routine updates. Only make a tiny revision check as a
+    // safety net: every 2 minutes while connected, or every 45 seconds when
+    // disconnected. Frequent matches reset the clock, avoiding extra queries.
+    const checkFallback = () => {
+      if (!active || document.visibilityState !== 'visible') return;
+      const thresholdMs = realtimeConnected ? 120000 : 45000;
+      if (Date.now() - lastCheckedAt >= thresholdMs) void refresh();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    timer = setInterval(checkFallback, 15000); // local timer, not a network poll
+    document.addEventListener('visibilitychange', onVisible);
     void refresh();
     return () => {
       active = false;
       clearInterval(timer);
       clearTimeout(debounce);
+      document.removeEventListener('visibilitychange', onVisible);
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
     };
   }, [owner]);
