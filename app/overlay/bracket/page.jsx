@@ -76,6 +76,19 @@ export default function ObsBracketOverlay() {
   const [data, setData] = useState(null);
   const [debug, setDebug] = useState(false);
   const [error, setError] = useState('');
+  const [viewport, setViewport] = useState({ width: WIDTH, height: HEIGHT });
+
+  // OBS browser sources can use any dimensions. Fit the entire bracket to
+  // the actual browser viewport, not the tournament site's 1000px page width.
+  useEffect(() => {
+    const updateViewport = () => setViewport({
+      width: Math.max(1, window.innerWidth),
+      height: Math.max(1, window.innerHeight),
+    });
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -162,9 +175,11 @@ export default function ObsBracketOverlay() {
     const totalWidth = rounds.length * CARD_WIDTH + (rounds.length - 1) * ROUND_GAP + 48;
     const contentHeight = 64 + (rounds[0]?.length || 1) * STEP;
     const totalHeight = contentHeight + 52;
-    const scale = Math.min(1.35, (WIDTH - 70) / totalWidth, (HEIGHT - 100) / totalHeight);
+    const scale = Math.min(1.35,
+      Math.max(1, viewport.width - 64) / totalWidth,
+      Math.max(1, viewport.height - 64) / totalHeight);
     return { totalWidth, contentHeight, totalHeight, scale };
-  }, [rounds]);
+  }, [rounds, viewport.width, viewport.height]);
 
   return <main className="tournament-detail-page tournament-bracket-overlay" aria-label="配信用トーナメント表">
     {geometry && <div className="bracket-overlay-scale" style={{
@@ -197,8 +212,13 @@ export default function ObsBracketOverlay() {
     <style jsx global>{`
       html,body{margin:0!important;padding:0!important;overflow:hidden!important;background:transparent!important}
       .tournament-bracket-overlay{
-        position:relative;box-sizing:border-box;width:${WIDTH}px;height:${HEIGHT}px;
-        overflow:hidden;background:#e9edf2!important;font-family:Arial,"Noto Sans JP",sans-serif;
+        position:fixed!important;inset:0!important;
+        box-sizing:border-box!important;
+        width:100vw!important;height:100vh!important;
+        max-width:none!important;max-height:none!important;min-width:0!important;min-height:0!important;
+        margin:0!important;padding:0!important;
+        overflow:hidden!important;background:#e9edf2!important;
+        font-family:Arial,"Noto Sans JP",sans-serif;
       }
       .tournament-bracket-overlay .bracket-overlay-scale{
         position:absolute;left:50%;top:50%;transform-origin:center center;
