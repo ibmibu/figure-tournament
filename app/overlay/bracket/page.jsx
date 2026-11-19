@@ -277,7 +277,7 @@ export default function ObsBracketOverlay() {
                   : group.title === '勝者側' && roundIndex === Number(data?.winnerRounds)
                     ? 'グランドファイナル'
                   : group.title === '勝者側' && roundIndex > Number(data?.winnerRounds)
-                    ? 'リセット決勝'
+                    ? 'グランドファイナルリセット'
                   : group.title === '勝者側' && roundIndex === Number(data?.winnerRounds) - 1
                     ? '勝者側決勝'
                   : group.title === '敗者側' && roundIndex === group.rounds.length - 1
