@@ -82,6 +82,7 @@ export default function NewTournamentPage() {
   const [seriesTag, setSeriesTag] = useState('');
   const [knownSeriesTags, setKnownSeriesTags] = useState([]);
   const [format, setFormat] = useState(3);
+  const [tournamentType, setTournamentType] = useState('single');
   const [participants, setParticipants] = useState(16);
   const [date, setDate] = useState('');
 
@@ -128,6 +129,7 @@ export default function NewTournamentPage() {
         setStreamFriendCode(t.streamFriendCode || '');
         setSeriesTag(Array.isArray(t.seriesTags) ? (t.seriesTags[0] || '') : '');
         setFormat(Number(t.bestOf) === 5 ? 5 : 3);
+        setTournamentType(t.tournamentType === 'double' ? 'double' : 'single');
         setParticipants(Number(t.participants) || 8);
         setDate(t.date ? t.date.slice(0, 10) : '');
         setHour(t.date ? t.date.slice(11, 13) : '21');
@@ -216,6 +218,7 @@ export default function NewTournamentPage() {
       seriesTags: seriesTag.trim() ? [seriesTag.trim()] : [],
       format: `BO${format}`,
       bestOf: format,
+      tournamentType,
       participants: Number(participants),
       date: date ? `${date}T${hour}:00` : '',
       stages: selectedStages,
@@ -241,7 +244,7 @@ export default function NewTournamentPage() {
         body: JSON.stringify({
           tournament: editingStarted ? Object.fromEntries(
             Object.entries(tournament).filter(([key]) => ![
-              'format', 'bestOf', 'participants', 'stages', 'stageRejects',
+              'format', 'bestOf', 'tournamentType', 'participants', 'stages', 'stageRejects',
               'autoSeed', 'characterDeclaration', 'stageSettings',
             ].includes(key))
           ) : tournament,
@@ -292,7 +295,13 @@ export default function NewTournamentPage() {
           </div>
         </fieldset>
 
-
+        <fieldset className="setup-group" disabled={editingStarted}>
+          <legend>トーナメント方式</legend>
+          <div className="format-options">
+            <button type="button" className={tournamentType === 'single' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'single'} onClick={() => setTournamentType('single')}><strong>シングル</strong><small>1敗で敗退</small></button>
+            <button type="button" className={tournamentType === 'double' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'double'} onClick={() => setTournamentType('double')}><strong>ダブル</strong><small>2敗で敗退</small></button>
+          </div>
+        </fieldset>
 
         <label>参加人数
           <select value={participants} disabled={editingStarted} onChange={event => setParticipants(Number(event.target.value))}>
