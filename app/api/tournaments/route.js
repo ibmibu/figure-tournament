@@ -471,8 +471,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
     if (input.characterDeclarationCount !== undefined &&
         (!Number.isInteger(input.characterDeclarationCount) || input.characterDeclarationCount < 1 ||
-         input.characterDeclarationCount > 10))
-      return NextResponse.json({ error: '宣言するキャラ数は1～10で指定してください。' }, { status: 400 });
+         input.characterDeclarationCount > 5))
+      return NextResponse.json({ error: '宣言するキャラ数は1～5で指定してください。' }, { status: 400 });
     const tournament = { ...safeTournament, tournamentType: input.tournamentType === 'double' ? 'double' : 'single',
       characterDeclarationCount: input.characterDeclarationCount ?? 1, characterRestriction: input.characterRestriction === true,
       name, status: '募集中', createdAt: new Date().toISOString(), ownerUserId: user.id };
@@ -544,10 +544,16 @@ export async function PUT(request) {
         return NextResponse.json({ error: '開始済みの大会ではトーナメント方式を変更できません。' }, { status: 409 });
       if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
         return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
-      if (input.characterDeclarationCount !== undefined &&
+      // Preserve an already stored 6–10 character setting when editing an
+      // older tournament, but never allow creating or switching to one.
+      const preservedLegacyCount = input.characterDeclarationCount !== undefined &&
+        input.characterDeclarationCount === existing.characterDeclarationCount &&
+        Number.isInteger(existing.characterDeclarationCount) &&
+        existing.characterDeclarationCount >= 6 && existing.characterDeclarationCount <= 10;
+      if (input.characterDeclarationCount !== undefined && !preservedLegacyCount &&
           (!Number.isInteger(input.characterDeclarationCount) ||
-           input.characterDeclarationCount < 1 || input.characterDeclarationCount > 10))
-        return NextResponse.json({ error: '宣言するキャラ数は1～10で指定してください。' }, { status: 400 });
+           input.characterDeclarationCount < 1 || input.characterDeclarationCount > 5))
+        return NextResponse.json({ error: '宣言するキャラ数は1～5で指定してください。' }, { status: 400 });
       // Declaration requirements are frozen once collecting starts. Otherwise
       // participants who already submitted would have an invalid entry.
       if (existing.declarationPhase && (existing.declarationPhase === 'collecting' ||
