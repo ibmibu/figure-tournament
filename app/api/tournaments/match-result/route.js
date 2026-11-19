@@ -2,6 +2,7 @@ import { withStatsSnapshot } from '../../../../lib/stats-snapshot';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getBracketPlacements, repairPrematureAdvances } from '../../../../lib/tournament-bracket-admin';
+import { isDoubleBracket, reconcileDoubleBracket } from '../../../../lib/tournament-double-elim';
 
 export const dynamic = 'force-dynamic';
 const admin = () => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -95,7 +96,9 @@ export async function POST(request) {
           state.complete = true;
           state.winnerId = winnerId;
           found.winnerId = winnerId;
-          if (roundIndex < bracket.rounds.length - 1) {
+          if (isDoubleBracket(bracket)) {
+            reconcileDoubleBracket(bracket);
+          } else if (roundIndex < bracket.rounds.length - 1) {
             const next = bracket.rounds[roundIndex + 1][Math.floor(matchIndex / 2)];
             next[matchIndex % 2 === 0 ? 'player1' : 'player2'] = [found.player1, found.player2].find(p => String(p.id) === String(winnerId));
             next.winnerId = null;
@@ -106,7 +109,7 @@ export async function POST(request) {
           state.currentGame = { firstPlayerId: winnerId, previousWinnerId: winnerId, rejects: [], rejectVotes: {}, stage: current.stageRejects ? null : 'なし', chooserId: current.stageRejects ? null : (p1 === String(winnerId) ? found.player2.id : found.player1.id), results: {} };
         }
       }
-      bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
+      if (!isDoubleBracket(bracket)) bracket.complete = Boolean(bracket.rounds.at(-1)?.[0]?.winnerId);
       const isStreamResult = Boolean(found.winnerId) && String(current.streamMatchId ?? '') === String(matchId);
       const streamHold = isStreamResult ? { streamHoldMatchId: matchId, streamHoldUntil: new Date(Date.now() + 60000).toISOString() } : {};
       const updated = { ...current, ...streamHold, bracket, status: bracket.complete ? '終了' : current.status, resultPlacements: bracket.complete ? getBracketPlacements(bracket) : null, completedAt: bracket.complete ? (current.completedAt || new Date().toISOString()) : null };
