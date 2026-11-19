@@ -14,19 +14,22 @@ function roundName(index, total) {
     : index === total - 2 ? '準決勝' : `第${index + 1}回戦`;
 }
 
-function MatchCard({ match, rounds, round, matchIndex }) {
+function MatchCard({ match, rounds, round, matchIndex, isDouble = false }) {
   const { player1, player2, winnerId, resultType } = match;
   const bye = round === 0 && Boolean(player1) !== Boolean(player2);
-  const top = 64 + (((matchIndex + 0.5) * (2 ** round)) - 0.5) * STEP;
+  const ratio = (rounds[0]?.length || 1) / (rounds[round]?.length || 1);
+  const top = 64 + (((matchIndex + 0.5) * ratio) - 0.5) * STEP;
   if (bye) return <div className="bracket-bye-spacer" style={{ top }} aria-hidden="true" />;
 
   const isWinner = player => player && winnerId != null &&
     String(player.id) === String(winnerId);
   const isLoser = player => player && winnerId != null && !isWinner(player);
-  const showName = (side) => round === 0 ||
+  const showName = (side) => isDouble || round === 0 ||
     Boolean(rounds[round - 1]?.[matchIndex * 2 + side]?.winnerId);
-  const isLastRound = round === rounds.length - 1;
   const siblings = rounds[round] || [];
+  const nextRound = rounds[round + 1];
+  const pairToNext = Boolean(nextRound && siblings.length === nextRound.length * 2);
+  const straightToNext = Boolean(nextRound && siblings.length === nextRound.length);
   return <div className="bracket-match"
     style={{ top }} aria-label={[player1?.name || '未定', player2?.name || '未定'].join(' 対 ')}>
     <div className="match-players">
@@ -43,10 +46,10 @@ function MatchCard({ match, rounds, round, matchIndex }) {
           </strong>
         </div>)}
     </div>
-    {!isLastRound && matchIndex % 2 === 0 && matchIndex + 1 < siblings.length && (() => {
+    {pairToNext && matchIndex % 2 === 0 && matchIndex + 1 < siblings.length && (() => {
       const next = siblings[matchIndex + 1];
       const nextVisible = !(round === 0 && Boolean(next.player1) !== Boolean(next.player2));
-      const distance = STEP * (2 ** round);
+      const distance = STEP * ratio;
       return <svg className="bracket-connector" width="38" height={distance}
         viewBox={`0 0 38 ${distance}`} aria-hidden="true">
         <path d={nextVisible
@@ -55,17 +58,21 @@ function MatchCard({ match, rounds, round, matchIndex }) {
           fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>;
     })()}
-    {!isLastRound && matchIndex % 2 === 1 &&
+    {pairToNext && matchIndex % 2 === 1 &&
       !(round === 0 && Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2)) &&
       <svg className="bracket-connector" width="19" height="2" viewBox="0 0 19 2" aria-hidden="true">
         <path d="M 0 1 H 19" fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>}
-    {!isLastRound && matchIndex % 2 === 1 && round === 0 &&
+    {pairToNext && matchIndex % 2 === 1 && round === 0 &&
       Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2) &&
       <svg className="bracket-connector bracket-connector-up" width="38" height="104"
         viewBox="0 0 38 104" aria-hidden="true">
         <path d="M 0 104 H 19 V 52 H 38" fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>}
+    {straightToNext && <svg className="bracket-connector" width="38" height="2"
+      viewBox="0 0 38 2" aria-hidden="true">
+      <path d="M 0 1 H 38" fill="none" stroke="#DCEBFF" strokeWidth="2" />
+    </svg>}
   </div>;
 }
 
