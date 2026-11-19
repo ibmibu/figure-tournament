@@ -1935,6 +1935,7 @@ export default function TournamentPage() {
         <div><span>参加人数</span><strong>{joinedPlayers.length}/{tournament.participants || 8}人</strong></div>
         <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
+        {tournament.characterDeclaration && <div><span>キャラ宣言</span><strong>{declarationCount(tournament)}キャラ</strong></div>}
         {tournament.characterRestriction === true && <div><span>キャラ制限</span><strong>あり</strong></div>}
       </div>
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
