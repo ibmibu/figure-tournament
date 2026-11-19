@@ -250,6 +250,9 @@ export async function GET(request) {
       }));
       return reply({
         name: t.name || '', bestOf: Number(t.bestOf) === 5 ? 5 : 3,
+        bracketType: t.bracket?.type === 'double' ? 'double' : 'single',
+        winnerRounds: t.bracket?.type === 'double' ? t.bracket.winnerRounds : null,
+        loserRounds: t.bracket?.type === 'double' ? t.bracket.loserRounds : null,
         rounds: publicRounds,
       });
     }
