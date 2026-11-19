@@ -153,7 +153,7 @@ function isFinishedTournamentRow(row) {
 // Supabase -> Vercel boundary. Unlike the old SQL view, new public setting
 // fields such as characterRestriction cannot silently be omitted.
 const LIVE_TOURNAMENT_FIELDS = [
-  'name', 'date', 'status', 'format', 'bestOf', 'participants',
+  'name', 'date', 'status', 'format', 'bestOf', 'tournamentType', 'participants',
   'joinedPlayers', 'bracket', 'stages', 'stageRejects', 'stageSettings',
   'stageActionRevision', 'ownerUserId', 'characterDeclaration',
   'characterRestriction', 'declarationPhase', 'characterDeclarations',
@@ -461,13 +461,15 @@ export async function POST(request) {
 
     // Explicit allowlist: client input must never initialize privileged or match-result fields.
     const allowed = ['id', 'description', 'streamUrl', 'streamFriendCode', 'name', 'seriesTags',
-      'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed',
+      'format', 'bestOf', 'tournamentType', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed',
       'characterDeclaration', 'characterRestriction', 'stageSettings'];
     const safeTournament = Object.fromEntries(allowed.filter(key =>
       Object.prototype.hasOwnProperty.call(input, key)).map(key => [key, input[key]]));
+    if (input.tournamentType !== undefined && !['single', 'double'].includes(input.tournamentType))
+      return NextResponse.json({ error: 'トーナメント方式が不正です。' }, { status: 400 });
     if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
       return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
-    const tournament = { ...safeTournament, characterRestriction: input.characterRestriction === true,
+    const tournament = { ...safeTournament, tournamentType: input.tournamentType === 'double' ? 'double' : 'single', characterRestriction: input.characterRestriction === true,
       name, status: '募集中', createdAt: new Date().toISOString(), ownerUserId: user.id };
     const supabase = getAdminClient();
     // Preserve legacy tournament IDs, but reject matching existing records.
@@ -528,12 +530,14 @@ export async function PUT(request) {
         return NextResponse.json({ error: '大会設定を編集する権限がありません。' }, { status: 403 });
       if (existing.bracket && !siteAdmin)
         return NextResponse.json({ error: '大会開始後は設定を編集できません。' }, { status: 409 });
+      if (input.tournamentType !== undefined && !['single', 'double'].includes(input.tournamentType))
+        return NextResponse.json({ error: 'トーナメント方式が不正です。' }, { status: 400 });
       if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
         return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
 
       const allSettings = [
         'name', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags',
-        'format', 'bestOf', 'participants', 'date', 'stages', 'stageRejects',
+        'format', 'bestOf', 'tournamentType', 'participants', 'date', 'stages', 'stageRejects',
         'autoSeed', 'characterDeclaration', 'characterRestriction', 'stageSettings',
       ];
       // Do not change a live event's rules, bracket size or seeding partway
