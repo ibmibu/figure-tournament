@@ -98,6 +98,7 @@ export default function NewTournamentPage() {
   const [stageRejects, setStageRejects] = useState(false);
   const [autoSeed, setAutoSeed] = useState(false);
   const [characterDeclaration, setCharacterDeclaration] = useState(false);
+  const [characterDeclarationCount, setCharacterDeclarationCount] = useState(1);
   const [characterRestriction, setCharacterRestriction] = useState(false);
   const [editingStarted, setEditingStarted] = useState(false);
   const [starterStages, setStarterStages] = useState([...DEFAULT_STARTERS]);
@@ -137,6 +138,7 @@ export default function NewTournamentPage() {
         setStageRejects(Boolean(t.stageRejects));
         setAutoSeed(Boolean(t.autoSeed));
         setCharacterDeclaration(Boolean(t.characterDeclaration));
+        setCharacterDeclarationCount(Number.isInteger(t.characterDeclarationCount) && t.characterDeclarationCount >= 1 && t.characterDeclarationCount <= 10 ? t.characterDeclarationCount : 1);
         setCharacterRestriction(Boolean(t.characterRestriction));
         setEditingStarted(Boolean(t.bracket && !t.bracket.complete));
         setStarterStages(t.stageSettings?.starterStages || [...DEFAULT_STARTERS]);
@@ -225,6 +227,7 @@ export default function NewTournamentPage() {
       stageRejects,
       autoSeed,
       characterDeclaration,
+      characterDeclarationCount,
       characterRestriction,
       stageSettings: stageRejects ? {
         starterStages: effectiveStarters,
@@ -245,7 +248,7 @@ export default function NewTournamentPage() {
           tournament: editingStarted ? Object.fromEntries(
             Object.entries(tournament).filter(([key]) => ![
               'format', 'bestOf', 'tournamentType', 'participants', 'stages', 'stageRejects',
-              'autoSeed', 'characterDeclaration', 'stageSettings',
+              'autoSeed', 'characterDeclaration', 'characterDeclarationCount', 'stageSettings',
             ].includes(key))
           ) : tournament,
           editSettings: Boolean(editId),
@@ -298,8 +301,8 @@ export default function NewTournamentPage() {
         <fieldset className="setup-group" disabled={editingStarted}>
           <legend>トーナメント方式</legend>
           <div className="format-options">
-            <button type="button" className={tournamentType === 'single' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'single'} onClick={() => setTournamentType('single')}><strong>シングル</strong><small>1敗で敗退</small></button>
-            <button type="button" className={tournamentType === 'double' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'double'} onClick={() => setTournamentType('double')}><strong>ダブル</strong><small>2敗で敗退</small></button>
+            <button type="button" className={tournamentType === 'single' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'single'} onClick={() => setTournamentType('single')}><strong>シングル</strong><small>シングルエリミ</small></button>
+            <button type="button" className={tournamentType === 'double' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'double'} onClick={() => setTournamentType('double')}><strong>ダブル</strong><small>ダブルエリミ</small></button>
           </div>
         </fieldset>
 
@@ -372,7 +375,15 @@ export default function NewTournamentPage() {
         </fieldset>
 
         <fieldset className="setup-group" disabled={editingStarted}>
-          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ宣言</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="キャラ宣言の説明">?</summary><span className="create-help-popover">参加者が使用キャラクターとカラーを大会前に宣言します。送信後は変更できません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterDeclaration ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterDeclaration} onChange={event => setCharacterDeclaration(event.target.checked)} aria-label="キャラ宣言" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ宣言</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="キャラ宣言の説明">?</summary><span className="create-help-popover">参加者が指定された数の異なる使用キャラクターとカラーを大会前に宣言します。送信後は変更できません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterDeclaration ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterDeclaration} onChange={event => setCharacterDeclaration(event.target.checked)} aria-label="キャラ宣言" /><span className="create-switch-track" aria-hidden="true" /></label></div>
+          {characterDeclaration && <div className="reject-settings">
+            <label>宣言するキャラ数
+              <select value={characterDeclarationCount} onChange={event => setCharacterDeclarationCount(Number(event.target.value))}>
+                {Array.from({ length: 10 }, (_, i) => i + 1).map(count => <option value={count} key={count}>{count}キャラ</option>)}
+              </select>
+            </label>
+            <small className="setting-help">各参加者が指定した数の異なるキャラクターを宣言します。</small>
+          </div>}
         </fieldset>
         <fieldset className="setup-group">
           <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">キャラ制限</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="キャラ制限の説明">?</summary><span className="create-help-popover">使用できるキャラを限定する大会では「あり」にしてください。優勝と使用キャラ回数は通常どおり集計し、単騎達成にはカウントしません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{characterRestriction ? 'あり' : 'なし'}</span><input type="checkbox" checked={characterRestriction} onChange={event => setCharacterRestriction(event.target.checked)} aria-label="キャラ制限" /><span className="create-switch-track" aria-hidden="true" /></label></div>
