@@ -25,7 +25,7 @@ function DoubleRoundGroup({ title, tournament, rounds, roundIndices, winnerRound
           if (localRi === winnerRoundCount - 1) heading = '勝者側決勝';
           else if (winnerRoundCount > 2 && localRi === winnerRoundCount - 2) heading = '準決勝';
           else if (localRi === winnerRoundCount) heading = 'グランドファイナル';
-          else if (localRi > winnerRoundCount) heading = 'リセット決勝';
+          else if (localRi > winnerRoundCount) heading = 'グランドファイナルリセット';
         }
         if (title === '敗者側' && localRi === rounds.length - 1) heading = '敗者側決勝';
         return <div className="bracket-round" key={globalRi}>
