@@ -2045,3 +2045,12 @@ body .tournament-detail-page .bracket-admin-log-dot{
 @media(max-width:600px){
   .match-opponent-friend-code .friend-code-reveal{width:100%}
 }
+
+/* Multi-character declaration form: preserve the site's existing input styling. */
+.tournament-detail-page .declaration-multi-form{display:block;max-width:700px;margin-top:18px}
+.tournament-detail-page .declaration-choices{display:grid;gap:14px;margin:0 0 14px}
+.tournament-detail-page .declaration-choice-row{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:12px;align-items:end}
+.tournament-detail-page .declaration-choice-row label{display:flex;flex-direction:column;gap:6px;min-width:0}
+.tournament-detail-page .declaration-choice-row select{box-sizing:border-box;display:block;width:100%;min-width:0;height:44px;padding:8px 10px}
+.tournament-detail-page .declaration-multi-form .submit{margin-top:8px}
+@media(max-width:480px){.tournament-detail-page .declaration-choice-row{grid-template-columns:minmax(0,1fr) 86px;gap:8px}}
