@@ -220,20 +220,40 @@ export default function ObsBracketOverlay() {
   }, [owner]);
 
   const rounds = Array.isArray(data?.rounds) ? data.rounds : [];
+  const isDouble = data?.bracketType === 'double';
+  const groups = useMemo(() => {
+    if (!rounds.length) return [];
+    const makeGroup = (title, slice) => {
+      if (!slice.length) return null;
+      const contentHeight = 64 + (slice[0]?.length || 1) * STEP;
+      const bracketHeight = contentHeight + 48;
+      const totalWidth = slice.length * CARD_WIDTH +
+        (slice.length - 1) * ROUND_GAP + 48;
+      const titleHeight = title ? 44 : 0;
+      return { title, rounds: slice, contentHeight, bracketHeight,
+        totalWidth, sectionHeight: bracketHeight + titleHeight };
+    };
+    if (!isDouble) return [makeGroup('', rounds)];
+    const wc = Math.max(1, Number(data?.winnerRounds) || 1);
+    const lc = Math.max(0, Number(data?.loserRounds) || 0);
+    const gfStart = wc + lc;
+    const reset = rounds[gfStart + 1]?.[0];
+    return [
+      makeGroup('勝者側', rounds.slice(0, wc)),
+      makeGroup('敗者側', rounds.slice(wc, gfStart)),
+      makeGroup('グランドファイナル',
+        rounds.slice(gfStart, gfStart + (reset?.player1 ? 2 : 1))),
+    ].filter(Boolean);
+  }, [rounds, isDouble, data?.winnerRounds, data?.loserRounds]);
   const geometry = useMemo(() => {
-    if (!rounds.length) return null;
-    // Fit the bracket itself (no title/BO header). Its CSS has 24px horizontal
-    // padding and 20px/28px vertical padding around the round geometry.
-    const totalWidth = rounds.length * CARD_WIDTH + (rounds.length - 1) * ROUND_GAP + 48;
-    const contentHeight = 64 + (rounds[0]?.length || 1) * STEP;
-    const bracketHeight = contentHeight + 48;
-    // Give the actual diagram up to 96% of OBS width/height. Keeping
-    // all scaling on the outer wrapper preserves the website's bracket layout.
+    if (!groups.length) return null;
+    const totalWidth = Math.max(...groups.map(g => g.totalWidth));
+    const totalHeight = groups.reduce((total, group) => total + group.sectionHeight, 0);
     const scale = Math.min(3,
       Math.max(1, viewport.width * 0.96) / totalWidth,
-      Math.max(1, viewport.height * 0.96) / bracketHeight);
-    return { totalWidth, contentHeight, bracketHeight, totalHeight: bracketHeight, scale };
-  }, [rounds, viewport.width, viewport.height]);
+      Math.max(1, viewport.height * 0.96) / totalHeight);
+    return { totalWidth, totalHeight, scale };
+  }, [groups, viewport.width, viewport.height]);
 
   return <main className="tournament-detail-page tournament-bracket-overlay" aria-label="配信用トーナメント表">
     {geometry && <div className="bracket-overlay-scale" style={{
@@ -241,18 +261,28 @@ export default function ObsBracketOverlay() {
       transform: `translate(-50%, -50%) scale(${geometry.scale})`,
     }}>
       <section className="tournament-live-panel">
-        <div className="bracket-rounds" style={{
-          '--bracket-height': geometry.contentHeight + 'px',
-          width: geometry.totalWidth, height: geometry.bracketHeight,
-        }}>
-          {rounds.map((round, roundIndex) =>
-            <div className="bracket-round" key={roundIndex}>
-              <strong>{roundName(roundIndex, rounds.length)}</strong>
-              {round.map((match, index) =>
-                <MatchCard key={match.id || index} match={match} rounds={rounds}
-                  round={roundIndex} matchIndex={index} />)}
-            </div>)}
-        </div>
+        {groups.map(group => <div key={group.title || 'single'} className="obs-bracket-group"
+          style={{ height: group.sectionHeight }}>
+          {group.title && <h3 className="obs-bracket-group-title">{group.title}</h3>}
+          <div className="bracket-rounds" style={{
+            '--bracket-height': group.contentHeight + 'px',
+            width: group.totalWidth, height: group.bracketHeight, marginInline: 'auto',
+          }}>
+            {group.rounds.map((round, roundIndex) =>
+              <div className="bracket-round" key={roundIndex}>
+                <strong>{!isDouble ? roundName(roundIndex, group.rounds.length)
+                  : group.title === 'グランドファイナル'
+                    ? (roundIndex ? 'リセット決勝' : 'グランドファイナル')
+                  : roundIndex === group.rounds.length - 1
+                    ? (group.title === '勝者側' ? '勝者側決勝' : '敗者側決勝')
+                    : group.title === '勝者側' && roundIndex === group.rounds.length - 2
+                    ? '準決勝' : '第' + (roundIndex + 1) + '回戦'}</strong>
+                {round.map((match, index) =>
+                  <MatchCard key={match.id || index} match={match} rounds={group.rounds}
+                    round={roundIndex} matchIndex={index} isDouble={isDouble} />)}
+              </div>)}
+          </div>
+        </div>)}
       </section>
     </div>}
     {debug && <p className="bracket-overlay-debug">
@@ -283,6 +313,10 @@ export default function ObsBracketOverlay() {
       .tournament-bracket-overlay .tournament-live-panel .bracket-rounds{
         box-sizing:border-box!important;overflow:visible!important;margin:0!important;
         border-radius:0!important;background:transparent!important;
+      }
+      .tournament-bracket-overlay .obs-bracket-group-title{
+        height:44px;margin:0;padding:10px 24px;color:#f5f8fc;
+        font-size:18px;font-weight:800;
       }
       .tournament-bracket-overlay .tournament-live-panel .bracket-round{
         flex:0 0 ${CARD_WIDTH}px!important;min-width:${CARD_WIDTH}px!important;width:${CARD_WIDTH}px!important;
