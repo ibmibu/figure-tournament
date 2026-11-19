@@ -4,7 +4,7 @@ import { editableSetScores } from '../lib/tournament-set-result';
 
 const CARD_STEP = 104;
 
-function DoubleRoundGroup({ title, tournament, rounds, startRound, owner, userId,
+function DoubleRoundGroup({ title, tournament, rounds, roundIndices, winnerRoundCount, owner, userId,
   adminSelection, onAdminSelect, onStartMatch, scoreDraft, streamMatchId }) {
   if (!rounds.length) return null;
   const baseCount = rounds[0].length;
@@ -13,16 +13,21 @@ function DoubleRoundGroup({ title, tournament, rounds, startRound, owner, userId
     <h3 className="double-bracket-title">{title}</h3>
     <div className="bracket-rounds" style={{ '--bracket-height': height + 'px' }}>
       {rounds.map((round, localRi) => {
-        const globalRi = startRound + localRi;
+        const globalRi = roundIndices[localRi];
         const next = rounds[localRi + 1];
         const ratio = baseCount / round.length;
         const isPair = Boolean(next && round.length === next.length * 2);
         const isStraight = Boolean(next && round.length === next.length);
         let heading = '第' + (localRi + 1) + '回戦';
-        if (title === '勝者側' && localRi === rounds.length - 1) heading = '勝者側決勝';
-        if (title === '勝者側' && rounds.length > 2 && localRi === rounds.length - 2) heading = '準決勝';
+        if (title === '勝者側') {
+          // Grand finals continue rightward from the winners final, on the
+          // same horizontal row. Only the losers bracket occupies a new row.
+          if (localRi === winnerRoundCount - 1) heading = '勝者側決勝';
+          else if (winnerRoundCount > 2 && localRi === winnerRoundCount - 2) heading = '準決勝';
+          else if (localRi === winnerRoundCount) heading = 'グランドファイナル';
+          else if (localRi > winnerRoundCount) heading = 'リセット決勝';
+        }
         if (title === '敗者側' && localRi === rounds.length - 1) heading = '敗者側決勝';
-        if (title === 'グランドファイナル') heading = localRi === 0 ? 'グランドファイナル' : 'リセット決勝';
         return <div className="bracket-round" key={globalRi}>
           <strong>{heading}</strong>
           {round.map((match, mi) => {
@@ -114,16 +119,21 @@ export default function DoubleBracketView({ tournament, owner, userId, adminSele
   const wc = bracket.winnerRounds;
   const lc = bracket.loserRounds;
   const reset = bracket.rounds[wc + lc + 1]?.[0];
+  const finals = bracket.rounds.slice(wc + lc, wc + lc + (reset?.player1 ? 2 : 1));
+  const winnerRounds = bracket.rounds.slice(0, wc);
+  const loserRounds = bracket.rounds.slice(wc, wc + lc);
   const groups = [
-    { title: '勝者側', start: 0, rounds: bracket.rounds.slice(0, wc) },
-    { title: '敗者側', start: wc, rounds: bracket.rounds.slice(wc, wc + lc) },
-    { title: 'グランドファイナル', start: wc + lc,
-      rounds: bracket.rounds.slice(wc + lc, wc + lc + (reset?.player1 ? 2 : 1)) },
+    { title: '勝者側', rounds: [...winnerRounds, ...finals],
+      roundIndices: [...winnerRounds.map((_, i) => i), ...finals.map((_, i) => wc + lc + i)],
+      winnerRoundCount: wc },
+    { title: '敗者側', rounds: loserRounds,
+      roundIndices: loserRounds.map((_, i) => wc + i), winnerRoundCount: 0 },
   ];
   return <div className="double-bracket-view">
     {groups.filter(group => group.rounds.length).map(group =>
       <DoubleRoundGroup key={group.title} title={group.title}
-        tournament={tournament} rounds={group.rounds} startRound={group.start}
+        tournament={tournament} rounds={group.rounds}
+        roundIndices={group.roundIndices} winnerRoundCount={group.winnerRoundCount}
         owner={owner} userId={userId}
         adminSelection={adminSelection} onAdminSelect={onAdminSelect}
         onStartMatch={onStartMatch} scoreDraft={scoreDraft}
