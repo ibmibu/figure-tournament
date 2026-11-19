@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
 import { removeCachedTournament } from '../../../lib/tournament-cache';
-import { getCharacterReportPlacement } from '../../../lib/tournament-bracket-admin';
+import { getCharacterReportPlacement, getBracketPlacements } from '../../../lib/tournament-bracket-admin';
+import { makeDoubleBracket, isDoubleBracket, reconcileDoubleBracket } from '../../../lib/tournament-double-elim';
+import DoubleBracketView from '../../../components/DoubleBracketView';
 import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 
@@ -753,6 +755,7 @@ export default function TournamentPage() {
       }
     }
     const slots = positions.map(rank => entrants[rank] || null);
+    if (tournament.tournamentType === 'double') return makeDoubleBracket(slots);
     const rounds = [];
     let count = size / 2;
     for (let round = 0; count >= 1; round++, count = count / 2) {
@@ -777,6 +780,7 @@ export default function TournamentPage() {
   }
 
   function bracketPlacements(bracket) {
+    if (isDoubleBracket(bracket)) return getBracketPlacements(bracket);
     if (!bracket?.complete || !bracket.rounds?.length) return [];
     const rounds = bracket.rounds;
     const winner = rounds[rounds.length - 1]?.[0]?.winnerId;
@@ -1247,7 +1251,8 @@ export default function TournamentPage() {
       state.winnerId = winnerId;
       match.winnerId = winnerId;
       const loserId = match.player1.id === winnerId ? match.player2.id : match.player1.id;
-      if (roundIndex < bracket.rounds.length - 1) {
+      if (isDoubleBracket(bracket)) reconcileDoubleBracket(bracket);
+      else if (roundIndex < bracket.rounds.length - 1) {
         const nextMatch = bracket.rounds[roundIndex + 1][Math.floor(matchIndex / 2)];
         nextMatch[matchIndex % 2 === 0 ? 'player1' : 'player2'] = [match.player1, match.player2].find(p => p?.id === winnerId) || null;
         nextMatch.winnerId = null;
@@ -1270,7 +1275,7 @@ export default function TournamentPage() {
         results: {},
       };
     }
-    bracket.complete = bracket.rounds[bracket.rounds.length - 1][0].winnerId != null;
+    if (!isDoubleBracket(bracket)) bracket.complete = bracket.rounds[bracket.rounds.length - 1][0].winnerId != null;
     const isStreamResult = Boolean(match.winnerId) && String(tournament.streamMatchId ?? tournament.effectiveStreamMatchId ?? '') === String(match.id);
     const streamHold = isStreamResult ? { streamHoldMatchId: match.id, streamHoldUntil: new Date(Date.now() + 60000).toISOString() } : {};
     const next = { ...tournament, ...streamHold, bracket, status: bracket.complete ? '終了' : '対戦中', resultPlacements: bracket.complete ? bracketPlacements(bracket) : null, completedAt: bracket.complete ? new Date().toISOString() : null };
@@ -1794,7 +1799,15 @@ export default function TournamentPage() {
           </>}
           <p>変更すると、このカードにつながる後続の対戦結果も必要に応じてリセットされます。</p>
         </section></div>}
-        <div className="bracket-rounds" style={{ "--bracket-height": `${64 + tournament.bracket.rounds[0].length * 104}px` }}>{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
+        {isDoubleBracket(tournament.bracket) ? <DoubleBracketView tournament={tournament}
+          owner={isOwner} userId={currentUserId} adminSelection={adminMatchSelection}
+          onAdminSelect={(roundIndex, matchIndex) => {
+            setAdminMatchSelection({ roundIndex, matchIndex });
+            setShowForfeitChoices(false);
+            setShowScoreEditor(false);
+          }}
+          onStartMatch={startMatch} scoreDraft={scoreDraft} streamMatchId={streamMatchId} />
+          : <div className="bracket-rounds" style={{ "--bracket-height": `${64 + tournament.bracket.rounds[0].length * 104}px` }}>{tournament.bracket.rounds.map((round, ri) => <div className="bracket-round" key={ri}><strong>{ri === tournament.bracket.rounds.length - 1 ? '決勝' : ri === tournament.bracket.rounds.length - 2 ? '準決勝' : `第${ri + 1}回戦`}</strong>{round.map((match, mi) => {
           const state = match.matchState;
           const game = state?.currentGame;
           const { selected, starter } = getMatchStageLists();
@@ -1840,7 +1853,7 @@ export default function TournamentPage() {
             {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 1 && !(ri === 0 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2)) && <svg className="bracket-connector" width="19" height="2" viewBox="0 0 19 2" aria-hidden="true"><path d="M 0 1 H 19" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
             {ri < tournament.bracket.rounds.length - 1 && mi % 2 === 1 && ri === 0 && Boolean(round[mi - 1]?.player1) !== Boolean(round[mi - 1]?.player2) && <svg className="bracket-connector bracket-connector-up" width="38" height="104" viewBox="0 0 38 104" aria-hidden="true"><path d="M 0 104 H 19 V 52 H 38" fill="none" stroke="#3170b8" strokeWidth="2" /></svg>}
           </div>;
-        })}</div>)}</div>
+        })}</div>)}</div>}
 
 
         {isOwner && tournament.bracket.complete && <button type="button" onClick={() => window.confirm('トーナメント表をリセットしますか？順位結果も消えます。') && saveBracket({ ...tournament, status: '募集中', bracket: null, resultPlacements: null, completedAt: null })}>トーナメントをリセット</button>}
