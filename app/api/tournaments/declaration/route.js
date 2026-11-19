@@ -1,4 +1,5 @@
 import { REPORT_FIGHTERS } from '../../../../lib/fighter-order';
+import { declarationCount, declaredCharacters, validDeclaration } from '../../../../lib/character-declarations';
 import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -15,7 +16,7 @@ export async function POST(request) {
     const db = admin();
     const { data: auth, error: authError } = await db.auth.getUser(token);
     if (authError || !auth.user) return NextResponse.json({ error: 'ログインを確認できません。' }, { status: 401 });
-    const { id, action, character, color } = await request.json();
+    const { id, action, character, color, characters } = await request.json();
     const { data: row, error } = await db.from('tournaments').select('data').eq('id', String(id || '')).maybeSingle();
     if (error) throw error;
     if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
@@ -28,16 +29,26 @@ export async function POST(request) {
       const player = players.find(p => !p.isDemo && String(p.userId || p.id) === String(auth.user.id));
       if (!player) return NextResponse.json({ error: '大会参加者のみ宣言できます。' }, { status: 403 });
       if (declarations[String(player.id)]) return NextResponse.json({ error: '宣言済みの内容は変更できません。' }, { status: 409 });
-      const name = String(character || '').trim();
-      if (!REPORT_FIGHTERS.includes(name) || !/^[1-8]P$/.test(String(color))) return NextResponse.json({ error: 'キャラクター名とカラーを確認してください。' }, { status: 400 });
-      next = { ...t, characterDeclarations: { ...declarations, [String(player.id)]: { character: name, color: String(color) } } };
+      const submitted = Array.isArray(characters) ? characters :
+        (declarationCount(t) === 1 ? [{ fighter: character, color }] : []);
+      const entry = { characters: submitted };
+      if (!validDeclaration(t, entry, REPORT_FIGHTERS))
+        return NextResponse.json({ error: `異なるキャラクターを${declarationCount(t)}キャラ、正しいカラーとともに宣言してください。` }, { status: 400 });
+      // Preserve the old 1-character fields for readers of legacy tournaments.
+      const normalized = declaredCharacters(entry);
+      next = { ...t, characterDeclarations: { ...declarations, [String(player.id)]: {
+        character: normalized[0].fighter, color: normalized[0].color,
+        characters: normalized,
+      } } };
     } else if (action === 'publish') {
       if (t.ownerUserId !== auth.user.id) return NextResponse.json({ error: '主催者のみ公開できます。' }, { status: 403 });
-      if (!players.length || players.some(p => !declarations[String(p.id)])) return NextResponse.json({ error: '全員の宣言がそろっていません。' }, { status: 409 });
+      if (!players.length || players.some(p =>
+        !validDeclaration(t, declarations[String(p.id)], REPORT_FIGHTERS)))
+        return NextResponse.json({ error: `全員の${declarationCount(t)}キャラ宣言がそろっていません。` }, { status: 409 });
       const reports = { ...(t.characterReports || {}) };
       for (const player of players) {
         const declaration = declarations[String(player.id)];
-        reports[String(player.id)] = { characters: [{ fighter: declaration.character, color: declaration.color }] };
+        reports[String(player.id)] = { characters: declaredCharacters(declaration) };
       }
       next = { ...t, declarationPhase: 'published', characterReports: reports };
     } else return NextResponse.json({ error: '操作が不正です。' }, { status: 400 });
