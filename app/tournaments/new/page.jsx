@@ -379,7 +379,8 @@ export default function NewTournamentPage() {
           {characterDeclaration && <div className="reject-settings">
             <label>宣言するキャラ数
               <select value={characterDeclarationCount} onChange={event => setCharacterDeclarationCount(Number(event.target.value))}>
-                {Array.from({ length: 10 }, (_, i) => i + 1).map(count => <option value={count} key={count}>{count}キャラ</option>)}
+                {Array.from({ length: 5 }, (_, i) => i + 1).map(count => <option value={count} key={count}>{count}キャラ</option>)}
+                {editId && characterDeclarationCount > 5 && <option value={characterDeclarationCount}>{characterDeclarationCount}キャラ（既存設定）</option>}
               </select>
             </label>
             <small className="setting-help">各参加者が指定した数の異なるキャラクターを宣言します。</small>
