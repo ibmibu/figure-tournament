@@ -532,6 +532,11 @@ export async function PUT(request) {
         return NextResponse.json({ error: '大会開始後は設定を編集できません。' }, { status: 409 });
       if (input.tournamentType !== undefined && !['single', 'double'].includes(input.tournamentType))
         return NextResponse.json({ error: 'トーナメント方式が不正です。' }, { status: 400 });
+      // Once a bracket exists, changing its elimination rules would corrupt
+      // historical results even when a site administrator edits metadata.
+      if (existing.bracket && input.tournamentType !== undefined &&
+          input.tournamentType !== (existing.bracket.type === 'double' ? 'double' : 'single'))
+        return NextResponse.json({ error: '開始済みの大会ではトーナメント方式を変更できません。' }, { status: 409 });
       if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
         return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
 
