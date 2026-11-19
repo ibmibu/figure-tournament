@@ -8,6 +8,7 @@ import { makeDoubleBracket, isDoubleBracket, reconcileDoubleBracket } from '../.
 import DoubleBracketView from '../../../components/DoubleBracketView';
 import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
+import { declarationCount, declaredCharacters, validDeclaration } from '../../../lib/character-declarations';
 
 const OWNER_KEY = 'figure-tournament-owner-v1';
 // sessionStorage survives F5 in the same tab. Cache avatars only for the
@@ -143,6 +144,25 @@ async function playBoardNotification(audioContextRef, audioBufferRef) {
   }
 }
 
+function DeclarationFields({ characters, onEdit }) {
+  return <div className="declaration-choices">
+    {characters.map((entry, index) => <div className="declaration-choice-row" key={index}>
+      <label>使用キャラクター{characters.length > 1 ? ` ${index + 1}` : ''}
+        <select className="my-color-fighter-select" value={entry.fighter}
+          onChange={e => onEdit(index, 'fighter', e.target.value)}>
+          {FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}
+        </select>
+      </label>
+      <label>カラー
+        <select className="my-color-variant-select" value={entry.color}
+          onChange={e => onEdit(index, 'color', e.target.value)}>
+          {Array.from({ length: 8 }, (_, i) => <option key={i} value={`${i + 1}P`}>{i + 1}P</option>)}
+        </select>
+      </label>
+    </div>)}
+  </div>;
+}
+
 export default function TournamentPage() {
   const params = useParams();
   const id = decodeURIComponent(String(params.id || ''));
@@ -182,8 +202,7 @@ export default function TournamentPage() {
   const [stageSelection, setStageSelection] = useState('');
   const [showTournamentOverview, setShowTournamentOverview] = useState(true);
 
-  const [declarationCharacter, setDeclarationCharacter] = useState('マリオ');
-  const [declarationColor, setDeclarationColor] = useState('1P');
+  const [declarationSelections, setDeclarationSelections] = useState([{ fighter: 'マリオ', color: '1P' }]);
   const [declarationBusy, setDeclarationBusy] = useState(false);
   const [boardMessages, setBoardMessages] = useState([]);
   const [boardText, setBoardText] = useState('');
@@ -826,14 +845,32 @@ export default function TournamentPage() {
     setTimeout(() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
+  function getDeclarationChoices() {
+    return Array.from({ length: declarationCount(tournament) }, (_, index) =>
+      declarationSelections[index] || { fighter: FIGHTERS[index] || FIGHTERS[0], color: '1P' });
+  }
+
+  function editDeclarationChoice(index, field, value) {
+    setDeclarationSelections(previous =>
+      Array.from({ length: declarationCount(tournament) }, (_, i) => {
+        const existing = previous[i] || { fighter: FIGHTERS[i] || FIGHTERS[0], color: '1P' };
+        return i === index ? { ...existing, [field]: value } : existing;
+      }));
+  }
+
   async function declarationAction(action) {
+    const characters = getDeclarationChoices();
+    if (action === 'submit' && !validDeclaration(tournament, { characters }, FIGHTERS)) {
+      setError(`異なるキャラクターを${declarationCount(tournament)}キャラ選択してください。`);
+      return;
+    }
     setDeclarationBusy(true);
     setError('');
     try {
       const response = await fetch('/api/tournaments/declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ id, action, character: declarationCharacter, color: declarationColor }),
+        body: JSON.stringify({ id, action, characters }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'キャラ宣言を保存できませんでした。');
@@ -1483,6 +1520,8 @@ export default function TournamentPage() {
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const isOwner = Boolean(tournament.isOwner);
+  const declarationChoices = getDeclarationChoices();
+  const declarationsValid = validDeclaration(tournament, { characters: declarationChoices }, FIGHTERS);
   // Announce the earliest round with an unresolved playable match.
   // Byes can populate later rounds before round one has finished, so
   // choosing the deepest playable round would announce round two too early.
@@ -1514,12 +1553,13 @@ export default function TournamentPage() {
     return <main className="page tournament-detail-page">
       <section className="intro"><h1>{tournament.name}</h1><h2>キャラ宣言</h2>
         <p>宣言済み：{count} / {joinedPlayers.length}人</p>
-        <p className="setting-help">参加者全員が送信したあと、主催者が公開します。宣言したキャラクターとカラーは公開まで他の参加者には表示されません。</p>
+        <p className="setting-help">各参加者は{declarationCount(tournament)}キャラを宣言します。全員の送信後に主催者が公開します。宣言内容は公開まで他の参加者には表示されません。</p>
         {error && <p className="form-error" role="alert">{error}</p>}
-        {me && !submitted && <div className="declaration-entry my-color-form">
-          <label>使用キャラクター<select className="my-color-fighter-select" value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
-          <label>カラー<select className="my-color-variant-select" value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
-          <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
+        {me && !submitted && <div className="declaration-entry declaration-multi-form">
+          <DeclarationFields characters={declarationChoices} onEdit={editDeclarationChoice} />
+          <button className="submit" type="button" disabled={declarationBusy || !declarationsValid}
+            onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
+          {!declarationsValid && <p className="setting-help">同じキャラクターを重複して宣言することはできません。</p>}
         </div>}
         {submitted && <p>宣言済みです。公開をお待ちください。</p>}
         {isOwner && <><h3>参加者の宣言状況</h3>
@@ -1899,19 +1939,18 @@ export default function TournamentPage() {
       </div>
       {tournament.characterDeclaration && tournament.declarationPhase === 'collecting' && <section className="tournament-declaration">
         <h3>キャラ宣言</h3>
-        <p className="setting-help">参加者全員がキャラクターとカラーを送信したら、主催者が宣言を公開します。送信後は変更できません。</p>
+        <p className="setting-help">各参加者が{declarationCount(tournament)}キャラを宣言します。全員の送信後に主催者が公開します。送信後は変更できません。</p>
         <p>宣言済み：{(tournament.declarationSubmittedCount ?? joinedPlayers.filter(p => tournament.characterDeclarations?.[String(p.id)]).length)} / {joinedPlayers.length}人</p>
-        {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry my-color-form">
-          <label>使用キャラクター<select className="my-color-fighter-select" value={declarationCharacter} onChange={e => setDeclarationCharacter(e.target.value)}>{FIGHTERS.map(fighter => <option key={fighter} value={fighter}>{fighter}</option>)}</select></label>
-          <label>カラー<select className="my-color-variant-select" value={declarationColor} onChange={e => setDeclarationColor(e.target.value)}>{Array.from({length:8},(_,i)=><option key={i} value={`${i+1}P`}>{i+1}P</option>)}</select></label>
-          <button className="submit" type="button" disabled={declarationBusy || !declarationCharacter.trim()} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
+        {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId)) && !joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <div className="declaration-entry declaration-multi-form">
+          <DeclarationFields characters={declarationChoices} onEdit={editDeclarationChoice} />
+          <button className="submit" type="button" disabled={declarationBusy || !declarationsValid} onClick={() => declarationAction('submit')}>キャラ宣言を送信</button>
         </div>}
         {joinedPlayers.some(p => String(p.userId || p.id) === String(currentUserId) && tournament.characterDeclarations?.[String(p.id)]) && <p>宣言を受け付けました。公開をお待ちください。</p>}
         {isOwner && <button className="submit" type="button" disabled={declarationBusy || !joinedPlayers.length || joinedPlayers.some(p => !tournament.characterDeclarations?.[String(p.id)])} onClick={() => declarationAction('publish')}>宣言を公開</button>}
       </section>}
       {tournament.characterDeclaration && tournament.declarationPhase === 'published' && <section className="tournament-declaration">
         <h3>キャラ宣言一覧</h3>
-        <ul className="joined-player-list">{joinedPlayers.map(p => <li key={p.id}>{p.name}：{tournament.characterDeclarations?.[String(p.id)]?.character} {tournament.characterDeclarations?.[String(p.id)]?.color}</li>)}</ul>
+        <ul className="joined-player-list">{joinedPlayers.map(p => <li key={p.id}>{p.name}：{declaredCharacters(tournament.characterDeclarations?.[String(p.id)]).map(({fighter, color}) => `${fighter} ${color}`).join('、')}</li>)}</ul>
       </section>}
       {!tournament.stageRejects ? <>
         <h3>使用ステージ</h3>
