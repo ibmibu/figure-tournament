@@ -238,11 +238,14 @@ export default function ObsBracketOverlay() {
     const lc = Math.max(0, Number(data?.loserRounds) || 0);
     const gfStart = wc + lc;
     const reset = rounds[gfStart + 1]?.[0];
+    // Continue grand final (and a possible reset) to the RIGHT of WB final.
+    // Losers bracket alone occupies the row below.
     return [
-      makeGroup('勝者側', rounds.slice(0, wc)),
+      makeGroup('勝者側', [
+        ...rounds.slice(0, wc),
+        ...rounds.slice(gfStart, gfStart + (reset?.player1 ? 2 : 1)),
+      ]),
       makeGroup('敗者側', rounds.slice(wc, gfStart)),
-      makeGroup('グランドファイナル',
-        rounds.slice(gfStart, gfStart + (reset?.player1 ? 2 : 1))),
     ].filter(Boolean);
   }, [rounds, isDouble, data?.winnerRounds, data?.loserRounds]);
   const geometry = useMemo(() => {
@@ -271,11 +274,16 @@ export default function ObsBracketOverlay() {
             {group.rounds.map((round, roundIndex) =>
               <div className="bracket-round" key={roundIndex}>
                 <strong>{!isDouble ? roundName(roundIndex, group.rounds.length)
-                  : group.title === 'グランドファイナル'
-                    ? (roundIndex ? 'リセット決勝' : 'グランドファイナル')
-                  : roundIndex === group.rounds.length - 1
-                    ? (group.title === '勝者側' ? '勝者側決勝' : '敗者側決勝')
-                    : group.title === '勝者側' && roundIndex === group.rounds.length - 2
+                  : group.title === '勝者側' && roundIndex === Number(data?.winnerRounds)
+                    ? 'グランドファイナル'
+                  : group.title === '勝者側' && roundIndex > Number(data?.winnerRounds)
+                    ? 'リセット決勝'
+                  : group.title === '勝者側' && roundIndex === Number(data?.winnerRounds) - 1
+                    ? '勝者側決勝'
+                  : group.title === '敗者側' && roundIndex === group.rounds.length - 1
+                    ? '敗者側決勝'
+                  : group.title === '勝者側' && roundIndex === Number(data?.winnerRounds) - 2 &&
+                    Number(data?.winnerRounds) > 2
                     ? '準決勝' : '第' + (roundIndex + 1) + '回戦'}</strong>
                 {round.map((match, index) =>
                   <MatchCard key={match.id || index} match={match} rounds={group.rounds}
