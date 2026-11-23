@@ -27,7 +27,7 @@ export default function OrganizerReportsPage() {
     <section className="intro">
       <a className="back-link" href={'/tournaments/' + encodeURIComponent(id)}>← 大会に戻る</a>
       <h1>キャラ報告を見る</h1>
-      {data && <p>{data.name}</p>}
+      {data && <p>{data.name}（{data.participantCount ?? 0}人）</p>}
     </section>
     {error ? <p role="alert">{error}</p> : !data ? <p>読み込み中…</p> :
       <section className="my-results my-color-panel">
