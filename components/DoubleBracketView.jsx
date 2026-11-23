@@ -1,6 +1,7 @@
 'use client';
 
 import { editableSetScores } from '../lib/tournament-set-result';
+import { playableLoserRoundIndices } from '../lib/tournament-double-elim';
 
 const CARD_STEP = 104;
 
@@ -121,31 +122,54 @@ export default function DoubleBracketView({ tournament, owner, userId, adminSele
   const reset = bracket.rounds[wc + lc + 1]?.[0];
   const finals = bracket.rounds.slice(wc + lc, wc + lc + (reset?.player1 ? 2 : 1));
   const winnerRounds = bracket.rounds.slice(0, wc);
-  const loserRounds = bracket.rounds.slice(wc, wc + lc);
+  const visibleLoserIndices = playableLoserRoundIndices(bracket);
+  // All rounds keep their original global indices. Hidden automatic BYE
+  // columns must not affect match selection, score reporting or routing.
+  const loserRounds = visibleLoserIndices.map(index => bracket.rounds[index]);
   const groups = [
     { title: '勝者側', rounds: [...winnerRounds, ...finals],
       roundIndices: [...winnerRounds.map((_, i) => i), ...finals.map((_, i) => wc + lc + i)],
       winnerRoundCount: wc },
     { title: '敗者側', rounds: loserRounds,
-      roundIndices: loserRounds.map((_, i) => wc + i), winnerRoundCount: 0 },
-  ];
+      roundIndices: visibleLoserIndices, winnerRoundCount: 0 },
+  ].filter(group => group.rounds.length);
+  // One shared horizontal canvas/scrollbar for WB and LB. No second panel.
+  const maxColumns = Math.max(...groups.map(group => group.rounds.length));
+  const minCanvasWidth = maxColumns * 268 + (maxColumns - 1) * 38 + 4;
   return <div className="double-bracket-view">
-    {groups.filter(group => group.rounds.length).map(group =>
-      <DoubleRoundGroup key={group.title} title={group.title}
-        tournament={tournament} rounds={group.rounds}
-        roundIndices={group.roundIndices} winnerRoundCount={group.winnerRoundCount}
-        owner={owner} userId={userId}
-        adminSelection={adminSelection} onAdminSelect={onAdminSelect}
-        onStartMatch={onStartMatch} scoreDraft={scoreDraft}
-        streamMatchId={streamMatchId} />)}
+    <div className="double-bracket-track" style={{ minWidth: minCanvasWidth }}>
+      {groups.map(group =>
+        <DoubleRoundGroup key={group.title} title={group.title}
+          tournament={tournament} rounds={group.rounds}
+          roundIndices={group.roundIndices} winnerRoundCount={group.winnerRoundCount}
+          owner={owner} userId={userId}
+          adminSelection={adminSelection} onAdminSelect={onAdminSelect}
+          onStartMatch={onStartMatch} scoreDraft={scoreDraft}
+          streamMatchId={streamMatchId} />)}
+    </div>
     <style jsx global>{`
+      .tournament-detail-page .tournament-live-panel .double-bracket-view{
+        box-sizing:border-box;width:100%;overflow-x:auto;overflow-y:hidden;
+        padding:18px 24px 28px;background:#e9edf2;
+        -webkit-overflow-scrolling:touch;scrollbar-width:thin;
+      }
+      .tournament-detail-page .tournament-live-panel .double-bracket-track{
+        box-sizing:border-box;width:100%;background:transparent;
+      }
+      .tournament-detail-page .tournament-live-panel .double-bracket-group{
+        background:transparent;margin:0;padding:0;
+      }
+      .tournament-detail-page .tournament-live-panel .double-bracket-group + .double-bracket-group{
+        border-top:1px solid #c3cfdb;margin-top:16px;padding-top:16px;
+      }
       .tournament-detail-page .double-bracket-title{
-        margin:20px 0 10px;padding:0;color:#101b2d;
+        margin:0 0 10px;padding:0;color:#101b2d;
         font-size:16px;font-weight:800;
       }
-      .tournament-detail-page .double-bracket-group:first-child .double-bracket-title{margin-top:12px}
-      .tournament-detail-page .double-bracket-group .bracket-rounds{
-        margin:0!important;border-radius:10px;
+      .tournament-detail-page .tournament-live-panel .double-bracket-group .bracket-rounds{
+        box-sizing:border-box;display:flex;overflow:visible!important;
+        width:100%;margin:0!important;padding:0!important;
+        background:transparent!important;border-radius:0!important;
       }
     `}</style>
   </div>;
