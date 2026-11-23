@@ -30,7 +30,9 @@ export async function GET(request) {
       characters: tournament.characterReports?.[String(p.id)]?.characters || [],
       place: getCharacterReportPlacement(bracket, p.id) || placements.find(entry => String(entry.playerId) === String(p.id))?.place || ''
     })).filter(p => p.characters.length > 0).sort((a, b) => placeRank(a.place) - placeRank(b.place));
-    return NextResponse.json({ name: tournament.name || '', players }, { headers: { 'Cache-Control': 'no-store' } });
+    // Count all actual entrants, not just the players who filed reports.
+    const participantCount = (tournament.joinedPlayers || []).filter(p => !p.isDemo).length;
+    return NextResponse.json({ name: tournament.name || '', participantCount, players }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Organizer reports:', error);
     return NextResponse.json({ error: 'キャラ報告を読み込めませんでした。' }, { status: 500 });
