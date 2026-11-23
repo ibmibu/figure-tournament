@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { findParticipantOverlay, ownOverlayMatch } from '../../../../lib/overlay-participant-match';
 import { editableSetScores } from '../../../../lib/tournament-set-result';
+import { playableLoserRoundIndices } from '../../../../lib/tournament-double-elim';
 
 export const dynamic = 'force-dynamic';
 
@@ -253,6 +254,7 @@ export async function GET(request) {
         bracketType: t.bracket?.type === 'double' ? 'double' : 'single',
         winnerRounds: t.bracket?.type === 'double' ? t.bracket.winnerRounds : null,
         loserRounds: t.bracket?.type === 'double' ? t.bracket.loserRounds : null,
+        visibleLoserRoundIndices: t.bracket?.type === 'double' ? playableLoserRoundIndices(t.bracket) : [],
         rounds: publicRounds,
       });
     }
