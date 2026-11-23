@@ -14,9 +14,10 @@ function roundName(index, total) {
     : index === total - 2 ? '準決勝' : `第${index + 1}回戦`;
 }
 
-function MatchCard({ match, rounds, round, matchIndex, isDouble = false }) {
+function MatchCard({ match, rounds, round, matchIndex, isDouble = false, groupTitle = '' }) {
   const { player1, player2, winnerId, resultType } = match;
-  const bye = round === 0 && Boolean(player1) !== Boolean(player2);
+  const isOpeningWinnersRound = round === 0 && (!isDouble || groupTitle === '勝者側');
+  const bye = isOpeningWinnersRound && Boolean(player1) !== Boolean(player2);
   const ratio = (rounds[0]?.length || 1) / (rounds[round]?.length || 1);
   const top = 64 + (((matchIndex + 0.5) * ratio) - 0.5) * STEP;
   if (bye) return <div className="bracket-bye-spacer" style={{ top }} aria-hidden="true" />;
@@ -48,7 +49,7 @@ function MatchCard({ match, rounds, round, matchIndex, isDouble = false }) {
     </div>
     {pairToNext && matchIndex % 2 === 0 && matchIndex + 1 < siblings.length && (() => {
       const next = siblings[matchIndex + 1];
-      const nextVisible = !(round === 0 && Boolean(next.player1) !== Boolean(next.player2));
+      const nextVisible = !(isOpeningWinnersRound && Boolean(next.player1) !== Boolean(next.player2));
       const distance = STEP * ratio;
       return <svg className="bracket-connector" width="38" height={distance}
         viewBox={`0 0 38 ${distance}`} aria-hidden="true">
@@ -59,11 +60,11 @@ function MatchCard({ match, rounds, round, matchIndex, isDouble = false }) {
       </svg>;
     })()}
     {pairToNext && matchIndex % 2 === 1 &&
-      !(round === 0 && Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2)) &&
+      !(isOpeningWinnersRound && Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2)) &&
       <svg className="bracket-connector" width="19" height="2" viewBox="0 0 19 2" aria-hidden="true">
         <path d="M 0 1 H 19" fill="none" stroke="#DCEBFF" strokeWidth="2" />
       </svg>}
-    {pairToNext && matchIndex % 2 === 1 && round === 0 &&
+    {pairToNext && matchIndex % 2 === 1 && isOpeningWinnersRound &&
       Boolean(siblings[matchIndex - 1]?.player1) !== Boolean(siblings[matchIndex - 1]?.player2) &&
       <svg className="bracket-connector bracket-connector-up" width="38" height="104"
         viewBox="0 0 38 104" aria-hidden="true">
@@ -245,9 +246,12 @@ export default function ObsBracketOverlay() {
         ...rounds.slice(0, wc),
         ...rounds.slice(gfStart, gfStart + (reset?.player1 ? 2 : 1)),
       ]),
-      makeGroup('敗者側', rounds.slice(wc, gfStart)),
+      makeGroup('敗者側', (Array.isArray(data?.visibleLoserRoundIndices)
+        ? data.visibleLoserRoundIndices
+        : Array.from({ length: lc }, (_, i) => wc + i))
+        .map(index => rounds[index]).filter(Array.isArray)),
     ].filter(Boolean);
-  }, [rounds, isDouble, data?.winnerRounds, data?.loserRounds]);
+  }, [rounds, isDouble, data?.winnerRounds, data?.loserRounds, data?.visibleLoserRoundIndices]);
   const geometry = useMemo(() => {
     if (!groups.length) return null;
     const totalWidth = Math.max(...groups.map(g => g.totalWidth));
@@ -269,7 +273,7 @@ export default function ObsBracketOverlay() {
           {group.title && <h3 className="obs-bracket-group-title">{group.title}</h3>}
           <div className="bracket-rounds" style={{
             '--bracket-height': group.contentHeight + 'px',
-            width: group.totalWidth, height: group.bracketHeight, marginInline: 'auto',
+            width: group.totalWidth, height: group.bracketHeight, marginInline: 0,
           }}>
             {group.rounds.map((round, roundIndex) =>
               <div className="bracket-round" key={roundIndex}>
@@ -287,7 +291,7 @@ export default function ObsBracketOverlay() {
                     ? '準決勝' : '第' + (roundIndex + 1) + '回戦'}</strong>
                 {round.map((match, index) =>
                   <MatchCard key={match.id || index} match={match} rounds={group.rounds}
-                    round={roundIndex} matchIndex={index} isDouble={isDouble} />)}
+                    round={roundIndex} matchIndex={index} isDouble={isDouble} groupTitle={group.title} />)}
               </div>)}
           </div>
         </div>)}
@@ -321,6 +325,10 @@ export default function ObsBracketOverlay() {
       .tournament-bracket-overlay .tournament-live-panel .bracket-rounds{
         box-sizing:border-box!important;overflow:visible!important;margin:0!important;
         border-radius:0!important;background:transparent!important;
+      }
+      .tournament-bracket-overlay .obs-bracket-group{box-sizing:border-box;position:relative}
+      .tournament-bracket-overlay .obs-bracket-group + .obs-bracket-group{
+        border-top:1px solid rgba(255,255,255,.32);
       }
       .tournament-bracket-overlay .obs-bracket-group-title{
         height:44px;margin:0;padding:10px 24px;color:#f5f8fc;
