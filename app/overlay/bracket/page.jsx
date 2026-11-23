@@ -106,11 +106,17 @@ export default function ObsBracketOverlay() {
     if (!owner) return;
     let active = true;
     let channel;
+    let channelTournamentId = '';
+    let pendingStartsChannel;
+    let pendingStartsKey = '';
+    let pendingStartIds = [];
+    const startChecksInFlight = new Set();
     let controller;
     let debounce;
     let fallbackTimer;
     let inFlight = false;
     let pendingForce = false;
+    let pendingReselect = false;
     let requestVersion = 0;
     let selectedId = '';
     let selectedRole = '';
@@ -118,16 +124,17 @@ export default function ObsBracketOverlay() {
     let overlayVersion = '';
     const source = 'owner=' + encodeURIComponent(owner);
 
-    // Keep the selection and refresh rules consistent with the existing OBS
-    // scoreboard. Only discover the event at OBS start/reload; afterward
-    // watch that event alone, without scanning unrelated tournament histories.
-    const refresh = async (forceData = false) => {
+    // Keep the selected event's low-cost revision updates. A new tournament
+    // starts exactly once; a small list of pending tournament IDs can trigger
+    // a one-off reselection without polling all tournaments every few seconds.
+    const refresh = async (forceData = false, reselect = false) => {
       if (!active) return;
       if (inFlight) {
         pendingForce ||= forceData;
+        pendingReselect ||= reselect;
         return;
       }
-      const lookup = !knownSelection;
+      const lookup = reselect || !knownSelection;
       if (!lookup && !selectedId) return;
       inFlight = true;
       const version = ++requestVersion;
@@ -157,6 +164,7 @@ export default function ObsBracketOverlay() {
         selectedId = result.selectedTournamentId || '';
         selectedRole = result.selectedRole || '';
         subscribeToSelectedTournament(selectedId);
+        if (lookup) subscribeToPendingStarts(result.watchTournamentIds || []);
         overlayVersion = response.headers.get('x-overlay-version') || '';
         setData(result);
         setError('');
@@ -165,9 +173,12 @@ export default function ObsBracketOverlay() {
           setError(err.message || '通信に失敗しました。');
       } finally {
         inFlight = false;
-        if (active && pendingForce) {
+        if (active && (pendingForce || pendingReselect)) {
+          const force = pendingForce;
+          const reselection = pendingReselect;
           pendingForce = false;
-          void refresh(true);
+          pendingReselect = false;
+          void refresh(force, reselection);
         }
       }
     };
@@ -182,9 +193,17 @@ export default function ObsBracketOverlay() {
     // scoreboard. The larger bracket JSON is fetched only when its revision
     // actually changed. The API's bracket-specific field selection stays intact.
     function subscribeToSelectedTournament(tournamentId) {
-      if (!active || channel || !tournamentId) return;
+      if (!active) return;
+      if (channel && channelTournamentId === tournamentId) return;
+      if (channel) {
+        void getSupabaseBrowserClient().removeChannel(channel);
+        channel = null;
+        channelTournamentId = '';
+      }
+      if (!tournamentId) return;
       try {
         const supabase = getSupabaseBrowserClient();
+        channelTournamentId = tournamentId;
         channel = supabase.channel('obs-bracket-' + tournamentId)
           .on('postgres_changes', {
             event: '*', schema: 'public', table: 'tournament_change_signals',
@@ -200,13 +219,66 @@ export default function ObsBracketOverlay() {
       }
     }
 
-    // Scoreboard-equivalent 2.5s safeguard: the server checks only a tiny
-    // revision, then replies 304 if unchanged. Hidden OBS sources skip it.
+    async function checkPendingStart(tournamentId) {
+      if (!active || startChecksInFlight.has(tournamentId)) return;
+      startChecksInFlight.add(tournamentId);
+      try {
+        // A registration change also generates a signal. Only a *started*
+        // tournament is allowed to trigger an expensive selection refresh.
+        const response = await fetch('/api/tournaments/overlay?view=bracket&' + source +
+          '&watchTournamentId=' + encodeURIComponent(tournamentId), { cache: 'no-store' });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (active && result.started && tournamentId !== selectedId)
+          void refresh(true, true);
+      } catch {
+        // The existing selected tournament keeps running if a start check fails.
+      } finally {
+        startChecksInFlight.delete(tournamentId);
+      }
+    }
+
+    function subscribeToPendingStarts(tournamentIds) {
+      const next = [...new Set(tournamentIds.filter(id => typeof id === 'string' &&
+        /^[a-zA-Z0-9_-]{1,128}$/.test(id) && id !== selectedId))].slice(0, 8);
+      const nextKey = next.join(',');
+      if (nextKey === pendingStartsKey) return;
+      if (pendingStartsChannel) {
+        void getSupabaseBrowserClient().removeChannel(pendingStartsChannel);
+        pendingStartsChannel = null;
+      }
+      pendingStartsKey = nextKey;
+      pendingStartIds = next;
+      if (!next.length) return;
+      try {
+        let candidate = getSupabaseBrowserClient().channel('obs-bracket-upcoming-' + owner);
+        for (const tournamentId of next) {
+          candidate = candidate.on('postgres_changes', {
+            event: '*', schema: 'public', table: 'tournament_change_signals',
+            filter: 'tournament_id=eq.' + tournamentId,
+          }, () => { void checkPendingStart(tournamentId); });
+        }
+        pendingStartsChannel = candidate.subscribe(status => {
+          // Close the race where a tournament starts between API discovery
+          // and the Realtime subscription becoming ready.
+          if (status === 'SUBSCRIBED')
+            next.forEach(tournamentId => { void checkPendingStart(tournamentId); });
+        });
+      } catch {
+        // A source refresh/reload can still find the latest active tournament.
+      }
+    }
+
+    // A 60-second revision safeguard is retained; no additional recurring
+    // full-bracket query is introduced for tournament discovery.
     fallbackTimer = setInterval(() => {
       if (document.visibilityState !== 'hidden') void refresh();
     }, 60000);
     const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
+      if (document.visibilityState === 'visible') {
+        void refresh();
+        pendingStartIds.forEach(tournamentId => { void checkPendingStart(tournamentId); });
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     void refresh();
@@ -217,6 +289,7 @@ export default function ObsBracketOverlay() {
       document.removeEventListener('visibilitychange', onVisible);
       controller?.abort();
       if (channel) void getSupabaseBrowserClient().removeChannel(channel);
+      if (pendingStartsChannel) void getSupabaseBrowserClient().removeChannel(pendingStartsChannel);
     };
   }, [owner]);
 
