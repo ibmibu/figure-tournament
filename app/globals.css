@@ -2093,3 +2093,13 @@ body .tournament-detail-page .bracket-admin-log-dot{
   font-size:12px;
   line-height:15px;
 }
+
+/* Registration priority in team events: last odd solo is provisional. */
+.tournament-detail-page .team-provisional-label{
+  display:inline-flex;align-items:center;margin-left:8px;padding:2px 7px;
+  border:1px solid #d2a24f;border-radius:4px;background:#fff5dd;
+  color:#855a1f;font-size:11px;font-weight:700;white-space:nowrap;
+}
+.tournament-detail-page .team-provisional-note{
+  margin:12px 0 0;line-height:1.65;overflow-wrap:anywhere;
+}
