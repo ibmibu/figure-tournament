@@ -4,6 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 import { isTeamMember } from '../../../../lib/team-tournament';
 
 export const dynamic = 'force-dynamic';
+// Joining a roster must never reveal other teams' stored friend codes.
+const publicRoster = players => players.map(p => {
+  const { friendCode, email, teamMate, ...rest } = p;
+  if (!teamMate) return rest;
+  const { friendCode: mateCode, email: mateEmail, ...mateRest } = teamMate;
+  return { ...rest, teamMate: mateRest };
+});
 
 export async function POST(request) {
   try {
@@ -53,7 +60,7 @@ export async function POST(request) {
     const { data: updated, error: updateError } = await saveTournamentRevision(supabase, id, tournament, { ...tournament, joinedPlayers });
     if (updateError) throw updateError;
     if (!updated?.length) return NextResponse.json({ error: '他の参加登録が先に保存されました。更新して再試行してください。' }, { status: 409 });
-    return NextResponse.json({ ok: true, joinedPlayers });
+    return NextResponse.json({ ok: true, joinedPlayers: publicRoster(joinedPlayers) });
   } catch (error) {
     console.error('POST /api/tournaments/join failed:', error);
     return NextResponse.json({ error: '参加登録を保存できませんでした。' }, { status: 500 });
@@ -96,7 +103,7 @@ export async function DELETE(request) {
     const { data: changed, error: writeError } = await saveTournamentRevision(supabase, id, existing, updatedData);
     if (writeError) throw writeError;
     if (!changed?.length) return NextResponse.json({ error: '他の操作が先に保存されました。再読み込みしてやり直してください。' }, { status: 409 });
-    return NextResponse.json({ ok: true, joinedPlayers });
+    return NextResponse.json({ ok: true, joinedPlayers: publicRoster(joinedPlayers) });
   } catch (error) {
     console.error('DELETE /api/tournaments/join failed:', error);
     return NextResponse.json({ error: '参加解除に失敗しました。' }, { status: 500 });
