@@ -2053,7 +2053,7 @@ export default function TournamentPage() {
         <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
         <div><span>トーナメント方式</span><strong>{tournament.tournamentType === 'double' || isDoubleBracket(tournament.bracket) ? 'ダブル' : 'シングル'}</strong></div>
         <div><span>{tournament.teamTournament ? '参加チーム数' : '参加人数'}</span><strong>{joinedPlayers.length}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}</strong></div>
-        {tournament.teamTournament && <div><span>チーム大会</span><strong>あり</strong></div>
+        {tournament.teamTournament && <div><span>チーム大会</span><strong>あり</strong></div>}
         <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
         {tournament.characterDeclaration && <div><span>キャラ宣言</span><strong>{declarationCount(tournament)}キャラ</strong></div>}
