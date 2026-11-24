@@ -2,6 +2,7 @@
 
 import { editableSetScores } from '../lib/tournament-set-result';
 import { playableLoserRoundIndices } from '../lib/tournament-double-elim';
+import BracketPlayerLabel from './BracketPlayerLabel';
 
 const CARD_STEP = 104;
 
@@ -71,7 +72,7 @@ function DoubleRoundGroup({ title, tournament, rounds, roundIndices, winnerRound
                     className={'match-player-line' + (!player ? ' empty-player-line' : '') +
                       (won ? ' winner-line' : '') +
                       (player && winnerId != null && !won ? ' loser-line' : '')}>
-                    <span title={player?.name || ''}>{player?.name || ''}{player?.isDemo ? '（デモ）' : ''}</span>
+                    <BracketPlayerLabel player={player} teamTournament={tournament.teamTournament} />
                     <strong className={'player-score' + (won ? ' score-winner' : '')}>
                       {!player ? '' : match.resultType === 'forfeit'
                         ? (won ? 'W' : '—')
