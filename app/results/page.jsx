@@ -54,9 +54,9 @@ export default function ResultsPage() {
           window.location.href = '/login?next=/results';
           return;
         }
-        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(sortParticipations(saved.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); } } catch {}
+        try { const saved = JSON.parse(localStorage.getItem('figure-personal-results-v2-' + session.user.id) || 'null'); if (Array.isArray(saved)) { setTournaments(sortParticipations(saved.filter(t => isLegacyParticipation(t) || (!t.teamTournament && t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); } } catch {}
         const snapshot = readTabSnapshot('results-v3-' + session.user.id);
-        if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => isLegacyParticipation(t) || (t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); }
+        if (snapshot) { setTournaments(sortParticipations(snapshot.filter(t => isLegacyParticipation(t) || (!t.teamTournament && t.bracket?.complete && t.resultPlacements?.length)))); setLoading(false); }
         const [completedTournaments, legacyResult] = await Promise.all([
           loadCompletedTournamentRecords(),
           loadLegacyParticipations('mine', session.user.id, session.access_token)
@@ -65,7 +65,7 @@ export default function ResultsPage() {
         if (legacyResult.stale) console.warn('過去の人形劇の結果は保存済みのデータを優先します。');
         const myId = String(session.user.id);
         const mine = completedTournaments.filter(item =>
-          item.bracket?.complete && item.resultPlacements?.length && (item.joinedPlayers || []).some(player =>
+          !item.teamTournament && item.bracket?.complete && item.resultPlacements?.length && (item.joinedPlayers || []).some(player =>
             !player.isDemo && String(player.userId || player.id) === myId
           )
         ).map(item => {
