@@ -1968,6 +1968,13 @@ body .tournament-detail-page .bracket-admin-log-dot{
  .tournament-detail-page #tournament-overview>.overview-actions:has(>.overview-edit-link)>.overview-share-x{font-size:12px;padding-inline:10px}
 }
 
+/* Match the X share button height to the other overview action buttons. */
+.tournament-detail-page #tournament-overview>.overview-actions>.overview-share-x{
+  align-self:stretch;
+  min-height:42px;
+  box-sizing:border-box;
+}
+
 /* Registration takes the same available action-column width as Start, for hosts and players. */
 .tournament-detail-page #tournament-overview>.overview-actions>.overview-join-form{
   flex:1 1 0;width:auto;min-width:0;
