@@ -56,7 +56,7 @@ async function getUser(request, required = true) {
 
 function publicTournament(row, user, legacyOwnerToken = '') {
   const data = repairPrematureAdvances(row.data || {});
-  const { ownerId, ownerUserId, ownerToken, owner_token, ...publicData } = data;
+  const { ownerId, ownerUserId, ownerToken, owner_token, teamInvites, ...publicData } = data;
   const isOwner = Boolean(user && (
     ownerUserId === user.id ||
     (!ownerUserId && legacyOwnerToken && row.owner_token === legacyOwnerToken)
@@ -97,8 +97,9 @@ function publicTournament(row, user, legacyOwnerToken = '') {
   const canSeeCode = p => isOwner || siteAdmin || (user && (String(p.userId || p.id) === String(user.id) || visibleCodeIds.has(String(p.userId || p.id))));
   const redactPlayer = p => {
     if (!p || typeof p !== 'object') return p;
-    const { friendCode, email, avatar_data, ...safe } = p;
-    return canSeeCode(p) ? { ...safe, ...(friendCode ? { friendCode } : {}) } : safe;
+    const { friendCode, email, avatar_data, teamMate, ...safe } = p;
+    const safeMate = teamMate ? { teamMate: redactPlayer(teamMate) } : {};
+    return { ...safe, ...safeMate, ...(canSeeCode(p) && friendCode ? { friendCode } : {}) };
   };
   publicData.joinedPlayers = (data.joinedPlayers || []).map(redactPlayer);
   if (data.bracket?.rounds) {
@@ -155,7 +156,7 @@ function isFinishedTournamentRow(row) {
 const LIVE_TOURNAMENT_FIELDS = [
   'name', 'date', 'status', 'format', 'bestOf', 'tournamentType', 'participants',
   'joinedPlayers', 'bracket', 'stages', 'stageRejects', 'stageSettings',
-  'stageActionRevision', 'ownerUserId', 'characterDeclaration', 'characterDeclarationCount',
+  'stageActionRevision', 'ownerUserId', 'characterDeclaration', 'characterDeclarationCount', 'teamTournament',
   'characterRestriction', 'declarationPhase', 'characterDeclarations',
   'characterReports', 'streamUrl', 'streamFriendCode', 'seriesTags',
   'organizerName', 'createdAt', 'completedAt', 'description',
@@ -461,12 +462,14 @@ export async function POST(request) {
 
     // Explicit allowlist: client input must never initialize privileged or match-result fields.
     const allowed = ['id', 'description', 'streamUrl', 'streamFriendCode', 'name', 'seriesTags',
-      'format', 'bestOf', 'tournamentType', 'participants', 'date', 'stages', 'stageRejects', 'autoSeed',
+      'format', 'bestOf', 'tournamentType', 'participants', 'date', 'stages', 'stageRejects', 'teamTournament', 'autoSeed',
       'characterDeclaration', 'characterDeclarationCount', 'characterRestriction', 'stageSettings'];
     const safeTournament = Object.fromEntries(allowed.filter(key =>
       Object.prototype.hasOwnProperty.call(input, key)).map(key => [key, input[key]]));
     if (input.tournamentType !== undefined && !['single', 'double'].includes(input.tournamentType))
       return NextResponse.json({ error: 'トーナメント方式が不正です。' }, { status: 400 });
+    if (input.teamTournament !== undefined && typeof input.teamTournament !== 'boolean')
+      return NextResponse.json({ error: 'チーム大会の設定が不正です。' }, { status: 400 });
     if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
       return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
     if (input.characterDeclarationCount !== undefined &&
@@ -474,7 +477,7 @@ export async function POST(request) {
          input.characterDeclarationCount > 5))
       return NextResponse.json({ error: '宣言するキャラ数は1～5で指定してください。' }, { status: 400 });
     const tournament = { ...safeTournament, tournamentType: input.tournamentType === 'double' ? 'double' : 'single',
-      characterDeclarationCount: input.characterDeclarationCount ?? 1, characterRestriction: input.characterRestriction === true,
+      characterDeclarationCount: input.characterDeclarationCount ?? 1, teamTournament: input.teamTournament === true, characterRestriction: input.characterRestriction === true,
       name, status: '募集中', createdAt: new Date().toISOString(), ownerUserId: user.id };
     const supabase = getAdminClient();
     // Preserve legacy tournament IDs, but reject matching existing records.
@@ -542,6 +545,11 @@ export async function PUT(request) {
       if (existing.bracket && input.tournamentType !== undefined &&
           input.tournamentType !== (existing.bracket.type === 'double' ? 'double' : 'single'))
         return NextResponse.json({ error: '開始済みの大会ではトーナメント方式を変更できません。' }, { status: 409 });
+      if (input.teamTournament !== undefined && typeof input.teamTournament !== 'boolean')
+        return NextResponse.json({ error: 'チーム大会の設定が不正です。' }, { status: 400 });
+      if ((existing.joinedPlayers || []).length && input.teamTournament !== undefined &&
+          input.teamTournament !== (existing.teamTournament === true))
+        return NextResponse.json({ error: '参加者がいる大会ではチーム大会の設定を変更できません。' }, { status: 409 });
       if (input.characterRestriction !== undefined && typeof input.characterRestriction !== 'boolean')
         return NextResponse.json({ error: 'キャラ制限の設定が不正です。' }, { status: 400 });
       // Preserve an already stored 6–10 character setting when editing an
@@ -566,7 +574,7 @@ export async function PUT(request) {
 
       const allSettings = [
         'name', 'description', 'streamUrl', 'streamFriendCode', 'seriesTags',
-        'format', 'bestOf', 'tournamentType', 'participants', 'date', 'stages', 'stageRejects',
+        'format', 'bestOf', 'tournamentType', 'participants', 'date', 'stages', 'stageRejects', 'teamTournament',
         'autoSeed', 'characterDeclaration', 'characterDeclarationCount', 'characterRestriction', 'stageSettings',
       ];
       // Do not change a live event's rules, bracket size or seeding partway
@@ -723,9 +731,11 @@ export async function PUT(request) {
       }
     }
 
-    const { ownerId, ownerUserId, ...safeInput } = input;
+    const { ownerId, ownerUserId, teamInvites: incomingInvites, ...safeInput } = input;
     const updated = isCurrentOwner
-      ? { ...safeInput, ownerUserId: existingOwnerId || user.id }
+      ? { ...safeInput, teamTournament: existing.teamTournament === true,
+          teamInvites: existing.teamInvites || {},
+          ownerUserId: existingOwnerId || user.id }
       : {
           ...existing,
           bracket: safeInput.bracket,
