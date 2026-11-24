@@ -96,6 +96,7 @@ export default function NewTournamentPage() {
   const [selectedStages, setSelectedStages] = useState([...STAGES]);
   const [customStageName, setCustomStageName] = useState('');
   const [stageRejects, setStageRejects] = useState(false);
+  const [teamTournament, setTeamTournament] = useState(false);
   const [autoSeed, setAutoSeed] = useState(false);
   const [characterDeclaration, setCharacterDeclaration] = useState(false);
   const [characterDeclarationCount, setCharacterDeclarationCount] = useState(1);
@@ -136,6 +137,7 @@ export default function NewTournamentPage() {
         setHour(t.date ? t.date.slice(11, 13) : '21');
         setSelectedStages(Array.isArray(t.stages) ? t.stages : [...STAGES]);
         setStageRejects(Boolean(t.stageRejects));
+        setTeamTournament(t.teamTournament === true);
         setAutoSeed(Boolean(t.autoSeed));
         setCharacterDeclaration(Boolean(t.characterDeclaration));
         setCharacterDeclarationCount(Number.isInteger(t.characterDeclarationCount) && t.characterDeclarationCount >= 1 && t.characterDeclarationCount <= 10 ? t.characterDeclarationCount : 1);
@@ -225,6 +227,7 @@ export default function NewTournamentPage() {
       date: date ? `${date}T${hour}:00` : '',
       stages: selectedStages,
       stageRejects,
+      teamTournament,
       autoSeed,
       characterDeclaration,
       characterDeclarationCount,
@@ -247,7 +250,7 @@ export default function NewTournamentPage() {
         body: JSON.stringify({
           tournament: editingStarted ? Object.fromEntries(
             Object.entries(tournament).filter(([key]) => ![
-              'format', 'bestOf', 'tournamentType', 'participants', 'stages', 'stageRejects',
+              'format', 'bestOf', 'tournamentType', 'participants', 'stages', 'stageRejects', 'teamTournament',
               'autoSeed', 'characterDeclaration', 'characterDeclarationCount', 'stageSettings',
             ].includes(key))
           ) : tournament,
@@ -368,6 +371,10 @@ export default function NewTournamentPage() {
               </label>
             </div>
           </div>}
+        </fieldset>
+
+        <fieldset className="setup-group" disabled={editingStarted}>
+          <div className="create-switch-heading"><span className="create-switch-label"><span className="create-switch-title">チーム大会</span><details className="create-help" name="tournament-create-help"><summary className="create-help-icon" aria-label="チーム大会の説明">?</summary><span className="create-help-popover">代表者が参加登録し、任意で相方を招待できます。ソロ参加も可能です。対戦操作は代表者のみ行い、チーム大会の結果は個人戦績にカウントしません。</span></details></span><label className="create-switch-control"><span className="create-switch-status">{teamTournament ? 'あり' : 'なし'}</span><input type="checkbox" checked={teamTournament} onChange={event => setTeamTournament(event.target.checked)} aria-label="チーム大会" /><span className="create-switch-track" aria-hidden="true" /></label></div>
         </fieldset>
 
         <fieldset className="setup-group" disabled={editingStarted}>
