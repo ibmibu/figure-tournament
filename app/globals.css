@@ -2104,9 +2104,3 @@ body .tournament-detail-page .bracket-admin-log-dot{
   margin:12px 0 0;line-height:1.65;overflow-wrap:anywhere;
 }
 
-/* Eligible solo players are waiting for a random teammate lottery at Start. */
-.tournament-detail-page .team-draw-pending-label{
-  display:inline-flex;align-items:center;margin-left:8px;padding:2px 7px;
-  border:1px solid #b6cde2;border-radius:4px;background:#eef6ff;
-  color:#285a88;font-size:11px;font-weight:700;white-space:nowrap;
-}
