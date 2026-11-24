@@ -35,11 +35,15 @@ export async function GET(request) {
     const token = searchParams.get('token');
     if (!validId(id) || !validToken(token)) return fail('招待URLが正しくありません。', 400);
     const db = client(process.env.SUPABASE_SERVICE_ROLE_KEY);
+    // A public invitation preview does not need the full tournament bracket,
+    // reports, stage state or participant avatars. Read only small JSON paths.
     const { data, error } = await db.from('tournaments')
-      .select('data').eq('id', id).maybeSingle();
+      .select('name:data->>name,status:data->>status,teamTournament:data->teamTournament,joinedPlayers:data->joinedPlayers,teamInvites:data->teamInvites')
+      .eq('id', id).maybeSingle();
     if (error) throw error;
-    const tournament = data?.data || null;
-    if (!tournament || !isOpen(tournament)) return fail('この招待は現在利用できません。', 409);
+    const tournament = data || null;
+    if (!tournament || tournament.status !== '募集中' || !isTeamTournament(tournament))
+      return fail('この招待は現在利用できません。', 409);
     const captain = findInvitation(tournament, token);
     if (!captain) return fail('招待URLが無効です。代表者に再発行をお願いしてください。', 404);
     return NextResponse.json({ tournamentName: String(tournament.name || ''),
