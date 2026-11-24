@@ -758,7 +758,13 @@ export async function PUT(request) {
 
     const { ownerId, ownerUserId, teamInvites: incomingInvites, ...safeInput } = input;
     const updated = isCurrentOwner
-      ? { ...safeInput, teamTournament: existing.teamTournament === true,
+      ? { ...safeInput,
+          ...(existing.teamTournament === true && input.bracket && !existing.bracket
+            ? (() => {
+                const plan = teamRegistrationPlan(existing);
+                return { joinedPlayers: plan.teams, teamProvisionalPlayers: plan.provisionalPlayers };
+              })() : {}),
+          teamTournament: existing.teamTournament === true,
           teamInvites: existing.teamInvites || {},
           ownerUserId: existingOwnerId || user.id }
       : {
