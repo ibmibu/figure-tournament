@@ -6,6 +6,7 @@ import { removeCachedTournament } from '../../../lib/tournament-cache';
 import { getCharacterReportPlacement, getBracketPlacements } from '../../../lib/tournament-bracket-admin';
 import { makeDoubleBracket, isDoubleBracket, reconcileDoubleBracket } from '../../../lib/tournament-double-elim';
 import DoubleBracketView from '../../../components/DoubleBracketView';
+import { teamBracketEntrants, teamDisplayName, isTeamMember, isTeamCaptain } from '../../../lib/team-tournament';
 import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 import { declarationCount, declaredCharacters, validDeclaration } from '../../../lib/character-declarations';
@@ -182,8 +183,29 @@ export default function TournamentPage() {
   const [savedFriendCode, setSavedFriendCode] = useState('');
   const [revealedFriendCodeMatchId, setRevealedFriendCodeMatchId] = useState('');
   const [joinFriendCode, setJoinFriendCode] = useState('');
+  const [inviteToken, setInviteToken] = useState('');
+  const [invitePreview, setInvitePreview] = useState(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('teamInvite') || '';
+    setInviteToken(token);
+    if (!token) return;
+    let cancelled = false;
+    setInviteLoading(true);
+    fetch('/api/tournaments/team-invite?id=' + encodeURIComponent(id) +
+      '&token=' + encodeURIComponent(token), { cache: 'no-store' })
+      .then(async response => {
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || '招待を確認できませんでした。');
+        return body;
+      }).then(body => { if (!cancelled) setInvitePreview(body); })
+      .catch(error => { if (!cancelled) setInvitePreview({ error: error.message }); })
+      .finally(() => { if (!cancelled) setInviteLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [savingBracket, setSavingBracket] = useState(false);
@@ -839,7 +861,9 @@ export default function TournamentPage() {
       await saveBracket({ ...tournament, status: 'キャラ宣言中', declarationPhase: 'collecting', characterDeclarations: {} });
       return;
     }
-    const next = { ...tournament, status: '対戦中', bracket: makeBracket(players), streamMatchId: undefined, streamMatchManual: false, resultPlacements: null };
+    const next = { ...tournament, status: '対戦中',
+      bracket: makeBracket(teamBracketEntrants(tournament)),
+      streamMatchId: undefined, streamMatchManual: false, resultPlacements: null };
     await saveBracket(next);
     setShowTournamentOverview(false);
     setTimeout(() => document.getElementById('tournament-bracket')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
@@ -1422,6 +1446,66 @@ export default function TournamentPage() {
       setNotice(matchId ? '配信台を変更しました。' : '配信台設定を解除しました。');
     } catch (e) { setError(e.message || '配信台を設定できませんでした。'); }
     finally { setSavingBracket(false); }
+  }
+
+  async function shareTeamInvitation() {
+    if (!accessToken) {
+      window.location.href = '/login?next=' + encodeURIComponent('/tournaments/' + id);
+      return;
+    }
+    setInviteBusy(true);
+    setError('');
+    try {
+      const response = await fetch('/api/tournaments/team-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
+        body: JSON.stringify({ id, action: 'create' }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || '招待URLを発行できませんでした。');
+      const url = window.location.origin + '/tournaments/' + encodeURIComponent(id) +
+        '?teamInvite=' + encodeURIComponent(body.token);
+      try {
+        await navigator.clipboard.writeText(url);
+        setNotice('ペア招待URLをコピーしました。相方に送ってください。');
+      } catch {
+        window.prompt('相方に送る招待URLをコピーしてください。', url);
+        setNotice('招待URLを発行しました。');
+      }
+    } catch (error) { setError(error.message || '招待URLを発行できませんでした。'); }
+    finally { setInviteBusy(false); }
+  }
+
+  function dismissTeamInvitation() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('teamInvite');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    setInviteToken('');
+    setInvitePreview(null);
+  }
+
+  async function acceptTeamInvitation() {
+    if (!accessToken) {
+      window.location.href = '/login?next=' +
+        encodeURIComponent('/tournaments/' + encodeURIComponent(id) +
+          '?teamInvite=' + encodeURIComponent(inviteToken));
+      return;
+    }
+    setInviteBusy(true);
+    setError('');
+    try {
+      const response = await fetch('/api/tournaments/team-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken },
+        body: JSON.stringify({ id, action: 'accept', token: inviteToken }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'ペアに参加できませんでした。');
+      dismissTeamInvitation();
+      await loadTournament();
+      setNotice((body.captainName || '代表者') + 'さんのチームに参加しました。');
+    } catch (error) { setError(error.message || 'ペアに参加できませんでした。'); }
+    finally { setInviteBusy(false); }
   }
 
   async function joinTournament(event) {
