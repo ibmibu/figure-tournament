@@ -1,9 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { getSupabaseBrowserClient } from '../../../../lib/supabase/client';
 
-export default function OrganizerReportsPage() {
+export default function CharacterReportsPage() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
@@ -11,11 +10,7 @@ export default function OrganizerReportsPage() {
     let active = true;
     (async () => {
       try {
-        const { data: { session } } = await getSupabaseBrowserClient().auth.getSession();
-        if (!session) throw Error('主催者としてログインしてください。');
-        const response = await fetch('/api/tournaments/reports?id=' + encodeURIComponent(id), {
-          headers: { Authorization: 'Bearer ' + session.access_token }, cache: 'no-store'
-        });
+        const response = await fetch('/api/tournaments/reports?id=' + encodeURIComponent(id), { cache: 'no-store' });
         const result = await response.json();
         if (!response.ok) throw Error(result.error || '読み込みに失敗しました。');
         if (active) setData(result);
