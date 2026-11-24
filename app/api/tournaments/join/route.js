@@ -1,6 +1,7 @@
 import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isTeamMember } from '../../../../lib/team-tournament';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,10 +39,10 @@ export async function POST(request) {
     if (readError) throw readError;
     if (!row) return NextResponse.json({ error: '大会が見つかりません。' }, { status: 404 });
     const tournament = row.data || {};
-    if (tournament.bracket || tournament.status === "対戦中" || tournament.status === "終了") return NextResponse.json({ error: "大会開始後は参加登録できません。" }, { status: 409 });
+    if (tournament.bracket || tournament.status !== '募集中') return NextResponse.json({ error: "大会開始後は参加登録できません。" }, { status: 409 });
     const players = Array.isArray(tournament.joinedPlayers) ? tournament.joinedPlayers : [];
     if (players.length >= Number(tournament.participants || 8)) return NextResponse.json({ error: 'この大会は定員に達しています。' }, { status: 409 });
-    if (players.some(player => String(player.userId || player.id) === String(authData.user.id))) return NextResponse.json({ error: 'すでに参加登録しています。' }, { status: 409 });
+    if (players.some(player => isTeamMember(player, authData.user.id))) return NextResponse.json({ error: 'すでに参加登録しています。' }, { status: 409 });
     if (players.some(player => String(player.name || '').trim().toLowerCase() === name.toLowerCase())) {
       return NextResponse.json({ error: '同じ名前の参加者がすでに登録されています。' }, { status: 409 });
     }
@@ -82,12 +83,16 @@ export async function DELETE(request) {
       return NextResponse.json({ error: '大会開始後は参加を解除できません。' }, { status: 409 });
     }
     const players = Array.isArray(existing.joinedPlayers) ? existing.joinedPlayers : [];
-    const mine = players.find(p => !p.isDemo && String(p.userId || p.id) === String(user.id));
+    const mine = players.find(p => !p.isDemo && isTeamMember(p, user.id));
     if (!mine) return NextResponse.json({ error: 'この大会には参加していません。' }, { status: 403 });
-    const joinedPlayers = players.filter(p => p !== mine);
+    const asMate = String(mine.teamMate?.userId || mine.teamMate?.id || '') === String(user.id);
+    const joinedPlayers = asMate ? players.map(p => p === mine
+      ? (({ teamMate: ignored, ...captain }) => captain)(p) : p)
+      : players.filter(p => p !== mine);
     const declarations = { ...(existing.characterDeclarations || {}) };
-    delete declarations[String(mine.id)];
-    const updatedData = { ...existing, joinedPlayers, characterDeclarations: declarations };
+    const teamInvites = { ...(existing.teamInvites || {}) };
+    if (!asMate) { delete declarations[String(mine.id)]; delete teamInvites[String(mine.id)]; }
+    const updatedData = { ...existing, joinedPlayers, characterDeclarations: declarations, teamInvites };
     const { data: changed, error: writeError } = await saveTournamentRevision(supabase, id, existing, updatedData);
     if (writeError) throw writeError;
     if (!changed?.length) return NextResponse.json({ error: '他の操作が先に保存されました。再読み込みしてやり直してください。' }, { status: 409 });
