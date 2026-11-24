@@ -2065,3 +2065,31 @@ body .tournament-detail-page .bracket-admin-log-dot{
 /* Keep the invited teammate immediately beside the captain in team rosters. */
 .tournament-detail-page .participant-name-with-avatar:has(.team-member-inline){flex-wrap:wrap;row-gap:4px}
 .tournament-detail-page .team-member-inline{display:inline;max-width:100%;overflow-wrap:anywhere;font-weight:600;color:#345c87}
+
+/* Only team tournaments: stack captain and teammate within each existing
+   35px bracket entrant row, without shifting match cards or connector lines. */
+.tournament-detail-page .tournament-live-panel .bracket-match .match-player-line > .team-bracket-name{
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:center!important;
+  gap:1px!important;
+  height:33px!important;
+  min-width:0!important;
+  padding:1px 10px!important;
+  line-height:15px!important;
+  white-space:normal!important;
+  overflow:hidden!important;
+}
+.tournament-detail-page .tournament-live-panel .bracket-match .team-bracket-name > .team-bracket-member{
+  display:block;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+  line-height:15px;
+}
