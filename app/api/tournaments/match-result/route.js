@@ -11,7 +11,7 @@ const fail = (error, status = 400) => NextResponse.json({ error }, { status });
 
 function safeTournament(data, user) {
   const { ownerId, ownerUserId, ownerToken, owner_token, matchLogs, adminHistory, adminLog,
-    participantAvatars, statsSnapshot, overlayOwnerId, ...publicData } = data;
+    participantAvatars, statsSnapshot, teamInvites, overlayOwnerId, ...publicData } = data;
   const isOwner = ownerUserId === user.id;
   const visible = new Set([String(user.id)]);
   for (const match of (data.bracket?.rounds || []).flat()) {
@@ -23,9 +23,10 @@ function safeTournament(data, user) {
   }
   const player = p => {
     if (!p) return p;
-    const { friendCode, email, avatar_data, ...rest } = p;
-    return (isOwner || visible.has(String(p.userId || p.id))) && friendCode
-      ? { ...rest, friendCode } : rest;
+    const { friendCode, email, avatar_data, teamMate, ...rest } = p;
+    const safeMate = teamMate ? { teamMate: player(teamMate) } : {};
+    return { ...rest, ...safeMate,
+      ...((isOwner || visible.has(String(p.userId || p.id))) && friendCode ? { friendCode } : {}) };
   };
   publicData.joinedPlayers = (data.joinedPlayers || []).map(player);
   if (data.bracket?.rounds) publicData.bracket = {
