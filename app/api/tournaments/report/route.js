@@ -21,6 +21,7 @@ export async function POST(request) {
   if(readError)throw readError;
   if(!row)return NextResponse.json({error:'大会が見つかりません。'},{status:404});
   const t=row.data||{};
+  if(t.teamTournament===true)return NextResponse.json({error:'チーム大会の結果は個人戦績にカウントしません。'},{status:409});
   if(t.characterDeclaration)return NextResponse.json({error:'キャラ宣言ありの大会では終了後のキャラ報告は不要です。'},{status:409});
   if(!t.bracket?.rounds?.length)return NextResponse.json({error:'大会開始後に報告してください。'},{status:400});
   const player=(t.joinedPlayers||[]).find(p=>!p.isDemo&&String(p.userId||p.id)===String(user.id));
