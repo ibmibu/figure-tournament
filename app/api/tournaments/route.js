@@ -731,6 +731,23 @@ export async function PUT(request) {
       }
     }
 
+    // A captain/teammate may have joined while the organizer still has an
+    // older browser snapshot. Never start a team bracket from that stale roster.
+    if (isCurrentOwner && existing.teamTournament === true &&
+        input.bracket && !existing.bracket) {
+      const rosterShape = players => (players || []).map(p => [
+        String(p.id), String(p.userId || p.id), String(p.name || ''),
+        String(p.teamMate?.userId || p.teamMate?.id || ''),
+        String(p.teamMate?.name || ''),
+      ]);
+      if (JSON.stringify(rosterShape(input.joinedPlayers)) !==
+          JSON.stringify(rosterShape(existing.joinedPlayers))) {
+        return NextResponse.json({
+          error: '参加チームの情報が更新されています。画面を再読み込みして大会を開始してください。',
+        }, { status: 409 });
+      }
+    }
+
     const { ownerId, ownerUserId, teamInvites: incomingInvites, ...safeInput } = input;
     const updated = isCurrentOwner
       ? { ...safeInput, teamTournament: existing.teamTournament === true,
