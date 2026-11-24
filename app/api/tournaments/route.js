@@ -1,6 +1,6 @@
 import { saveTournamentRevision } from '../../../lib/tournament-save';
 import { repairPrematureAdvances } from '../../../lib/tournament-bracket-admin';
-import { teamRegistrationPlan } from '../../../lib/team-tournament';
+import { teamRegistrationPlan, rebuildDrawnTeamRoster, teamDisplayName } from '../../../lib/team-tournament';
 import { getEffectiveStreamMatchId } from '../../../lib/tournament-set-result';
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
@@ -431,7 +431,7 @@ export async function GET(request) {
         date: row.date, participants: Number(row.participants) || 8,
         joinedPlayers: Array.isArray(row.joined_players)
           ? Array((row.team_tournament === true || row.team_tournament === 'true')
-            ? teamRegistrationPlan({ teamTournament: true, joinedPlayers: row.joined_players }).teams.length
+            ? teamRegistrationPlan({ teamTournament: true, joinedPlayers: row.joined_players }).teamCount
             : row.joined_players.length).fill(null) : [],
         teamTournament: row.team_tournament === true || row.team_tournament === 'true',
         status: row.status, completedAt: row.completed_at,
@@ -442,7 +442,7 @@ export async function GET(request) {
         id: t.id || row.id, name: t.name, format: t.format,
         date: t.date, participants: t.participants,
         joinedPlayers: compact ? t.joinedPlayers : Array.isArray(t.joinedPlayers)
-          ? Array(t.teamTournament === true ? teamRegistrationPlan(t).teams.length : t.joinedPlayers.length).fill(null) : [],
+          ? Array(t.teamTournament === true ? teamRegistrationPlan(t).teamCount : t.joinedPlayers.length).fill(null) : [],
         teamTournament: t.teamTournament === true,
         status: t.status, completedAt: t.completedAt,
         bracket: { complete: t.bracket?.complete === true },
@@ -606,7 +606,7 @@ export async function PUT(request) {
         return NextResponse.json({ error: '大会名が正しくありません。' }, { status: 400 });
       updatedSettings.name = updatedSettings.name.trim();
       const registeredCount = existing.teamTournament === true
-        ? teamRegistrationPlan(existing).teams.length : (existing.joinedPlayers || []).length;
+        ? teamRegistrationPlan(existing).teamCount : (existing.joinedPlayers || []).length;
       if (Number(updatedSettings.participants) < registeredCount)
         return NextResponse.json({ error: '参加枠を現在の登録数より少なくできません。' }, { status: 400 });
 
@@ -742,34 +742,58 @@ export async function PUT(request) {
       }
     }
 
-    // Resolve solo pairings against the CURRENT server roster on bracket start.
-    // Never let a stale organizer snapshot or a forged client claim displace
-    // another entrant, change priority, or include the provisional last solo.
-    if (isCurrentOwner && existing.teamTournament === true &&
-        input.bracket && !existing.bracket) {
+
+    // The organizer triggers the lottery at Start. Validate that EVERY eligible
+    // solo was used exactly once, prior invited pairs are unchanged, and the
+    // final provisional entrant was excluded. Preserve private friend codes
+    // by rebuilding the roster from the authoritative server copy.
+    const startingTeamEvent = isCurrentOwner && existing.teamTournament === true &&
+      input.bracket && !existing.bracket;
+    let canonicalTeamRoster = null;
+    let canonicalTeamBracket = null;
+    if (startingTeamEvent) {
       const plan = teamRegistrationPlan(existing);
-      const rosterShape = players => (players || []).map(p => [
-        String(p.id), String(p.userId || p.id), String(p.name || ''),
-        String(p.teamMate?.userId || p.teamMate?.id || ''),
-        String(p.teamMate?.name || ''),
-      ]);
-      if (plan.teams.length < 2 ||
-          JSON.stringify(rosterShape(input.joinedPlayers)) !== JSON.stringify(rosterShape(plan.teams)) ||
-          JSON.stringify(rosterShape(input.teamProvisionalPlayers)) !== JSON.stringify(rosterShape(plan.provisionalPlayers))) {
+      canonicalTeamRoster = rebuildDrawnTeamRoster(existing, input.joinedPlayers);
+      const provisionalIds = list => (Array.isArray(list) ? list : []).map(player =>
+        String(player?.id || ''));
+      const requiredIds = canonicalTeamRoster?.map(player => String(player.id)).sort() || [];
+      const firstRoundIds = (input.bracket.rounds?.[0] || []).flatMap(match =>
+        [match.player1, match.player2].filter(Boolean).map(player => String(player.id))).sort();
+      if (plan.teamCount < 2 || !canonicalTeamRoster ||
+          JSON.stringify(provisionalIds(input.teamProvisionalPlayers)) !==
+            JSON.stringify(provisionalIds(plan.provisionalPlayers)) ||
+          JSON.stringify(firstRoundIds) !== JSON.stringify(requiredIds)) {
         return NextResponse.json({
-          error: '参加チームの情報が更新されています。画面を再読み込みして大会を開始してください。',
+          error: '参加チームの情報が更新されたか、ペア抽選結果が不正です。画面を再読み込みして大会を開始してください。',
         }, { status: 409 });
       }
+      const canonicalEntrants = new Map(canonicalTeamRoster.map(player =>
+        [String(player.id), { ...player, name: teamDisplayName(player) }]));
+      // Bracket slots must reference the validated lottery teams only.
+      const incomingRounds = input.bracket.rounds;
+      if (!Array.isArray(incomingRounds) || incomingRounds.some(round =>
+        !Array.isArray(round) || round.some(match => [match.player1, match.player2].some(
+          player => player && !canonicalEntrants.has(String(player.id)))))) {
+        return NextResponse.json({ error: '対戦カードの参加チームが不正です。' }, { status: 409 });
+      }
+      canonicalTeamBracket = {
+        ...input.bracket,
+        rounds: incomingRounds.map(round => round.map(match => ({
+          ...match,
+          player1: match.player1 ? canonicalEntrants.get(String(match.player1.id)) : null,
+          player2: match.player2 ? canonicalEntrants.get(String(match.player2.id)) : null,
+        }))),
+      };
     }
 
     const { ownerId, ownerUserId, teamInvites: incomingInvites, ...safeInput } = input;
     const updated = isCurrentOwner
       ? { ...safeInput,
-          ...(existing.teamTournament === true && input.bracket && !existing.bracket
-            ? (() => {
-                const plan = teamRegistrationPlan(existing);
-                return { joinedPlayers: plan.teams, teamProvisionalPlayers: plan.provisionalPlayers };
-              })() : {}),
+          ...(startingTeamEvent ? {
+            joinedPlayers: canonicalTeamRoster,
+            teamProvisionalPlayers: teamRegistrationPlan(existing).provisionalPlayers,
+            bracket: canonicalTeamBracket,
+          } : {}),
           teamTournament: existing.teamTournament === true,
           teamInvites: existing.teamInvites || {},
           ownerUserId: existingOwnerId || user.id }
