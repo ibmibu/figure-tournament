@@ -311,7 +311,7 @@ export default function NewTournamentPage() {
 
         <label>{teamTournament ? '参加チーム数' : '参加人数'}
           <select value={participants} disabled={editingStarted} onChange={event => setParticipants(Number(event.target.value))}>
-            {[2, 4, 8, 16, 32, 64, 128].map(count => <option key={count} value={count}>{count}人</option>)}
+            {[2, 4, 8, 16, 32, 64, 128].map(count => <option key={count} value={count}>{count}{teamTournament ? 'チーム' : '人'}</option>)}
           </select>
         </label>
 
