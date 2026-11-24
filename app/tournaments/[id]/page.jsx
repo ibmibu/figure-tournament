@@ -2039,7 +2039,7 @@ export default function TournamentPage() {
           </button>}
         {!tournament.bracket && !tournament.teamTournament && joinedPlayers.some(player =>
           !player.isDemo && String(player.userId || player.id) === String(currentUserId)) &&
-          <p className="setting-help overview-join-status">参加済み</p>}
+          <div className="overview-join-form"><button className="submit" type="button" disabled>参加登録済</button></div>}
         {tournament.teamTournament && error && myTeam && <p className="form-error" role="alert">{error}</p>}
         {tournament.teamTournament && notice && <p className="setting-help">{notice}</p>}
         <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl(true))}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
