@@ -7,7 +7,7 @@ import { getCharacterReportPlacement, getBracketPlacements } from '../../../lib/
 import { makeDoubleBracket, isDoubleBracket, reconcileDoubleBracket } from '../../../lib/tournament-double-elim';
 import DoubleBracketView from '../../../components/DoubleBracketView';
 import BracketPlayerLabel from '../../../components/BracketPlayerLabel';
-import { teamBracketEntrants, teamDisplayName, teamRegistrationPlan, isTeamMember, isTeamCaptain } from '../../../lib/team-tournament';
+import { teamBracketEntrants, teamDisplayName, teamRegistrationPlan, drawRandomTeamRoster, isTeamMember, isTeamCaptain } from '../../../lib/team-tournament';
 import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 import { declarationCount, declaredCharacters, validDeclaration } from '../../../lib/character-declarations';
@@ -857,8 +857,8 @@ export default function TournamentPage() {
   async function startBracket() {
     if (!isOwner) return;
     const teamPlan = tournament.teamTournament ? teamRegistrationPlan(tournament) : null;
-    const players = teamPlan ? teamPlan.teams : tournament.joinedPlayers || [];
-    if (players.length < 2) {
+    const teamCount = teamPlan ? teamPlan.teamCount : (tournament.joinedPlayers || []).length;
+    if (teamCount < 2) {
       setError(tournament.teamTournament ? '大会開始には正式参加チームが2チーム以上必要です。' : 'トーナメント開始には参加者が2人以上必要です。');
       return;
     }
@@ -869,8 +869,10 @@ export default function TournamentPage() {
       await saveBracket({ ...tournament, status: 'キャラ宣言中', declarationPhase: 'collecting', characterDeclarations: {} });
       return;
     }
-    const prepared = teamPlan
-      ? { ...tournament, joinedPlayers: teamPlan.teams, teamProvisionalPlayers: teamPlan.provisionalPlayers }
+    // Draw only when Start is pressed; being eligible before start never fixes a pair.
+    const draw = teamPlan ? drawRandomTeamRoster(tournament) : null;
+    const prepared = draw
+      ? { ...tournament, joinedPlayers: draw.teams, teamProvisionalPlayers: draw.provisionalPlayers }
       : tournament;
     const next = { ...prepared, status: '対戦中',
       bracket: makeBracket(teamBracketEntrants(prepared)),
@@ -1635,7 +1637,7 @@ export default function TournamentPage() {
 
   const joinedPlayers = tournament.joinedPlayers || [];
   const teamPlan = teamRegistrationPlan(tournament);
-  const registeredTeamCount = tournament.teamTournament ? teamPlan.teams.length : joinedPlayers.length;
+  const registeredTeamCount = tournament.teamTournament ? teamPlan.teamCount : joinedPlayers.length;
   const provisionalTeamPlayers = tournament.teamTournament
     ? (tournament.bracket ? tournament.teamProvisionalPlayers || [] : teamPlan.provisionalPlayers) : [];
   const myProvisional = provisionalTeamPlayers.some(player =>
@@ -2104,13 +2106,16 @@ export default function TournamentPage() {
     </section>
     <section className="create-panel tournament-detail participant-side-panel">
       <h2 className="participant-section-heading">{tournament.teamTournament ? '参加チーム' : '参加者'}（{registeredTeamCount}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}）</h2>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>{tournament.teamTournament && player.teamMate && <span className="team-member-inline"> ＋ {player.teamMate.name}</span>}{tournament.teamTournament && !tournament.bracket && provisionalTeamPlayers.some(entry => String(entry.id) === String(player.id)) && <span className="team-provisional-label">仮参加</span>}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && (tournament.teamTournament ? isTeamMember(player, currentUserId)
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>{tournament.teamTournament && player.teamMate && <span className="team-member-inline"> ＋ {player.teamMate.name}</span>}{tournament.teamTournament && !tournament.bracket && !player.teamMate &&
+          (provisionalTeamPlayers.some(entry => String(entry.id) === String(player.id))
+            ? <span className="team-provisional-label">仮参加</span>
+            : <span className="team-draw-pending-label">ペア抽選待ち</span>)}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && (tournament.teamTournament ? isTeamMember(player, currentUserId)
         : String(player.userId || player.id) === String(currentUserId))
         ? <button type="button" onClick={withdrawTournament}>{tournament.teamTournament && !isTeamCaptain(player, currentUserId) ? 'ペアから抜ける' : '参加を解除'}</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
       {tournament.teamTournament && provisionalTeamPlayers.length > 0 && tournament.bracket &&
         <p className="setting-help team-provisional-note">仮参加（対戦表には入りません）：{provisionalTeamPlayers.map(player => player.name).join('、')}</p>}
       {tournament.teamTournament && !tournament.bracket && provisionalTeamPlayers.length > 0 &&
-        <p className="setting-help team-provisional-note">仮参加者は追加のソロ参加者が登録されると正式参加になります。大会開始時点で相方がいない場合は対戦表に入りません。</p>}
+        <p className="setting-help team-provisional-note">仮参加者は追加のソロ参加者が登録されると抽選対象になります。ペアの組み合わせは大会開始時にランダム抽選し、仮参加のままなら対戦表には入りません。</p>}
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
