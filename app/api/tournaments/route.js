@@ -1,5 +1,6 @@
 import { saveTournamentRevision } from '../../../lib/tournament-save';
 import { repairPrematureAdvances } from '../../../lib/tournament-bracket-admin';
+import { teamRegistrationPlan } from '../../../lib/team-tournament';
 import { getEffectiveStreamMatchId } from '../../../lib/tournament-set-result';
 import { NextResponse } from 'next/server';
 import { unstable_cache } from 'next/cache';
@@ -102,6 +103,7 @@ function publicTournament(row, user, legacyOwnerToken = '') {
     return { ...safe, ...safeMate, ...(canSeeCode(p) && friendCode ? { friendCode } : {}) };
   };
   publicData.joinedPlayers = (data.joinedPlayers || []).map(redactPlayer);
+  publicData.teamProvisionalPlayers = (data.teamProvisionalPlayers || []).map(redactPlayer);
   if (data.bracket?.rounds) {
     publicData.bracket = {
       ...data.bracket,
@@ -156,7 +158,7 @@ function isFinishedTournamentRow(row) {
 const LIVE_TOURNAMENT_FIELDS = [
   'name', 'date', 'status', 'format', 'bestOf', 'tournamentType', 'participants',
   'joinedPlayers', 'bracket', 'stages', 'stageRejects', 'stageSettings',
-  'stageActionRevision', 'ownerUserId', 'characterDeclaration', 'characterDeclarationCount', 'teamTournament',
+  'stageActionRevision', 'ownerUserId', 'characterDeclaration', 'characterDeclarationCount', 'teamTournament', 'teamProvisionalPlayers',
   'characterRestriction', 'declarationPhase', 'characterDeclarations',
   'characterReports', 'streamUrl', 'streamFriendCode', 'seriesTags',
   'organizerName', 'createdAt', 'completedAt', 'description',
@@ -227,6 +229,7 @@ async function readTournamentSummaries(db) {
     'id', 'created_at', 'record_id:data->>id', 'name:data->>name',
     'format:data->>format', 'date:data->>date',
     'participants:data->>participants', 'joined_players:data->joinedPlayers',
+    'team_tournament:data->teamTournament',
     'status:data->>status', 'completed_at:data->>completedAt',
     'complete:data->bracket->>complete',
     'owner_user_id:data->>ownerUserId', 'organizer_name:data->>organizerName',
@@ -596,8 +599,10 @@ export async function PUT(request) {
       if (typeof updatedSettings.name !== 'string' || !updatedSettings.name.trim() || updatedSettings.name.length > 120)
         return NextResponse.json({ error: '大会名が正しくありません。' }, { status: 400 });
       updatedSettings.name = updatedSettings.name.trim();
-      if (Number(updatedSettings.participants) < (existing.joinedPlayers || []).length)
-        return NextResponse.json({ error: '参加人数を現在の登録者数より少なくできません。' }, { status: 400 });
+      const registeredCount = existing.teamTournament === true
+        ? teamRegistrationPlan(existing).teams.length : (existing.joinedPlayers || []).length;
+      if (Number(updatedSettings.participants) < registeredCount)
+        return NextResponse.json({ error: '参加枠を現在の登録数より少なくできません。' }, { status: 400 });
 
       const { data: saved, error: saveError } = await saveTournamentRevision(supabase, id, existing, updatedSettings);
       if (saveError) throw saveError;
@@ -731,17 +736,20 @@ export async function PUT(request) {
       }
     }
 
-    // A captain/teammate may have joined while the organizer still has an
-    // older browser snapshot. Never start a team bracket from that stale roster.
+    // Resolve solo pairings against the CURRENT server roster on bracket start.
+    // Never let a stale organizer snapshot or a forged client claim displace
+    // another entrant, change priority, or include the provisional last solo.
     if (isCurrentOwner && existing.teamTournament === true &&
         input.bracket && !existing.bracket) {
+      const plan = teamRegistrationPlan(existing);
       const rosterShape = players => (players || []).map(p => [
         String(p.id), String(p.userId || p.id), String(p.name || ''),
         String(p.teamMate?.userId || p.teamMate?.id || ''),
         String(p.teamMate?.name || ''),
       ]);
-      if (JSON.stringify(rosterShape(input.joinedPlayers)) !==
-          JSON.stringify(rosterShape(existing.joinedPlayers))) {
+      if (plan.teams.length < 2 ||
+          JSON.stringify(rosterShape(input.joinedPlayers)) !== JSON.stringify(rosterShape(plan.teams)) ||
+          JSON.stringify(rosterShape(input.teamProvisionalPlayers)) !== JSON.stringify(rosterShape(plan.provisionalPlayers))) {
         return NextResponse.json({
           error: '参加チームの情報が更新されています。画面を再読み込みして大会を開始してください。',
         }, { status: 409 });
