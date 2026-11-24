@@ -2037,10 +2037,6 @@ export default function TournamentPage() {
           <button className="submit" type="button" disabled={inviteBusy} onClick={shareTeamInvitation}>
             {inviteBusy ? 'URLを発行中…' : 'ペアを招待'}
           </button>}
-        {!tournament.bracket && tournament.teamTournament && myTeam?.teamMate &&
-          <p className="setting-help overview-join-status">ペア成立：{teamDisplayName(myTeam)}</p>}
-        {!tournament.bracket && tournament.teamTournament && myTeam && !isMyTeamCaptain &&
-          <p className="setting-help overview-join-status">ペアに参加済み（スコア操作は代表者が行います）</p>}
         {!tournament.bracket && !tournament.teamTournament && joinedPlayers.some(player =>
           !player.isDemo && String(player.userId || player.id) === String(currentUserId)) &&
           <p className="setting-help overview-join-status">参加済み</p>}
