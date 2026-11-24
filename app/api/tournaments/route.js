@@ -429,7 +429,11 @@ export async function GET(request) {
       const t = compact ? {
         id: row.record_id || row.id, name: row.name, format: row.format,
         date: row.date, participants: Number(row.participants) || 8,
-        joinedPlayers: Array.isArray(row.joined_players) ? Array(row.joined_players.length).fill(null) : [],
+        joinedPlayers: Array.isArray(row.joined_players)
+          ? Array((row.team_tournament === true || row.team_tournament === 'true')
+            ? teamRegistrationPlan({ teamTournament: true, joinedPlayers: row.joined_players }).teams.length
+            : row.joined_players.length).fill(null) : [],
+        teamTournament: row.team_tournament === true || row.team_tournament === 'true',
         status: row.status, completedAt: row.completed_at,
         bracket: { complete: row.complete === 'true' || row.complete === true },
         ownerUserId: row.owner_user_id, organizerName: row.organizer_name,
@@ -437,7 +441,9 @@ export async function GET(request) {
       return {
         id: t.id || row.id, name: t.name, format: t.format,
         date: t.date, participants: t.participants,
-        joinedPlayers: compact ? t.joinedPlayers : Array.isArray(t.joinedPlayers) ? Array(t.joinedPlayers.length).fill(null) : [],
+        joinedPlayers: compact ? t.joinedPlayers : Array.isArray(t.joinedPlayers)
+          ? Array(t.teamTournament === true ? teamRegistrationPlan(t).teams.length : t.joinedPlayers.length).fill(null) : [],
+        teamTournament: t.teamTournament === true,
         status: t.status, completedAt: t.completedAt,
         bracket: { complete: t.bracket?.complete === true },
         organizerName: ownerNames.get(t.ownerUserId) || t.organizerName || '',
