@@ -7,7 +7,7 @@ import { getCharacterReportPlacement, getBracketPlacements } from '../../../lib/
 import { makeDoubleBracket, isDoubleBracket, reconcileDoubleBracket } from '../../../lib/tournament-double-elim';
 import DoubleBracketView from '../../../components/DoubleBracketView';
 import BracketPlayerLabel from '../../../components/BracketPlayerLabel';
-import { teamBracketEntrants, teamDisplayName, isTeamMember, isTeamCaptain } from '../../../lib/team-tournament';
+import { teamBracketEntrants, teamDisplayName, teamRegistrationPlan, isTeamMember, isTeamCaptain } from '../../../lib/team-tournament';
 import { editableSetScores, getMatchReportMode, liveSetScores, scoreControlLockRemainingMs } from '../../../lib/tournament-set-result';
 import MatchScoreEditor from '../../../components/MatchScoreEditor';
 import { declarationCount, declaredCharacters, validDeclaration } from '../../../lib/character-declarations';
@@ -856,14 +856,24 @@ export default function TournamentPage() {
 
   async function startBracket() {
     if (!isOwner) return;
-    const players = tournament.joinedPlayers || [];
-    if (players.length < 2) { setError('トーナメント開始には参加者が2人以上必要です。'); return; }
+    const teamPlan = tournament.teamTournament ? teamRegistrationPlan(tournament) : null;
+    const players = teamPlan ? teamPlan.teams : tournament.joinedPlayers || [];
+    if (players.length < 2) {
+      setError(tournament.teamTournament ? '大会開始には正式参加チームが2チーム以上必要です。' : 'トーナメント開始には参加者が2人以上必要です。');
+      return;
+    }
+    if (teamPlan?.provisionalPlayers.length &&
+        !window.confirm('仮参加の' + teamPlan.provisionalPlayers.map(p => p.name).join('、') +
+          'さんは今回はトーナメントに参加できません。この内容で大会を開始しますか？')) return;
     if (tournament.characterDeclaration && tournament.declarationPhase !== 'published') {
       await saveBracket({ ...tournament, status: 'キャラ宣言中', declarationPhase: 'collecting', characterDeclarations: {} });
       return;
     }
-    const next = { ...tournament, status: '対戦中',
-      bracket: makeBracket(teamBracketEntrants(tournament)),
+    const prepared = teamPlan
+      ? { ...tournament, joinedPlayers: teamPlan.teams, teamProvisionalPlayers: teamPlan.provisionalPlayers }
+      : tournament;
+    const next = { ...prepared, status: '対戦中',
+      bracket: makeBracket(teamBracketEntrants(prepared)),
       streamMatchId: undefined, streamMatchManual: false, resultPlacements: null };
     await saveBracket(next);
     setShowTournamentOverview(false);
@@ -1624,6 +1634,12 @@ export default function TournamentPage() {
   </main>;
 
   const joinedPlayers = tournament.joinedPlayers || [];
+  const teamPlan = teamRegistrationPlan(tournament);
+  const registeredTeamCount = tournament.teamTournament ? teamPlan.teams.length : joinedPlayers.length;
+  const provisionalTeamPlayers = tournament.teamTournament
+    ? (tournament.bracket ? tournament.teamProvisionalPlayers || [] : teamPlan.provisionalPlayers) : [];
+  const myProvisional = provisionalTeamPlayers.some(player =>
+    String(player.userId || player.id) === String(currentUserId));
   const myTeam = tournament.teamTournament
     ? joinedPlayers.find(p => !p.isDemo && isTeamMember(p, currentUserId)) : null;
   const isMyTeamCaptain = Boolean(myTeam && isTeamCaptain(myTeam, currentUserId));
@@ -2020,12 +2036,12 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail" id="tournament-overview">
       <div className="tournament-card-top"><h2>大会概要</h2></div>
       <div className="overview-actions">
-        {isOwner && !tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit overview-start-button" type="button" onClick={startBracket} disabled={savingBracket || joinedPlayers.length < 2}>{tournament.declarationPhase === 'published' ? 'トーナメント表へ' : '大会を開始する'}</button>}
+        {isOwner && !tournament.bracket && tournament.declarationPhase !== 'collecting' && <button className="submit overview-start-button" type="button" onClick={startBracket} disabled={savingBracket || registeredTeamCount < 2}>{tournament.declarationPhase === 'published' ? 'トーナメント表へ' : '大会を開始する'}</button>}
         {tournament.bracket && <button className="overview-bracket-button" type="button" onClick={() => { setShowTournamentOverview(false); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>トーナメント表へ</button>}
         {(tournament.canEditSettings || (isOwner && !tournament.bracket)) && <a className="button-link overview-edit-link" href={`/tournaments/new?edit=${encodeURIComponent(id)}`}>編集</a>}
         {!tournament.bracket && !(tournament.teamTournament ? myTeam : joinedPlayers.some(player =>
           !player.isDemo && String(player.userId || player.id) === String(currentUserId))) && (
-          joinedPlayers.length >= Number(tournament.participants || 8)
+          registeredTeamCount >= Number(tournament.participants || 8)
             ? <p className="setting-help overview-join-status">定員に達しています。</p>
             : <form className="overview-join-form" onSubmit={joinTournament}>
                 {!savedFriendCode && <label>フレンドコード（必須）<input value={joinFriendCode} onChange={event => setJoinFriendCode(event.target.value.toUpperCase())} placeholder="SW-0000-0000-0000" pattern="[A-Za-z0-9-]+" title="英数字とハイフンのみ" required /></label>}
@@ -2040,6 +2056,7 @@ export default function TournamentPage() {
         {!tournament.bracket && !tournament.teamTournament && joinedPlayers.some(player =>
           !player.isDemo && String(player.userId || player.id) === String(currentUserId)) &&
           <div className="overview-join-form"><button className="submit" type="button" disabled>参加登録済</button></div>}
+        {tournament.teamTournament && myProvisional && <p className="setting-help overview-join-status">仮参加（相方の登録待ち）</p>}
         {tournament.teamTournament && error && myTeam && <p className="form-error" role="alert">{error}</p>}
         {tournament.teamTournament && notice && <p className="setting-help">{notice}</p>}
         <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl(true))}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
@@ -2048,7 +2065,7 @@ export default function TournamentPage() {
       <div className="detail-grid">
         <div><span>対戦形式</span><strong>{tournament.format || `BO${tournament.bestOf || 3}`}</strong></div>
         <div><span>トーナメント方式</span><strong>{tournament.tournamentType === 'double' || isDoubleBracket(tournament.bracket) ? 'ダブル' : 'シングル'}</strong></div>
-        <div><span>{tournament.teamTournament ? '参加チーム数' : '参加人数'}</span><strong>{joinedPlayers.length}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}</strong></div>
+        <div><span>{tournament.teamTournament ? '参加チーム数' : '参加人数'}</span><strong>{registeredTeamCount}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}</strong></div>
         <div><span>開始時刻</span><strong>{tournament.date ? `${tournament.date.slice(0, 10).replaceAll('-', '/')} ${tournament.date.slice(11, 16)}` : '未設定'}</strong></div>
         <div><span>拒否ステージ</span><strong>{tournament.stageRejects ? 'あり' : 'なし'}</strong></div>
         {tournament.characterDeclaration && <div><span>キャラ宣言</span><strong>{declarationCount(tournament)}キャラ</strong></div>}
@@ -2086,10 +2103,14 @@ export default function TournamentPage() {
 
     </section>
     <section className="create-panel tournament-detail participant-side-panel">
-      <h2 className="participant-section-heading">{tournament.teamTournament ? '参加チーム' : '参加者'}（{joinedPlayers.length}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}）</h2>
-      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>{tournament.teamTournament && player.teamMate && <span className="team-member-inline"> ＋ {player.teamMate.name}</span>}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && (tournament.teamTournament ? isTeamMember(player, currentUserId)
+      <h2 className="participant-section-heading">{tournament.teamTournament ? '参加チーム' : '参加者'}（{registeredTeamCount}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}）</h2>
+      {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>{tournament.teamTournament && player.teamMate && <span className="team-member-inline"> ＋ {player.teamMate.name}</span>}{tournament.teamTournament && !tournament.bracket && provisionalTeamPlayers.some(entry => String(entry.id) === String(player.id)) && <span className="team-provisional-label">仮参加</span>}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && (tournament.teamTournament ? isTeamMember(player, currentUserId)
         : String(player.userId || player.id) === String(currentUserId))
         ? <button type="button" onClick={withdrawTournament}>{tournament.teamTournament && !isTeamCaptain(player, currentUserId) ? 'ペアから抜ける' : '参加を解除'}</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
+      {tournament.teamTournament && provisionalTeamPlayers.length > 0 && tournament.bracket &&
+        <p className="setting-help team-provisional-note">仮参加（対戦表には入りません）：{provisionalTeamPlayers.map(player => player.name).join('、')}</p>}
+      {tournament.teamTournament && !tournament.bracket && provisionalTeamPlayers.length > 0 &&
+        <p className="setting-help team-provisional-note">仮参加者は追加のソロ参加者が登録されると正式参加になります。大会開始時点で相方がいない場合は対戦表に入りません。</p>}
     </section>
     </div>}
     {isOwner && (!tournament.bracket || showTournamentOverview) && <div className="tournament-delete-section"><button className="danger-button" type="button" onClick={deleteTournament}>この大会を削除</button></div>}
