@@ -38,56 +38,59 @@ export default function MyPage({ colorsOnly = false }) {
         }
         if (!active) return;
         setSession(currentSession);
-        const snapshot = readTabSnapshot('mypage-' + currentSession.user.id);
-        if (snapshot) {
-          setProfile(snapshot.profile);
-          setDraftName(snapshot.profile.display_name || 'no name');
-          setDraftAvatar(snapshot.profile.avatar_data || '');
-          setDraftFriendCode(snapshot.profile.friend_code || '');
-          setMyColors(snapshot.colors || []);
-          setColorsReady(true);
+        // My Colors is fetched only when its dedicated registration screen opens.
+        // Never delay the profile header behind a separate color-settings request.
+        if (colorsOnly) {
+          let localColors = [];
+          try { localColors = JSON.parse(window.localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]'); } catch {}
+          if (!Array.isArray(localColors)) localColors = [];
+          setMyColors(localColors);
           setLoading(false);
+          try {
+            const response = await fetch('/api/my-colors', {
+              headers: { Authorization: `Bearer ${currentSession.access_token}` },
+              cache: 'no-store',
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'マイカラーを読み込めませんでした。');
+            if (!active) return;
+            if (Array.isArray(result.colors)) {
+              setMyColors(result.colors);
+              try { window.localStorage.setItem('figure-my-colors-' + currentSession.user.id, JSON.stringify(result.colors)); } catch {}
+            } else if (localColors.length) {
+              const migrated = await fetch('/api/my-colors', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentSession.access_token}` },
+                body: JSON.stringify({ colors: localColors }),
+              });
+              if (!migrated.ok) throw new Error('以前のマイカラーをアカウントに移行できませんでした。');
+            }
+          } catch (colorError) {
+            if (active) setError(colorError.message || 'マイカラーの同期に失敗しました。');
+          } finally {
+            if (active) setColorsReady(true);
+          }
           return;
         }
-        let localColors = [];
-        try { localColors = JSON.parse(window.localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]'); } catch {}
-        if (!Array.isArray(localColors)) localColors = [];
-        setMyColors(localColors);
-        try {
-          const response = await fetch('/api/my-colors', { headers: { Authorization: `Bearer ${currentSession.access_token}` }, cache: 'no-store' });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'マイカラーを読み込めませんでした。');
-          if (!active) return;
-          if (Array.isArray(result.colors)) {
-            setMyColors(result.colors);
-            try { window.localStorage.setItem('figure-my-colors-' + currentSession.user.id, JSON.stringify(result.colors)); } catch {}
-          } else if (localColors.length) {
-            const migrated = await fetch('/api/my-colors', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${currentSession.access_token}` },
-              body: JSON.stringify({ colors: localColors }),
-            });
-            if (!migrated.ok) throw new Error('以前のマイカラーをアカウントに移行できませんでした。');
-          }
-        } catch (colorError) {
-          if (active) setError(colorError.message || 'マイカラーの同期に失敗しました。');
-        } finally {
-          if (active) setColorsReady(true);
-        }
-        // The My Colors screen renders no profile fields or avatar. Loading
-        // a potentially multi-megabyte base64 image here is unnecessary.
-        if (colorsOnly) return;
+
+        // Show the previous profile immediately, then refresh it without
+        // blocking the first render. Both caches are scoped to the signed-in user.
         const cacheKey = 'figure-profile-' + currentSession.user.id;
-        try {
-          const cached = window.localStorage.getItem(cacheKey);
-          if (cached) {
-            const cachedProfile = JSON.parse(cached);
-            setProfile(cachedProfile);
-            setDraftName(cachedProfile.display_name || 'no name');
-            setDraftAvatar(cachedProfile.avatar_data || '');
-            setDraftFriendCode(cachedProfile.friend_code || '');
-          }
-        } catch {}
+        const snapshot = readTabSnapshot('mypage-' + currentSession.user.id);
+        let cachedProfile = snapshot?.profile;
+        if (!cachedProfile) {
+          try {
+            const cached = window.localStorage.getItem(cacheKey);
+            if (cached) cachedProfile = JSON.parse(cached);
+          } catch {}
+        }
+        if (cachedProfile && typeof cachedProfile === 'object') {
+          setProfile(cachedProfile);
+          setDraftName(cachedProfile.display_name || 'no name');
+          setDraftAvatar(cachedProfile.avatar_data || '');
+          setDraftFriendCode(cachedProfile.friend_code || '');
+        }
+        setLoading(false);
         const headers = { Authorization: `Bearer ${currentSession.access_token}` };
         const profileResponse = await fetch('/api/profile', { headers, cache: 'no-store' });
         const profileResult = await profileResponse.json();
@@ -99,9 +102,8 @@ export default function MyPage({ colorsOnly = false }) {
         setDraftName(loadedProfile.display_name || 'no name');
         setDraftAvatar(loadedProfile.avatar_data || '');
         setDraftFriendCode(loadedProfile.friend_code || '');
-        // Only profile and color settings are rendered here. Never load the
-        // entire tournament history just to enter My Page or My Colors.
-        writeTabSnapshot('mypage-' + currentSession.user.id, { profile: loadedProfile, colors: JSON.parse(localStorage.getItem('figure-my-colors-' + currentSession.user.id) || '[]') });
+        // Cache the profile alone: My Page does not need color settings.
+        writeTabSnapshot('mypage-' + currentSession.user.id, { profile: loadedProfile });
       } catch (e) {
         if (active) setError(e.message || '読み込みに失敗しました。');
       } finally {
@@ -205,6 +207,7 @@ export default function MyPage({ colorsOnly = false }) {
       if (!response.ok) throw new Error(result.error || 'プロフィールを保存できませんでした。');
       setProfile(result.profile);
       try { window.localStorage.setItem('figure-profile-' + session.user.id, JSON.stringify(result.profile)); } catch {}
+      writeTabSnapshot('mypage-' + session.user.id, { profile: result.profile });
       setEditing(false);
     } catch (e) {
       setError(e.message || '保存に失敗しました。');
