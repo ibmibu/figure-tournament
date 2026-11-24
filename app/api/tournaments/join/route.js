@@ -1,7 +1,7 @@
 import { saveTournamentRevision } from '../../../../lib/tournament-save';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { isTeamMember } from '../../../../lib/team-tournament';
+import { isTeamMember, teamRegistrationPlan } from '../../../../lib/team-tournament';
 
 export const dynamic = 'force-dynamic';
 // Joining a roster must never reveal other teams' stored friend codes.
@@ -48,7 +48,9 @@ export async function POST(request) {
     const tournament = row.data || {};
     if (tournament.bracket || tournament.status !== '募集中') return NextResponse.json({ error: "大会開始後は参加登録できません。" }, { status: 409 });
     const players = Array.isArray(tournament.joinedPlayers) ? tournament.joinedPlayers : [];
-    if (players.length >= Number(tournament.participants || 8)) return NextResponse.json({ error: 'この大会は定員に達しています。' }, { status: 409 });
+    const registeredTeams = tournament.teamTournament === true
+      ? teamRegistrationPlan(tournament).teams.length : players.length;
+    if (registeredTeams >= Number(tournament.participants || 8)) return NextResponse.json({ error: 'この大会は定員に達しています。' }, { status: 409 });
     if (players.some(player => isTeamMember(player, authData.user.id))) return NextResponse.json({ error: 'すでに参加登録しています。' }, { status: 409 });
     if (players.some(player => String(player.name || '').trim().toLowerCase() === name.toLowerCase())) {
       return NextResponse.json({ error: '同じ名前の参加者がすでに登録されています。' }, { status: 409 });
