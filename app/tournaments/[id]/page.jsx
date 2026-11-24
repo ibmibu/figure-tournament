@@ -2052,15 +2052,13 @@ export default function TournamentPage() {
               </form>
         )}
         {!tournament.bracket && tournament.teamTournament && isMyTeamCaptain && !myTeam.teamMate &&
-          <button className="submit" type="button" disabled={inviteBusy} onClick={shareTeamInvitation}>
+          <button className="submit overview-team-invite-button" type="button" disabled={inviteBusy} onClick={shareTeamInvitation}>
             {inviteBusy ? 'URLを発行中…' : 'ペアを招待'}
           </button>}
         {!tournament.bracket && !tournament.teamTournament && joinedPlayers.some(player =>
           !player.isDemo && String(player.userId || player.id) === String(currentUserId)) &&
           <div className="overview-join-form"><button className="submit" type="button" disabled>参加登録済</button></div>}
-        {tournament.teamTournament && myProvisional && <p className="setting-help overview-join-status">仮参加（相方の登録待ち）</p>}
         {tournament.teamTournament && error && myTeam && <p className="form-error" role="alert">{error}</p>}
-        {tournament.teamTournament && notice && <p className="setting-help">{notice}</p>}
         <a className="button-link overview-share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tournament.name + '\n' + tournamentShareUrl(true))}`} target="_blank" rel="noopener noreferrer">Xに投稿する</a>
       </div>
 
