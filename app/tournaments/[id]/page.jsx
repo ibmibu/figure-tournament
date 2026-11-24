@@ -2107,9 +2107,8 @@ export default function TournamentPage() {
     <section className="create-panel tournament-detail participant-side-panel">
       <h2 className="participant-section-heading">{tournament.teamTournament ? '参加チーム' : '参加者'}（{registeredTeamCount}/{tournament.participants || 8}{tournament.teamTournament ? 'チーム' : '人'}）</h2>
       {joinedPlayers.length ? <ul className="joined-player-list">{joinedPlayers.map(player => <li key={player.id}><span className="participant-name-with-avatar"><span className="participant-avatar-square">{tournament.participantAvatars?.[String(player.userId || player.id)] ? <img src={tournament.participantAvatars[String(player.userId || player.id)]} alt="" onError={event => { event.currentTarget.style.display = "none"; }} /> : null}</span><a href={`/players/${encodeURIComponent(player.userId || player.id)}?name=${encodeURIComponent(player.name)}`} className="participant-history-link">{player.name}</a>{tournament.teamTournament && player.teamMate && <span className="team-member-inline"> ＋ {player.teamMate.name}</span>}{tournament.teamTournament && !tournament.bracket && !player.teamMate &&
-          (provisionalTeamPlayers.some(entry => String(entry.id) === String(player.id))
-            ? <span className="team-provisional-label">仮参加</span>
-            : <span className="team-draw-pending-label">ペア抽選待ち</span>)}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && (tournament.teamTournament ? isTeamMember(player, currentUserId)
+          provisionalTeamPlayers.some(entry => String(entry.id) === String(player.id)) &&
+          <span className="team-provisional-label">仮参加</span>}</span>{!tournament.bracket && (isOwner ? <button type="button" onClick={() => leaveTournament(player.id)}>登録を削除</button> : !player.isDemo && (tournament.teamTournament ? isTeamMember(player, currentUserId)
         : String(player.userId || player.id) === String(currentUserId))
         ? <button type="button" onClick={withdrawTournament}>{tournament.teamTournament && !isTeamCaptain(player, currentUserId) ? 'ペアから抜ける' : '参加を解除'}</button> : null)}</li>)}</ul> : <p className="setting-help">まだ参加者はいません。</p>}
       {tournament.teamTournament && provisionalTeamPlayers.length > 0 && tournament.bracket &&
