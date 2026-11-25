@@ -2617,3 +2617,89 @@ footer span {
     column-gap: 6px;
   }
 }
+
+/* Static square fighter portraits: five visible columns on desktop and mobile. */
+.stats-shell .characterUsageGrid > .characterUsageSection {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+.stats-shell .characterUsageSection .characterTopList,
+.stats-shell .characterSoloSection .characterSoloList {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+  max-width: 100%;
+  gap: 8px;
+  align-items: start;
+}
+.stats-shell .characterUsageSection .characterTopList .characterTopCard,
+.stats-shell .characterSoloSection .characterSoloCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 6px;
+  gap: 5px;
+}
+.stats-shell .characterTopCard .fighterSquarePortrait,
+.stats-shell .characterSoloCard .fighterSquarePortrait {
+  display: block;
+  width: 100%;
+  max-width: 128px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  flex: 0 0 auto;
+  background: transparent;
+}
+.stats-shell .characterTopCard .fighterLabel,
+.stats-shell .characterSoloSection .characterSoloCard strong.fighterLabel {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 700;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.stats-shell .characterTopCard .fighterLabel { color: #253149; }
+.stats-shell .characterSoloSection .characterSoloCard strong.fighterLabel { color: #fff; }
+.stats-shell .characterSoloSection .characterSoloEntry,
+.stats-shell .characterSoloSection .characterSoloEntryHead { width: 100%; min-width: 0; max-width: 100%; }
+.stats-shell .characterSoloSection .characterSoloCount { right: -3px; top: -7px; }
+@media (max-width: 700px) {
+  .stats-shell .characterUsageSection .characterTopList,
+  .stats-shell .characterSoloSection .characterSoloList {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .stats-shell .characterUsageSection .characterTopList .characterTopCard {
+    display: flex;
+  }
+  .stats-shell .characterUsageSection .characterTopList .characterTopCard,
+  .stats-shell .characterSoloSection .characterSoloCard {
+    width: 100%;
+    min-height: 0;
+    padding: 3px 2px;
+    gap: 3px;
+  }
+  .stats-shell .characterTopCard .fighterLabel,
+  .stats-shell .characterSoloSection .characterSoloCard strong.fighterLabel {
+    font-size: 9px;
+    line-height: 1.2;
+  }
+  .stats-shell .characterSoloSection .characterSoloNumbers { gap: 3px; padding: 0; }
+  .stats-shell .characterSoloSection .characterSoloNumbers span { font-size: 9px; padding: 2px 3px; }
+  .stats-shell .characterSoloSection .characterSoloCount { font-size: 10px; }
+}

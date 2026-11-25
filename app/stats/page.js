@@ -4,6 +4,7 @@ import { loadHistoryRevision, rankingHistoryRevision } from '../../lib/history-r
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './stats.css';
+import { getFighterPortrait } from '../../lib/fighter-portraits';
 import { CHARACTER_ALIASES } from './data/characterAliases';
 import { MANUAL_CHARACTER_REPORTS } from './data/manualCharacterReports';
 import { ELO_INITIAL_RATING, calculateElo, calculateTournamentTierScores } from '../../lib/ratings';
@@ -1326,9 +1327,18 @@ export default function StatsPage() {
                     <div className="characterUsageGrid">
                       <section className="characterUsageSection">
                         <span className="characterSectionTitle">メインファイター</span>
-                        <div className="characterTopList">{selectedCharacterStats.counts.slice(0, 5).map((item) => <div className="characterTopCard" key={item.name}>{item.name}</div>)}</div>
+                        <div className="characterTopList">
+                          {selectedCharacterStats.counts.slice(0, 5).map((item) => (
+                            <div className="characterTopCard" key={item.name} title={item.name}>
+                              {getFighterPortrait(item.name) && (
+                                <img className="fighterSquarePortrait" src={getFighterPortrait(item.name)} alt="" width="128" height="128" loading="lazy" decoding="async" />
+                              )}
+                              <span className="fighterLabel">{item.name}</span>
+                            </div>
+                          ))}
+                        </div>
                       </section>
-                      {selectedCharacterStats.soloAchievements?.length > 0 && <section className="characterUsageSection characterSoloSection"><span className="characterSectionTitle">単騎達成</span><div className="characterSoloList">{[...selectedCharacterStats.soloAchievements.reduce((grouped, item) => { if (!grouped.has(item.character)) grouped.set(item.character, []); grouped.get(item.character).push(item.number); return grouped; }, new Map())].map(([character, numbers]) => <div className="characterSoloEntry" key={character}><div className="characterSoloEntryHead"><button type="button" className="characterSoloCard" aria-expanded={expandedSoloCharacters.includes(character)} onClick={() => setExpandedSoloCharacters((current) => current.includes(character) ? current.filter((item) => item !== character) : [...current, character])}><strong>{character}</strong></button>{numbers.length > 1 && <span className="characterSoloCount">×{numbers.length}</span>}</div>{expandedSoloCharacters.includes(character) && <div className="characterSoloNumbers" aria-label={character + 'の達成大会'}>{numbers.map((number) => <span key={number}>#{number}</span>)}</div>}</div>)}</div></section>}
+                      {selectedCharacterStats.soloAchievements?.length > 0 && <section className="characterUsageSection characterSoloSection"><span className="characterSectionTitle">単騎達成</span><div className="characterSoloList">{[...selectedCharacterStats.soloAchievements.reduce((grouped, item) => { if (!grouped.has(item.character)) grouped.set(item.character, []); grouped.get(item.character).push(item.number); return grouped; }, new Map())].map(([character, numbers]) => <div className="characterSoloEntry" key={character}><div className="characterSoloEntryHead"><button type="button" className="characterSoloCard" aria-expanded={expandedSoloCharacters.includes(character)} onClick={() => setExpandedSoloCharacters((current) => current.includes(character) ? current.filter((item) => item !== character) : [...current, character])}>{getFighterPortrait(character) && <img className="fighterSquarePortrait" src={getFighterPortrait(character)} alt="" width="128" height="128" loading="lazy" decoding="async" />}<strong className="fighterLabel">{character}</strong></button>{numbers.length > 1 && <span className="characterSoloCount">×{numbers.length}</span>}</div>{expandedSoloCharacters.includes(character) && <div className="characterSoloNumbers" aria-label={character + 'の達成大会'}>{numbers.map((number) => <span key={number}>#{number}</span>)}</div>}</div>)}</div></section>}
                     </div>
                   </> : <p>この選手のキャラ報告はまだありません。</p>}
                 </>}
