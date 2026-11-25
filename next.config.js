@@ -2,7 +2,7 @@
 module.exports = {
   async headers() {
     return [{
-      source: '/fighters/square-v1/:path*',
+      source: '/fighters/square-v2/:path*',
       headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
     }];
   },

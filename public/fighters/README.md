@@ -1,8 +1,11 @@
 # Square fighter portraits
 
 Source: https://github.com/pokerobybeto/smash-ultimate-assets
-Original path: `Characters/Base (png)/<fighter>/Square/<fighter> (1).png`.
+Original images: Characters/Base (png)/<fighter>/Square/<fighter> (1).png
 
-These are 128x128 PNGs, default costume (1), copied locally to avoid runtime GitHub requests and Supabase image transfer. Fighter names and imagery belong to their respective rightsholders; inclusion here does not imply official endorsement or rights-holder permission.
+86 default-costume square PNGs were encoded as 128x128 WebP, quality 82.
+Files are hosted locally under public/fighters/square-v2, not GitHub or Supabase.
+Versioned files are browser-cacheable for one year; future edits require square-v3.
 
-The `square-v1` directory is immutable in browser caches. For any replacement, use a new versioned directory and update `lib/fighter-portraits.js` and `next.config.js`.
+Characters and imagery belong to their rightsholders. Repository availability
+does not establish official permission to reuse the artwork.
