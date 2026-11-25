@@ -303,7 +303,7 @@ export default function NewTournamentPage() {
 
         <fieldset className="setup-group" disabled={editingStarted}>
           <legend>トーナメント方式</legend>
-          <div className="format-options">
+          <div className="format-options tournament-type-options">
             <button type="button" className={tournamentType === 'single' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'single'} onClick={() => setTournamentType('single')}><strong>シングルエリミ</strong></button>
             <button type="button" className={tournamentType === 'double' ? 'format-option selected' : 'format-option'} aria-pressed={tournamentType === 'double'} onClick={() => setTournamentType('double')}><strong>ダブルエリミ</strong></button>
           </div>
