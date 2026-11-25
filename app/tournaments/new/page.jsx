@@ -296,8 +296,8 @@ export default function NewTournamentPage() {
         <fieldset className="setup-group" disabled={editingStarted}>
           <legend>対戦形式</legend>
           <div className="format-options">
-            <button type="button" className={format === 3 ? 'format-option selected' : 'format-option'} aria-pressed={format === 3} onClick={() => setFormat(3)}><strong>BO3</strong><small>2本先取</small></button>
-            <button type="button" className={format === 5 ? 'format-option selected' : 'format-option'} aria-pressed={format === 5} onClick={() => setFormat(5)}><strong>BO5</strong><small>3本先取</small></button>
+            <button type="button" className={format === 3 ? 'format-option selected' : 'format-option'} aria-pressed={format === 3} onClick={() => setFormat(3)}><strong>BO3</strong></button>
+            <button type="button" className={format === 5 ? 'format-option selected' : 'format-option'} aria-pressed={format === 5} onClick={() => setFormat(5)}><strong>BO5</strong></button>
           </div>
         </fieldset>
 
