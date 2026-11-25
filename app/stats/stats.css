@@ -2684,7 +2684,9 @@ footer span {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
   }
-  .stats-shell .characterUsageSection .characterTopList .characterTopCard {
+  /* Override the old mobile rule that hid the fifth fighter. */
+  .stats-shell .characterUsageSection .characterTopList .characterTopCard,
+  .stats-shell .characterUsageSection .characterTopList .characterTopCard:nth-child(n + 5) {
     display: flex;
   }
   .stats-shell .characterUsageSection .characterTopList .characterTopCard,
