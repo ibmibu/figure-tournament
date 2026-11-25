@@ -188,7 +188,7 @@ export default function StatsPage() {
     // must not create gaps or advance the season / inactivity counter.
     selectedNew.forEach((t, index) => {
       const number = maxArchiveNumber + index + 1;
-      tournaments.push({ number, name: t.name, players: t.players.length, participantIds: [...new Set([...t.players.map(p => canonicalAccountId(p.id)), ...(t.demoTierIds || [])])], id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], characterRestriction: t.characterRestriction === true, isNewTournament: true });
+      tournaments.push({ number, name: t.name, date: t.date || t.createdAt || '', players: t.players.length, participantIds: [...new Set([...t.players.map(p => canonicalAccountId(p.id)), ...(t.demoTierIds || [])])], id: t.id, seriesTags: t.seriesTags, championId: t.championId, runnerUpId: t.runnerUpId, thirdPlaceIds: t.thirdPlaceIds || [], characterRestriction: t.characterRestriction === true, isNewTournament: true });
       for (const player of t.players) {
         const id = canonicalAccountId(player.id);
         if (!players.has(id)) players.set(id, { id, name: player.name });
@@ -876,7 +876,26 @@ export default function StatsPage() {
     const soloAchievements = [...reportedByTournament.entries()]
       .filter(([number, characters]) => champions.get(number) === playerId && characters.size === 1 && !restrictedTournamentNumbers.has(number))
       .map(([number, characters]) => ({ number, character: [...characters][0] }))
-      .sort((a, b) => b.number - a.number);
+      .sort((a, b) => {
+        // The UI groups achievements by fighter, preserving the order of the
+        // first entry. Chronological events therefore put the earliest first
+        // solo title for each fighter first, even after later repeat wins.
+        const aDate = tournamentsByNumber.get(a.number)?.date;
+        const bDate = tournamentsByNumber.get(b.number)?.date;
+        const toTime = (value) => {
+          if (!value) return NaN;
+          const text = String(value).trim().replace(' ', 'T');
+          const japanLocal = /^\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?)?$/.test(text);
+          return Date.parse(japanLocal ? (text.includes('T') ? text : text + 'T00:00:00') + '+09:00' : text);
+        };
+        const timeA = toTime(aDate);
+        const timeB = toTime(bDate);
+        if (Number.isFinite(timeA) && Number.isFinite(timeB) && timeA !== timeB) {
+          return timeA - timeB;
+        }
+        // Old records without reliable dates still have chronological numbers.
+        return a.number - b.number;
+      });
     return { counts: [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ja')), total: [...counts.values()].reduce((sum, value) => sum + value, 0), tournaments: seenTournaments.size, soloAchievements, matchedComments, parsedComments, targetId: String(characterTargetPlayer.id), fetchedComments: (characterComments || []).reduce((sum, item) => sum + (item.comments?.length || 0), 0), fetchErrors: (characterComments || []).filter((item) => item.error).length };
   }, [data, selected, characterComments, playerTournamentStats, createdTournaments, archiveData, seriesTag]);
 
