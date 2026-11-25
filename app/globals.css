@@ -2137,3 +2137,6 @@ body .tournament-detail-page .bracket-admin-log-dot{
     margin:0;
   }
 }
+
+/* Slightly smaller labels for single/double elimination choices only. */
+.tournament-create-page .tournament-type-options .format-option strong { font-size: 15px; }
