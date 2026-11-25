@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import { safeLoginNext } from '../../lib/safe-login-next';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function LoginPage() {
       const supabase = getSupabaseBrowserClient();
       supabase.auth.getSession().then(({ data }) => {
         const next = new URLSearchParams(window.location.search).get('next');
-        const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+        const safeNext = safeLoginNext(next, window.location.origin);
         if (data.session) router.replace(safeNext);
       });
     } catch (loadError) {
@@ -29,7 +30,7 @@ export default function LoginPage() {
       const supabase = getSupabaseBrowserClient();
       const params = new URLSearchParams(window.location.search);
       const next = params.get('next');
-      const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      const safeNext = safeLoginNext(next, window.location.origin);
       const { error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

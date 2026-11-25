@@ -1,0 +1,60 @@
+name: Lock verified web dependencies
+
+# One-time npm lockfile generation after security updates. Normal app pushes
+# never retrigger this workflow unless this workflow file itself changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/lock-verified-dependencies.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lock-verified-web-dependencies
+  cancel-in-progress: false
+
+jobs:
+  lock-and-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate reproducible npm dependency lock
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Install exactly the locked dependency tree
+        run: npm ci --no-audit --no-fund
+      - name: Verify security guards and installed versions
+        run: |
+          npm run test:security
+          node - <<'NODE'
+          const assert = require('node:assert/strict');
+          const pkg = require('./package.json');
+          const next = require('next/package.json');
+          const react = require('react/package.json');
+          const reactDom = require('react-dom/package.json');
+          assert.equal(next.version, '15.5.29');
+          assert.equal(react.version, '19.1.8');
+          assert.equal(reactDom.version, '19.1.8');
+          assert.equal(pkg.overrides.sharp, '0.35.5');
+          console.log('Next.js, React, React DOM and Sharp override verified');
+          NODE
+          npm ls next react react-dom
+      - name: Commit package-lock.json
+        run: |
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo 'Dependency lock is already current'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Lock patched Next.js and verified application dependencies'
+          git push
+      - name: Audit locked production dependencies
+        run: npm audit --omit=dev --audit-level=high

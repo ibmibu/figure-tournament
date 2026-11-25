@@ -264,12 +264,13 @@ function liveVersionToken(id, revision, user, legacyOwnerToken) {
 
 export async function GET(request) {
   try {
-    const user = await getUser(request, false);
     const supabase = getAdminClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const legacyOwnerToken = searchParams.get('ownerToken') || '';
     if (id) {
+      // Identity is only needed for private, per-tournament redaction.
+      const user = await getUser(request, false);
+      const legacyOwnerToken = searchParams.get('ownerToken') || '';
       const requestedView = searchParams.get('view');
       if (requestedView === 'access') {
         // Finished public records are served from the GitHub archive. Only
@@ -380,40 +381,29 @@ export async function GET(request) {
         ...responseHeaders, 'Content-Type': 'application/json; charset=utf-8',
       } });
     }
-    const summaryMode = searchParams.get('view') === 'summary';
-    let summaryRows = null;
-    if (summaryMode) {
-      try {
-        summaryRows = searchParams.has('refresh')
-          ? await readTournamentSummaries(supabase)
-          : await cachedTournamentSummaries();
-      } catch (projectionError) {
-        // Retain compatibility with older PostgREST deployments.
-        console.warn('Summary projection unavailable, using full records:', projectionError.message);
-      }
+    // An ID-less request may only fetch a lightweight public summary.
+    // In particular, the legacy full-data enumeration route is forbidden:
+    // it could transfer every tournament's bracket and private data from DB.
+    if (searchParams.get('view') !== 'summary') {
+      return NextResponse.json(
+        { error: '大会一覧には view=summary を指定してください。' },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+      );
     }
-    const allRows = summaryRows || (await (async () => {
-      const rows = [];
-      for (let from = 0; ; from += 500) {
-        const { data, error } = await supabase.from('tournaments')
-          .select('id,data,owner_token,created_at')
-          .order('created_at', { ascending: false }).range(from, from + 499);
-        if (error) throw error;
-        rows.push(...(data || []));
-        if (!data || data.length < 500) return rows;
-      }
-    })());
+
+    // Even when older clients append ?refresh=..., honor the same shared
+    // 20-second server cache. The refresh parameter can no longer force an
+    // unbounded Supabase read on every anonymous request.
+    // Do not fall back to a full tournaments.data scan if this fails.
+    const rows = await cachedTournamentSummaries();
     const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
-    const compact = summaryMode && Boolean(summaryRows);
-    const rows = summaryMode ? allRows.filter(row => {
-      const finished = compact
-        ? row.complete === true || row.complete === 'true' || ['終了', '終了済み', '大会終了'].includes(row.status)
-        : row.data?.bracket?.complete === true || ['終了', '終了済み', '大会終了'].includes(row.data?.status);
-      const stamp = compact
-        ? Date.parse(row.completed_at || row.date || '') : Date.parse(row.data?.completedAt || row.data?.date || '');
+    const recent = rows.filter(row => {
+      const finished = row.complete === true || row.complete === 'true' ||
+        ['終了', '終了済み', '大会終了'].includes(row.status);
+      const stamp = Date.parse(row.completed_at || row.date || '');
       return !finished || (Number.isFinite(stamp) && stamp >= cutoff);
-    }) : allRows;
-    const ownerIds = [...new Set(rows.map(row => compact ? row.owner_user_id : row.data?.ownerUserId).filter(Boolean))];
+    });
+    const ownerIds = [...new Set(recent.map(row => row.owner_user_id).filter(Boolean))];
     let ownerNames = new Map();
     if (ownerIds.length) {
       const { data: profiles, error: profileError } = await supabase.from('profiles')
@@ -421,38 +411,26 @@ export async function GET(request) {
       if (profileError) console.error('Tournament organizer names could not be loaded:', profileError);
       else ownerNames = new Map((profiles || []).map(profile => [profile.user_id, profile.display_name]));
     }
-    const tournaments = rows.map(row => {
-      if (!summaryMode) return {
-        ...publicTournament(row, user),
-        organizerName: ownerNames.get(row.data?.ownerUserId) || row.data?.organizerName || '',
-      };
-      const t = compact ? {
+    const tournaments = recent.map(row => {
+      const teamTournament = row.team_tournament === true || row.team_tournament === 'true';
+      const entrantCount = Array.isArray(row.joined_players)
+        ? (teamTournament
+          ? teamRegistrationPlan({ teamTournament: true, joinedPlayers: row.joined_players }).teamCount
+          : row.joined_players.length)
+        : 0;
+      return {
         id: row.record_id || row.id, name: row.name, format: row.format,
         date: row.date, participants: Number(row.participants) || 8,
-        joinedPlayers: Array.isArray(row.joined_players)
-          ? Array((row.team_tournament === true || row.team_tournament === 'true')
-            ? teamRegistrationPlan({ teamTournament: true, joinedPlayers: row.joined_players }).teamCount
-            : row.joined_players.length).fill(null) : [],
-        teamTournament: row.team_tournament === true || row.team_tournament === 'true',
+        // Keep the existing list's count-only contract. No participant details.
+        joinedPlayers: Array(entrantCount).fill(null),
+        teamTournament,
         status: row.status, completedAt: row.completed_at,
         bracket: { complete: row.complete === 'true' || row.complete === true },
-        ownerUserId: row.owner_user_id, organizerName: row.organizer_name,
-      } : row.data || {};
-      return {
-        id: t.id || row.id, name: t.name, format: t.format,
-        date: t.date, participants: t.participants,
-        joinedPlayers: compact ? t.joinedPlayers : Array.isArray(t.joinedPlayers)
-          ? Array(t.teamTournament === true ? teamRegistrationPlan(t).teamCount : t.joinedPlayers.length).fill(null) : [],
-        teamTournament: t.teamTournament === true,
-        status: t.status, completedAt: t.completedAt,
-        bracket: { complete: t.bracket?.complete === true },
-        organizerName: ownerNames.get(t.ownerUserId) || t.organizerName || '',
+        organizerName: ownerNames.get(row.owner_user_id) || row.organizer_name || '',
       };
     });
     return NextResponse.json({ tournaments }, {
-      headers: summaryMode && !searchParams.has('refresh')
-        ? { 'Cache-Control': 'public, s-maxage=8, stale-while-revalidate=20' }
-        : { 'Cache-Control': 'no-store' },
+      headers: { 'Cache-Control': 'public, s-maxage=8, stale-while-revalidate=20' },
     });
   } catch (error) {
     return errorResponse(error, '大会データを読み込めませんでした。Supabaseの設定を確認してください。');

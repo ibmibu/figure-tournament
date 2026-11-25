@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseBrowserClient } from '../../../lib/supabase/client';
+import { safeLoginNext } from '../../../lib/safe-login-next';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -23,7 +24,7 @@ function AuthCallbackContent() {
         if (error) throw error;
         if (!data.session) throw new Error('ログインを完了できませんでした。');
         const next = searchParams.get('next');
-        const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+        const safeNext = safeLoginNext(next, window.location.origin);
         router.replace(safeNext);
       } catch (error) {
         if (active) setMessage(error.message || 'ログインに失敗しました。');
