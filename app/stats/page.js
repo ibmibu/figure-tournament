@@ -885,7 +885,7 @@ export default function StatsPage() {
         const toTime = (value) => {
           if (!value) return NaN;
           const text = String(value).trim().replace(' ', 'T');
-          const japanLocal = /^\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?)?$/.test(text);
+          const japanLocal = /^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?$/.test(text);
           return Date.parse(japanLocal ? (text.includes('T') ? text : text + 'T00:00:00') + '+09:00' : text);
         };
         const timeA = toTime(aDate);
