@@ -15,7 +15,7 @@ test('external navigation, JS schemes, control chars and encoded separators are 
   for (const input of [
     null, '', '//evil.example/', '/\\evil.example/', 'https://evil.example/',
     'javascript:alert(1)', 'data:text/html,hello',
-    '/%2Fevil.example', '/%5cevil.example', '/%255cevil.example/%5c',
+    '/%2Fevil.example', '/%5cevil.example', '/%255cevil.example', '/%252fevil.example',
     '/foo\n//evil.example', '/foo\rbar', ' /mypage',
     'x'.repeat(2049),
   ]) {

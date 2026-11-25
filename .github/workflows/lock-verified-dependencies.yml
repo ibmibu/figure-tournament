@@ -42,6 +42,8 @@ jobs:
           assert.equal(react.version, '19.1.8');
           assert.equal(reactDom.version, '19.1.8');
           assert.equal(pkg.overrides.sharp, '0.35.5');
+          assert.equal(pkg.overrides.postcss, '8.5.33');
+          assert.equal(require('postcss/package.json').version, '8.5.33');
           console.log('Next.js, React, React DOM and Sharp override verified');
           NODE
           npm ls next react react-dom
@@ -58,3 +60,9 @@ jobs:
           git push
       - name: Audit locked production dependencies
         run: npm audit --omit=dev --audit-level=high
+      - name: Verify a production Next.js build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-only-placeholder
+          SUPABASE_SERVICE_ROLE_KEY: build-only-placeholder
+        run: npm run build
